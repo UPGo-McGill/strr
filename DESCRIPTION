@@ -12,3 +12,11 @@ Encoding: UTF-8
 LazyData: true
 URL: https://github.com/dwachsmuth/strr
 BugReports: https://github.com/dwachsmuth/strr/issues
+Imports: 
+    sf,
+    dplyr,
+    spatstat,
+    polyCub,
+    purrr,
+    data.table,
+    tidyr
