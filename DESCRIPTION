@@ -9,7 +9,7 @@ Maintainer: David Wachsmuth <david.wachsmuth@mcgill.ca>
 Description: Tools for preparing and analyzing data about short-term rentals,
     with an emphasis on property files produced by Inside Airbnb or AirDNA, and
     daily activity files produced by AirDNA.
-License: GNU General Public License v3.0
+License: GPL-3
 Encoding: UTF-8
 LazyData: true
 URL: https://github.com/dwachsmuth/strr
@@ -17,8 +17,10 @@ BugReports: https://github.com/dwachsmuth/strr/issues
 Imports: 
     data.table (>= 1.12.2),
     dplyr (>= 0.8),
+    methods (>= 3.5.2),
     polyCub (>= 0.7.1),
     purrr (>= 0.3.2),
+    rlang (>= 0.3.4),
     sf (>= 0.7),
     spatstat (>= 1.59),
     tidyr (>= 0.8.3)
