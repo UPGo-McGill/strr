@@ -1,7 +1,9 @@
 Package: strr
 Type: Package
 Title: Tools for Analysis of Short-Term Rental Data
-Version: 0.1.0
+Version: 0.0.0.9000
+Authors@R: person("David", "Wachsmuth", email = "david.wachsmuth@mcgill.ca",
+  role = c("aut", "cre"))
 Author: David Wachsmuth
 Maintainer: David Wachsmuth <david.wachsmuth@mcgill.ca>
 Description: Tools for preparing and analyzing data about short-term rentals,
@@ -13,10 +15,10 @@ LazyData: true
 URL: https://github.com/dwachsmuth/strr
 BugReports: https://github.com/dwachsmuth/strr/issues
 Imports: 
-    sf,
-    dplyr,
-    spatstat,
-    polyCub,
-    purrr,
-    data.table,
-    tidyr
+    sf (>= 0.7),
+    dplyr (>= 0.8),
+    spatstat (>= 1.59),
+    polyCub (>= 0.7.1),
+    purrr (>= 0.3.2),
+    data.table (>= 1.12.2),
+    tidyr (>= 0.8.3)
