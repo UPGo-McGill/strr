@@ -3,12 +3,11 @@
 
 ## Point setup function, returns points ----------------------------------------
 
-raffle_setup_points <- function(points, point_ID) {
+raffle_setup_points <- function(points) {
 
   points <-
     points %>%
-    filter(!! point_ID > 0) %>%
-    arrange(!! point_ID)
+    mutate(.point_ID = seq_len(nrow(points)))
 
   points
 }
@@ -95,16 +94,14 @@ raffle_integrate <- function(intersects) {
 
 ## Determine winners, returns points -------------------------------------------
 
-raffle_choose_winner <- function(
-  points, intersects, point_ID, poly_ID, diagnostic) {
+raffle_choose_winner <- function(points, intersects, poly_ID, diagnostic) {
 
-  point_ID <- enquo(point_ID)
   poly_ID  <- enquo(poly_ID)
 
   results <-
     intersects %>%
     st_drop_geometry() %>%
-    group_by(!! point_ID)
+    group_by(.point_ID)
 
   if (diagnostic == TRUE) {
     results <-
@@ -122,7 +119,9 @@ raffle_choose_winner <- function(
       )
   }
 
-  points <- left_join(points, results, by = quo_name(point_ID))
+  points <-
+    left_join(points, results, by = ".point_ID") %>%
+    select(-.point_ID)
 
   points
 }
