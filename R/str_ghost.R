@@ -486,7 +486,7 @@ str_ghost <- function(points, start_date, end_date, distance = 200,
     stop("The argument `min_listings` must be a positive integer.")
   }
 
-  # Convert pointsfrom sp
+  # Convert points from sp
   if (is(points, "Spatial")) {
     points <- st_as_sf(points)
   }
