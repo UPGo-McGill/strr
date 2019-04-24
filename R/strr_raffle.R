@@ -1,6 +1,6 @@
 #' Raffle to assign STR listings to administrative units for spatial analysis
 #'
-#' \code{str_raffle} takes reported STR listing locations and assigns the
+#' \code{strr_raffle} takes reported STR listing locations and assigns the
 #' listings to administrative units based on a probability density function and
 #' other information about population or housing distribution.
 #'
@@ -43,7 +43,7 @@
 #' @importFrom stats dnorm
 #' @export
 
-str_raffle <- function(
+strr_raffle <- function(
   points, polys, poly_ID, units, distance = 200, diagnostic = FALSE,
   cores = 1) {
 
@@ -128,7 +128,7 @@ str_raffle <- function(
         }) %>%
         st_sfc())
 
-  # Multi-threaded version
+  # Multi-threaded version of integration
   if (cores >= 2) {
 
     clusters <- pbapply::splitpb(nrow(intersects), cores, nout = 100)
@@ -140,16 +140,18 @@ str_raffle <- function(
       pbapply::pblapply(raffle_integrate, cl = cl) %>%
       do.call(rbind, .)
 
-    # Single-threaded version
+    # Single-threaded version of integration
     } else {
       intersects <- raffle_integrate(intersects)
-      }
+    }
 
+  # Initialize results object
   results <-
     intersects %>%
     st_drop_geometry() %>%
     group_by(.data$.point_ID)
 
+  # Choose winners
   if (diagnostic == TRUE) {
     results <-
       results %>%
@@ -169,9 +171,10 @@ str_raffle <- function(
       )
   }
 
+  # Join winners to point file
   points <-
     left_join(points, results, by = ".point_ID") %>%
-    select(-.data$.point_ID)
+    select(-.data$.point_ID, -.data$.point_x, -.data$.point_y)
   points
 }
 

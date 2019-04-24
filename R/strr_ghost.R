@@ -1,6 +1,6 @@
 #' Function to identify STR ghost hotels
 #'
-#' \code{str_ghost} takes reported STR listing locations and identifies
+#' \code{strr_ghost} takes reported STR listing locations and identifies
 #' possible "ghost hotels"--clusters of private-room STR listings operating in a
 #' single building.
 #'
@@ -41,7 +41,7 @@
 #' @importFrom sf st_as_sf st_crs st_transform
 #' @export
 
-str_ghost <- function(points, start_date, end_date, distance = 200,
+strr_ghost <- function(points, start_date, end_date, distance = 200,
                       min_listings = 3, cores = 1) {
 
   # Check that cores is an integer > 0
