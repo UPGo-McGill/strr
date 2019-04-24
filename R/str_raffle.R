@@ -33,6 +33,7 @@
 #'   in the `poly_ID` argument. If diagnostic == TRUE, a `candidates` field will
 #'   also be appended, which lists the possible polygons for each point, along
 #'   with their probabilities.
+#' @export
 
 str_raffle <- function(
   points, polys, poly_ID, units, distance = 200, diagnostic = FALSE,

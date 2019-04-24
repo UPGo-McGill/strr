@@ -1,4 +1,4 @@
-#' Raffle component functions
+
 
 
 ## Point setup function, returns points ----------------------------------------

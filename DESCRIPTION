@@ -15,10 +15,14 @@ LazyData: true
 URL: https://github.com/dwachsmuth/strr
 BugReports: https://github.com/dwachsmuth/strr/issues
 Imports: 
-    sf (>= 0.7),
+    data.table (>= 1.12.2),
     dplyr (>= 0.8),
-    spatstat (>= 1.59),
     polyCub (>= 0.7.1),
     purrr (>= 0.3.2),
-    data.table (>= 1.12.2),
+    sf (>= 0.7),
+    spatstat (>= 1.59),
     tidyr (>= 0.8.3)
+Suggests: 
+    parallel (>= 3.5.2),
+    pbapply (>= 1.4)
+RoxygenNote: 6.1.1
