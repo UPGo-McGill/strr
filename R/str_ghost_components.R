@@ -1,69 +1,6 @@
 
 
-## 1.2. Create possible cluster start and end dates ----------------------------
 
-ghost_make_starts <- function(x) {
-  x %>%
-    filter(Created > start) %>%
-    `$`("Created") %>%
-    unique() %>%
-    c(start)
-}
-
-ghost_make_ends <- function(x) {
-  x %>%
-    filter(Scraped < end) %>%
-    `$`("Scraped") %>%
-    unique() %>%
-    c(end)
-}
-
-## 1.3. Create tibbles for each unique cluster ---------------------------------
-
-ghost_nest <- function(x, y) {
-  apply(x, 1, function(z) filter(y, Created <= z[1], Scraped >= z[2])) %>%
-    unique() %>%
-    `[`(lapply(., nrow) >= min_list)
-}
-
-## 1.4. Set up points, returns `points` ----------------------------------------
-
-ghost_setup <- function(
-  points, start = start_date, end = end_date, min_list = min_listings) {
-
-  # Remove invalid listings
-  points <-
-    points %>%
-    filter(Host_ID != 0,
-           is.na(Host_ID) == FALSE,
-           Listing_Type == "Private room")
-
-  # Filter points to PR points >= min_listings, and nest by Host_ID
-  points <-
-    points %>%
-    arrange(Host_ID, Property_ID) %>%
-    group_by(Host_ID) %>%
-    filter(n() >= min_list) %>%
-    nest()
-
-  # Identify possible clusters by date
-  points <-
-    points %>%
-    mutate(
-      starts = map(data, ghost_make_starts),
-      ends = map(data, ghost_make_ends),
-      date_grid = map2(starts, ends, expand.grid),
-      date_grid = map(date_grid, filter, Var1 <= Var2)
-    )
-
-  # Create a nested tibble for each possible cluster
-  points <-
-    points %>%
-    mutate(data = map2(date_grid, data, ghost_nest)) %>%
-    unnest(data)
-
-  points
-}
 
 ### 2. GHOST HOTEL COMPONENT FUNCTIONS -----------------------------------------
 
