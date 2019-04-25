@@ -178,17 +178,18 @@ strr_ghost <- function(
                           min_listings) %>%
           ghost_intersect_leftovers(!! property_ID, !! host_ID, distance,
                                     min_listings)
-      }, cl = cl) %>%
+        }, cl = cl) %>%
       do.call(rbind, .)
 
-    # Single-threaded version
-  } else {
-    points <- ghost_cluster(points, distance, min_listings)
-    points <- ghost_intersect(points, !! property_ID, !! host_ID, distance,
-                              min_listings)
-    points <- ghost_intersect_leftovers(points, !! property_ID, !! host_ID,
-                                        distance, min_listings)
-  }
+    } else {
+      # Single-threaded version
+      points <- ghost_cluster(points, distance, min_listings)
+      points <- ghost_intersect(points, !! property_ID, !! host_ID, distance,
+                                min_listings)
+      points <- ghost_intersect_leftovers(points, !! property_ID, !! host_ID,
+                                          distance, min_listings)
+      }
+
 
   ## GHOST TABLE CREATION
 
@@ -330,7 +331,7 @@ ghost_cluster <- function(points, distance, min_listings) {
     mutate(data = map2(.data$data, .data$predicates, function(x, y) {
       map(y, ~{x[.,]})
       })) %>%
-    tidyr::unnest(.data$data)
+    tidyr::unnest(.data$data, .drop = TRUE)
 
   # Remove duplicate clusters
   points <- points[!duplicated(points$data),]
