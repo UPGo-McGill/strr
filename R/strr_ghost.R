@@ -49,7 +49,7 @@
 #'   listings comprising the ghost hotel. `data`: a nested tibble of additional
 #'   variables present in the points object. `geometry`: the polygons
 #'   representing the possible locations of each ghost hotel.
-#' @importFrom dplyr %>% arrange as_tibble enquo filter group_by mutate n
+#' @importFrom dplyr %>% arrange as_tibble enquo filter group_by mutate n pull
 #' @importFrom dplyr rename ungroup
 #' @importFrom methods is
 #' @importFrom purrr map map2 map_dbl map_lgl
@@ -133,13 +133,13 @@ strr_ghost <- function(
     mutate(
       starts = map(.data$data, ~{
         filter(.x, !! created > start_date) %>%
-          `$`(!! created) %>%
+          pull(!! created) %>%
           unique() %>%
           c(start_date)
       }),
       ends = map(.data$data, ~{
         filter(.x, !! scraped < end_date) %>%
-          `$`(!! scraped) %>%
+          pull(!! scraped) %>%
           unique() %>%
           c(end_date)
       }),
@@ -153,12 +153,127 @@ strr_ghost <- function(
     mutate(data = map2(.data$date_grid, .data$data, function(x, y) {
       apply(x, 1, function(z) {
         filter(y, !! created <= z[1], !! scraped >= z[2])
-        }) %>%
+      }) %>%
         unique() %>%
         `[`(lapply(., nrow) >= min_listings)
-      })) %>%
+    })) %>%
     tidyr::unnest(.data$data)
 
+
+  ## CLUSTER CREATION AND GHOST HOTEL IDENTIFICATION
+
+  # Multi-threaded version
+  if (cores >= 2) {
+
+    clusters <- pbapply::splitpb(nrow(points), cores, nout = 100)
+    points_list <- lapply(clusters, function(x) points[x,])
+    cl <- parallel::makeForkCluster(cores)
+
+    points <-
+      points_list %>%
+      pbapply::pblapply(function(x) {
+        x %>%
+          ghost_cluster(distance, min_listings) %>%
+          ghost_intersect(!! property_ID, !! host_ID, distance,
+                          min_listings) %>%
+          ghost_intersect_leftovers(!! property_ID, !! host_ID, distance,
+                                    min_listings)
+      }, cl = cl) %>%
+      do.call(rbind, .)
+
+    # Single-threaded version
+  } else {
+    points <- ghost_cluster(points, distance, min_listings)
+    points <- ghost_intersect(points, !! property_ID, !! host_ID, distance,
+                              min_listings)
+    points <- ghost_intersect_leftovers(points, !! property_ID, !! host_ID,
+                                        distance, min_listings)
+  }
+
+  ## GHOST TABLE CREATION
+
+  points <-
+    points %>%
+    mutate(data = map2(.data$data, .data$property_IDs, ~{
+      filter(.x, !! property_ID %in% .y)}))
+
+  # Store CRS for later
+  crs <- st_crs(points$intersects[[1]])
+
+  # Generate compact table of ghost hotels, suppress SF geometry warnings
+  points <- suppressWarnings(
+    tidyr::unnest(points, .data$intersects, .preserve = .data$data)
+  )
+
+  # Remove duplicates
+  points <- points[!duplicated(points$property_IDs),]
+
+  # Create Ghost_ID
+  points <- mutate(points, ghost_ID = 1:n())
+
+  # Extract geometry, coerce to sf, join back to ghost_points, clean up
+  points <-
+    points[c("ghost_ID","geometry")] %>%
+    st_as_sf() %>%
+    left_join(st_drop_geometry(st_as_sf(points)), ., by = "ghost_ID") %>%
+    st_as_sf() %>%
+    rename(listing_count = .data$n.overlaps) %>%
+    mutate(housing_units = as.integer(ceiling(.data$listing_count / 4))) %>%
+    select(.data$ghost_ID, !! host_ID, .data$listing_count,
+           .data$housing_units, .data$property_IDs, .data$data, .data$geometry)
+
+  # Reattach CRS
+  st_crs(points) <- crs
+
+  # Calculate date ranges
+  points <-
+    points %>%
+    mutate(
+      start = map_dbl(.data$data, ~{
+        pull(.x, !! created) %>%
+          max(c(., start_date))
+      }) %>%
+        as.Date(origin = "1970-01-01"),
+      end = map_dbl(.data$data, ~{
+        pull(.x, !! scraped) %>%
+          min(c(., end_date))
+      }) %>%
+        as.Date(origin="1970-01-01")
+    )
+
+  # Identify subsets
+  points <-
+    points %>%
+    mutate(
+      subsets = map(.data$property_IDs, function(y) {
+        which(map_lgl(points$property_IDs, ~all(.x %in% y)))
+      }),
+      subsets = map2(.data$ghost_ID, .data$subsets, ~{.y[.y != .x]}))
+
+
+  ## TIDY TABLE CREATION
+
+  # Create tidy version of ghost_points
+  points <-
+    points[c("ghost_ID", "start", "end")] %>%
+    st_drop_geometry() %>%
+    mutate(date = map2(.data$start, .data$end, ~{
+      seq(unique(.x), unique(.y), 1)
+    })) %>%
+    tidyr::unnest(.data$date) %>%
+    select(-.data$start, -.data$end) %>%
+    filter(.data$date >= start_date, .data$date <= end_date) %>%
+    left_join(points, by = "ghost_ID") %>%
+    select(-.data$start, -.data$end) %>%
+    st_as_sf()
+
+  # Remove rows from ghost_tidy which are in ghost_subset overlaps
+  points <-
+    points %>%
+    group_by(.data$date) %>%
+    filter(!.data$ghost_ID %in% unlist(.data$subsets)) %>%
+    select(-.data$subsets) %>%
+    ungroup()
 
   points
 }

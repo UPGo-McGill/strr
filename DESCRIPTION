@@ -15,7 +15,6 @@ LazyData: true
 URL: https://github.com/dwachsmuth/strr
 BugReports: https://github.com/dwachsmuth/strr/issues
 Imports: 
-    data.table (>= 1.12.2),
     dplyr (>= 0.8),
     methods (>= 3.5.2),
     polyCub (>= 0.7.1),
