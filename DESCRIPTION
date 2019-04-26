@@ -25,5 +25,6 @@ Imports:
     tidyr (>= 0.8.3)
 Suggests: 
     parallel (>= 3.5.2),
-    pbapply (>= 1.4)
+    pbapply (>= 1.4),
+    testthat (>= 2.1.0)
 RoxygenNote: 6.1.1
