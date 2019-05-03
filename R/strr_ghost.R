@@ -18,9 +18,9 @@
 #' @param host_ID The name of a character or numeric variable in the points
 #'   object which uniquely identifies STR hosts.
 #' @param created The name of a date variable in the points object which gives
-#'   the creation date for each listing.
+#'   the creation date for each listing. If NULL, all points will be used.
 #' @param scraped The name of a date variable in the points object which gives
-#'   the last-scraped date for each listing.
+#'   the last-scraped date for each listing. If NULL, all points will be used.
 #' @param start_date A character string of format YYYY-MM-DD indicating the
 #'   first date for which to run the analysis.
 #' @param end_date A character string of format YYYY-MM-DD indicating the last
@@ -35,6 +35,10 @@
 #'   be used.
 #' @param private_room A character string which identifies the value of the
 #'   listing_type variable to be used to find ghost hotels.
+#' @param EH_check A character string which identifies the value of the
+#'   listing_type variable to be used to check ghost hotels against possible
+#'   duplicate entire-home listings operated by the same host. This field is
+#'   ignored if listing_type == NULL.
 #' @param cores A positive integer scalar. How many processing cores should be
 #'   used to perform the computationally intensive intersection step?
 #' @return The output will be a tidy data frame of identified ghost hotels,
@@ -46,8 +50,9 @@
 #'   estimate of how many housing units the ghost hotel occupies, calculated as
 #'   `ceiling(listing_count / 4)`. `property_IDs`: A list of the property_ID
 #'   (or whatever name was passed to the property_ID argument) values from the
-#'   listings comprising the ghost hotel. `data`: a nested tibble of additional
-#'   variables present in the points object. `geometry`: the polygons
+#'   listings comprising the ghost hotel. `EH_check`: if EH_check != NULL, a
+#'   list of possible entire-home listing duplicates. `data`: a nested tibble of
+#'   additional variables present in the points object. `geometry`: the polygons
 #'   representing the possible locations of each ghost hotel.
 #' @importFrom dplyr %>% arrange as_tibble enquo filter group_by mutate n pull
 #' @importFrom dplyr rename ungroup
@@ -58,9 +63,9 @@
 #' @export
 
 strr_ghost <- function(
-  points, property_ID, host_ID, created, scraped, start_date, end_date,
-  distance = 200, min_listings = 3, listing_type = NULL,
-  private_room = "Private room", cores = 1) {
+  points, property_ID, host_ID, created = NULL, scraped = NULL, start_date,
+  end_date, distance = 200, min_listings = 3, listing_type = NULL,
+  private_room = "Private room", EH_check = NULL, cores = 1) {
 
   ## ERROR CHECKING AND ARGUMENT INITIALIZATION
 
@@ -80,6 +85,9 @@ strr_ghost <- function(
   if (min_listings <= 0) {
     stop("The argument `min_listings` must be a positive integer.")
   }
+
+  # Check if EH_check and listing_type agree
+  if (missing(listing_type)) EH_check <- NULL
 
   # Convert points from sp
   if (is(points, "Spatial")) {
@@ -114,6 +122,12 @@ strr_ghost <- function(
   # Filter to private rooms if listing_type != NULL
   if (!missing(listing_type)) {
     listing_type <- enquo(listing_type)
+
+    # Save entire-home listings for later if EH_check != NULL
+    if (!missing(EH_check)) {
+      EH_points <- filter(points, !! listing_type == EH_check)
+    }
+
     points <-
       points %>%
       filter(!! listing_type == private_room)
@@ -250,6 +264,23 @@ strr_ghost <- function(
         which(map_lgl(points$property_IDs, ~all(.x %in% y)))
       }),
       subsets = map2(.data$ghost_ID, .data$subsets, ~{.y[.y != .x]}))
+
+  # Optionally add EH_check field
+  if (!missing(EH_check)) {
+
+    EH_buffers <- st_buffer(EH_points, dist = distance)
+
+    # Need to split by host_ID and then do a map2
+
+    points <-
+      points %>%
+      mutate(
+        EH_check = map(.data$geometry, ~{
+
+
+        })
+      )
+  }
 
 
   ## TIDY TABLE CREATION
