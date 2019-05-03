@@ -90,6 +90,13 @@ strr_ghost <- function(
   # Check if EH_check and listing_type agree
   if (missing(listing_type)) EH_check <- NULL
 
+  # Parse dates
+  ##### DEAL WITH MISSING DATE FIELDS, MAYBE WITH SEPARATE FUNCTION?
+
+  start_date <- as.Date(start_date)
+  end_date <- as.Date(end_date)
+
+
   # Convert points from sp
   if (is(points, "Spatial")) {
     points <- st_as_sf(points)
@@ -102,10 +109,6 @@ strr_ghost <- function(
 
   # Convert points to tibble
   points <- as_tibble(points) %>% st_as_sf()
-
-  # Convert start_date and end_date to date class
-  start_date <- as.Date(start_date)
-  end_date <- as.Date(end_date)
 
   # Quote variables
   property_ID <- enquo(property_ID)
