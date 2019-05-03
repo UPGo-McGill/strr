@@ -22,9 +22,9 @@
 #' @param scraped The name of a date variable in the points object which gives
 #'   the last-scraped date for each listing. If NULL, all points will be used.
 #' @param start_date A character string of format YYYY-MM-DD indicating the
-#'   first date for which to run the analysis.
+#'   first date for which to run the analysis. If NULL, all dates will be used.
 #' @param end_date A character string of format YYYY-MM-DD indicating the last
-#'   date for which to run the analysis.
+#'   date for which to run the analysis. If NULL, all dates will be used.
 #' @param distance A numeric scalar. The radius (in the units of the CRS) of the
 #'   buffer which will be drawn around points to determine possible ghost hotel
 #'   locations.
@@ -63,9 +63,10 @@
 #' @export
 
 strr_ghost <- function(
-  points, property_ID, host_ID, created = NULL, scraped = NULL, start_date,
-  end_date, distance = 200, min_listings = 3, listing_type = NULL,
-  private_room = "Private room", EH_check = NULL, cores = 1) {
+  points, property_ID, host_ID, created = NULL, scraped = NULL,
+  start_date = NULL, end_date = NULL, distance = 200, min_listings = 3,
+  listing_type = NULL, private_room = "Private room", EH_check = NULL,
+  cores = 1) {
 
   ## ERROR CHECKING AND ARGUMENT INITIALIZATION
 
@@ -268,44 +269,30 @@ strr_ghost <- function(
   # Optionally add EH_check field
   if (!missing(EH_check)) {
 
-    EH_buffers <- st_buffer(EH_points, dist = distance)
+    # Split points and EH_points
+    points_split <- split(points, pull(points, !! host_ID))
+    EH_points <- filter(EH_points, !! host_ID %in% pull(points, !! host_ID))
+    EH_split <- map(points_split, ~{
+      EH_points %>%
+        filter(!! host_ID %in% pull(.x, !! host_ID))
+    })
 
-    # Need to split by host_ID and then do a map2
+    EH_intersects <-
+      map2(points_split, EH_split, ~{
+        suppressWarnings(st_intersection(.x, st_buffer(.y, dist = distance)))
+        }) %>%
+      do.call(rbind, .) %>%
+      select(.data$ghost_ID, !! property_ID) %>%
+      st_drop_geometry() %>%
+      nest(quo_name(property_ID)) %>%
+      mutate(EH_check = map(.data$data, pull, !! property_ID)) %>%
+      select(-.data$data)
 
-    points <-
-      points %>%
-      mutate(
-        EH_check = map(.data$geometry, ~{
-
-
-        })
-      )
+    points <- left_join(points, EH_intersects, "ghost_ID")
   }
 
 
-  ## TIDY TABLE CREATION
 
-  # Create tidy version of ghost_points
-  points <-
-    points[c("ghost_ID", "start", "end")] %>%
-    st_drop_geometry() %>%
-    mutate(date = map2(.data$start, .data$end, ~{
-      seq(unique(.x), unique(.y), 1)
-    })) %>%
-    tidyr::unnest(.data$date) %>%
-    select(-.data$start, -.data$end) %>%
-    filter(.data$date >= start_date, .data$date <= end_date) %>%
-    left_join(points, by = "ghost_ID") %>%
-    select(-.data$start, -.data$end) %>%
-    st_as_sf()
-
-  # Remove rows from ghost_tidy which are in ghost_subset overlaps
-  points <-
-    points %>%
-    group_by(.data$date) %>%
-    filter(!.data$ghost_ID %in% unlist(.data$subsets)) %>%
-    select(-.data$subsets) %>%
-    ungroup()
 
   points
 }
