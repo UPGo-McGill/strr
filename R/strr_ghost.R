@@ -127,6 +127,9 @@ strr_ghost <- function(
     filter(n() >= min_listings) %>%
     tidyr::nest()
 
+  # Temporary error handling for case where no clusters are identified
+  if (nrow(points) == 0) return(points)
+
   # Identify possible clusters by date
   points <-
     points %>%
