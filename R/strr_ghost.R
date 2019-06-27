@@ -211,6 +211,21 @@ strr_ghost <- function(
                                           distance, min_listings)
       }
 
+  if (nrow(points) == 0) {
+    points <-
+      points %>%
+      mutate(ghost_ID = integer(0),
+             date = as.Date(x = integer(0), origin = "1970-01-01"),
+             listing_count = integer(0),
+             housing_units = integer(0),
+             geometry = st_sfc()) %>%
+      select(ghost_ID, date, !! host_ID, listing_count, housing_units,
+             property_IDs, data, geometry) %>%
+      st_as_sf() %>%
+      st_set_crs(crs)
+
+    return(points)
+  }
 
   ## GHOST TABLE CREATION
 
@@ -707,6 +722,8 @@ ghost_intersect_leftovers <- function(points, property_ID, host_ID, distance,
 
   property_ID <- enquo(property_ID)
   host_ID <- enquo(host_ID)
+
+  if (nrow(points) == 0) return(points)
 
   # Subset leftover candidates
   leftovers <- ghost_identify_leftovers(points, !! property_ID, !! host_ID,
