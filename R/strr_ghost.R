@@ -22,9 +22,11 @@
 #' @param scraped The name of a date variable in the points object which gives
 #'   the last-scraped date for each listing.
 #' @param start_date A character string of format YYYY-MM-DD indicating the
-#'   first date for which to run the analysis.
+#'   first date for which to run the analysis. If NULL, the earliest date in the
+#'   `created` field will be used.
 #' @param end_date A character string of format YYYY-MM-DD indicating the last
-#'   date for which to run the analysis.
+#'   date for which to run the analysis. If NULL, the latest date in the
+#'   `scraped` field will be used.
 #' @param distance A numeric scalar. The radius (in the units of the CRS) of the
 #'   buffer which will be drawn around points to determine possible ghost hotel
 #'   locations.
@@ -58,11 +60,17 @@
 #' @export
 
 strr_ghost <- function(
-  points, property_ID, host_ID, created, scraped, start_date, end_date,
-  distance = 200, min_listings = 3, listing_type = NULL,
-  private_room = "Private room", cores = 1) {
+  points, property_ID, host_ID, created, scraped, start_date = NULL,
+  end_date = NULL, listing_type = NULL, private_room = "Private room",
+  distance = 200, min_listings = 3, cores = 1) {
 
   ## ERROR CHECKING AND ARGUMENT INITIALIZATION
+
+  # Quote variables
+  property_ID <- enquo(property_ID)
+  host_ID <- enquo(host_ID)
+  created <- enquo(created)
+  scraped <- enquo(scraped)
 
   # Check that cores is an integer > 0
   cores <- floor(cores)
@@ -97,15 +105,35 @@ strr_ghost <- function(
   # Convert points to tibble
   points <- as_tibble(points) %>% st_as_sf()
 
-  # Convert start_date and end_date to date class
-  start_date <- as.Date(start_date)
-  end_date <- as.Date(end_date)
+  # Check that dates are coercible to date class, then coerce them
+  points <- tryCatch(
+    mutate(points, !! created := as.Date(!! created)),
+    error = function(e) {
+      stop("A value in the `created` field is not coercible to a date.")
+  })
 
-  # Quote variables
-  property_ID <- enquo(property_ID)
-  host_ID <- enquo(host_ID)
-  created <- enquo(created)
-  scraped <- enquo(scraped)
+  points <- tryCatch(
+    mutate(points, !! scraped := as.Date(!! scraped)),
+    error = function(e) {
+      stop("A value in the `scraped` field is not coercible to a date.")
+    })
+
+  if (is.null(start_date)) {
+    start_date <- min(pull(points, !! created))
+  } else {
+    start_date <- tryCatch(as.Date(start_date), error = function(e) {
+      stop(paste0('The value of `start_date`` ("', start_date,
+                  '") is not coercible to a date.'))
+      })}
+
+  if (is.null(end_date)) {
+    end_date <- max(pull(points, !! scraped))
+  } else {
+    end_date <- tryCatch(as.Date(end_date), error = function(e) {
+      stop(paste0('The value of `end_date` ("', end_date,
+                  '") is not coercible to a date.'))
+      })}
+
 
   ## POINTS SETUP
 
