@@ -158,7 +158,7 @@ strr_ghost <- function(
     filter(n() >= min_listings) %>%
     tidyr::nest()
 
-  # Temporary error handling for case where no clusters are identified
+  # Error handling for case where no clusters are identified
   if (nrow(points) == 0) {
     points <-
       points %>%
@@ -208,6 +208,23 @@ strr_ghost <- function(
     })) %>%
     tidyr::unnest(.data$data)
 
+  # Error handling for case where no clusters are identified
+  if (nrow(points) == 0) {
+    points <-
+      points %>%
+      mutate(ghost_ID = integer(0),
+             date = as.Date(x = integer(0), origin = "1970-01-01")) %>%
+      select(ghost_ID, date, everything()) %>%
+      mutate(list_count = integer(0),
+             housing_units = integer(0),
+             property_IDs = list()) %>%
+      select(-data, data) %>%
+      mutate(geometry = st_sfc()) %>%
+      st_as_sf() %>%
+      st_set_crs(crs)
+
+    return(points)
+  }
 
   ## CLUSTER CREATION AND GHOST HOTEL IDENTIFICATION
 
