@@ -54,7 +54,7 @@ strr_expand_daily <- function(daily, start = NULL, end = NULL, cores = 1) {
           unnest() %>%
           mutate(date = as.Date(date, origin = "1970-01-01")) %>%
           select(property_ID, date, status:res_id)
-      }) %>%
+      }, cl = cores) %>%
       bind_rows()
   }
 
