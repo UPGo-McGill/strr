@@ -33,8 +33,8 @@
 #' @param min_listings A numeric scalar. The minimum number of listings to
 #'   be considered a ghost hostel.
 #' @param listing_type The name of a character variable in the points
-#'   object which identifies private-room listings. If NULL, all listings will
-#'   be used.
+#'   object which identifies private-room listings. Set this argument to NULL to
+#'   use all listings in the `points` table.
 #' @param private_room A character string which identifies the value of the
 #'   listing_type variable to be used to find ghost hostels.
 #' @param EH_check A character string which identifies the value of the
@@ -59,18 +59,19 @@
 #'   additional variables present in the points object. `geometry`: the polygons
 #'   representing the possible locations of each ghost hostel.
 #' @importFrom dplyr %>% arrange as_tibble enquo filter group_by mutate n pull
-#' @importFrom dplyr rename ungroup
+#' @importFrom dplyr quo_name rename ungroup
 #' @importFrom methods is
 #' @importFrom purrr map map2 map_dbl map_lgl
 #' @importFrom rlang .data
 #' @importFrom sf st_as_sf st_crs st_crs<- st_transform
+#' @importFrom tidyr nest
 #' @export
 
 strr_ghost <- function(
-  points, property_ID, host_ID, created = created, scraped = scraped,
-  start_date = NULL, end_date = NULL, distance = 200, min_listings = 3,
-  listing_type = NULL, private_room = "Private room", EH_check = NULL,
-  cores = 1) {
+  points, property_ID = property_ID, host_ID = host_ID, created = created,
+  scraped = scraped, start_date = NULL, end_date = NULL, distance = 200,
+  min_listings = 3, listing_type = listing_type, private_room = "Private room",
+  EH_check = NULL, cores = 1) {
 
   ## ERROR CHECKING AND ARGUMENT INITIALIZATION
 

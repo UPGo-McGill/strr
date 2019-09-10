@@ -2,7 +2,7 @@
 % Please edit documentation in R/strr_ghost.R
 \name{ghost_intersect_leftovers}
 \alias{ghost_intersect_leftovers}
-\title{Helper function to rerun analysis on leftover ghost hotel candidates}
+\title{Helper function to rerun analysis on leftover ghost hostel candidates}
 \usage{
 ghost_intersect_leftovers(points, property_ID, host_ID, distance,
   min_listings)
@@ -17,21 +17,21 @@ object which uniquely identifies STR listings.}
 object which uniquely identifies STR hosts.}
 
 \item{distance}{A numeric scalar. The radius (in the units of the CRS) of the
-buffer which will be drawn around points to determine possible ghost hotel
+buffer which will be drawn around points to determine possible ghost hostel
 locations.}
 
 \item{min_listings}{A numeric scalar. The minimum number of listings to
-be considered a ghost hotel.}
+be considered a ghost hostel.}
 }
 \value{
-The output will be the `points` file with additional ghost hotels
+The output will be the `points` file with additional ghost hostels
   added.
 }
 \description{
-\code{ghost_intersect_leftovers} reruns the ghost hotel analysis on leftover
+\code{ghost_intersect_leftovers} reruns the ghost hostel analysis on leftover
  candidates.
 }
 \details{
-A function for rerunning the ghost hotel analysis on leftover candidates
+A function for rerunning the ghost hostel analysis on leftover candidates
 after the main analysis has been run.
 }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/strr_ghost.R
 \name{ghost_intersect}
 \alias{ghost_intersect}
-\title{Helper function to find ghost hotel locations}
+\title{Helper function to find ghost hostel locations}
 \usage{
 ghost_intersect(points, property_ID, host_ID, distance, min_listings)
 }
@@ -16,19 +16,19 @@ object which uniquely identifies STR listings.}
 object which uniquely identifies STR hosts.}
 
 \item{distance}{A numeric scalar. The radius (in the units of the CRS) of the
-buffer which will be drawn around points to determine possible ghost hotel
+buffer which will be drawn around points to determine possible ghost hostel
 locations.}
 
 \item{min_listings}{A numeric scalar. The minimum number of listings to
-be considered a ghost hotel.}
+be considered a ghost hostel.}
 }
 \value{
-The output will be `points`, trimmed to valid ghost hotel locations
+The output will be `points`, trimmed to valid ghost hostel locations
   and with additional fields added.
 }
 \description{
-\code{ghost_intersect} finds ghost hotel locations from a set of clusters.
+\code{ghost_intersect} finds ghost hostel locations from a set of clusters.
 }
 \details{
-A function for finding ghost hotel locations from a set of point clusters.
+A function for finding ghost hostel locations from a set of point clusters.
 }
