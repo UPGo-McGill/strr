@@ -1,8 +1,8 @@
-#' Function to identify STR ghost hotels
+#' Function to identify STR ghost hostels
 #'
 #' \code{strr_ghost} takes reported STR listing locations and identifies
-#' possible "ghost hotels"--clusters of private-room STR listings operating in a
-#' single building.
+#' possible "ghost hostels"--clusters of private-room STR listings operating in
+#' a single building.
 #'
 #' A function for probablistically assigning STR listings to administrative
 #' geographies (e.g. census tracts) based on reported latitude/longitude.
@@ -18,9 +18,11 @@
 #' @param host_ID The name of a character or numeric variable in the points
 #'   object which uniquely identifies STR hosts.
 #' @param created The name of a date variable in the points object which gives
-#'   the creation date for each listing. If NULL, all points will be used.
+#'   the creation date for each listing. Set this argument to NULL to perform
+#'   a single analysis on all points which ignores dates.
 #' @param scraped The name of a date variable in the points object which gives
-#'   the last-scraped date for each listing. If NULL, all points will be used.
+#'   the last-scraped date for each listing. Set this argument to NULL to
+#'   perform a single analysis on all points which ignores dates.
 #' @param start_date A character string of format YYYY-MM-DD indicating the
 #'   first date for which to run the analysis. If NULL, all dates will be used.
 #' @param end_date A character string of format YYYY-MM-DD indicating the last
@@ -40,7 +42,9 @@
 #'   duplicate entire-home listings operated by the same host. This field is
 #'   ignored if listing_type == NULL.
 #' @param cores A positive integer scalar. How many processing cores should be
-#'   used to perform the computationally intensive intersection step?
+#'   used to perform the computationally intensive intersection step? The
+#'   implementation of multicore processing does not support Windows, so this
+#'   argument should be left with its default value of 1 in those cases.
 #' @return The output will be a tidy data frame of identified ghost hotels,
 #'   organized with the following fields: `ghost_ID`: an identifier for each
 #'   unique ghost hotel cluster. `date`: the date on which the ghost hotel was
@@ -63,7 +67,7 @@
 #' @export
 
 strr_ghost <- function(
-  points, property_ID, host_ID, created = NULL, scraped = NULL,
+  points, property_ID, host_ID, created = created, scraped = scraped,
   start_date = NULL, end_date = NULL, distance = 200, min_listings = 3,
   listing_type = NULL, private_room = "Private room", EH_check = NULL,
   cores = 1) {
@@ -140,7 +144,6 @@ strr_ghost <- function(
   # Filter points to clusters >= min_listings, and nest by Host_ID
   points <-
     points %>%
-    arrange(!! host_ID) %>%
     group_by(!! host_ID) %>%
     filter(n() >= min_listings) %>%
     tidyr::nest()
