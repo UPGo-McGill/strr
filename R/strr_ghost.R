@@ -28,36 +28,36 @@
 #' @param end_date A character string of format YYYY-MM-DD indicating the last
 #'   date for which to run the analysis. If NULL, all dates will be used.
 #' @param distance A numeric scalar. The radius (in the units of the CRS) of the
-#'   buffer which will be drawn around points to determine possible ghost hotel
+#'   buffer which will be drawn around points to determine possible ghost hostel
 #'   locations.
 #' @param min_listings A numeric scalar. The minimum number of listings to
-#'   be considered a ghost hotel.
+#'   be considered a ghost hostel.
 #' @param listing_type The name of a character variable in the points
 #'   object which identifies private-room listings. If NULL, all listings will
 #'   be used.
 #' @param private_room A character string which identifies the value of the
-#'   listing_type variable to be used to find ghost hotels.
+#'   listing_type variable to be used to find ghost hostels.
 #' @param EH_check A character string which identifies the value of the
-#'   listing_type variable to be used to check ghost hotels against possible
+#'   listing_type variable to be used to check ghost hostels against possible
 #'   duplicate entire-home listings operated by the same host. This field is
 #'   ignored if listing_type == NULL.
 #' @param cores A positive integer scalar. How many processing cores should be
 #'   used to perform the computationally intensive intersection step? The
 #'   implementation of multicore processing does not support Windows, so this
 #'   argument should be left with its default value of 1 in those cases.
-#' @return The output will be a tidy data frame of identified ghost hotels,
+#' @return The output will be a tidy data frame of identified ghost hostels,
 #'   organized with the following fields: `ghost_ID`: an identifier for each
-#'   unique ghost hotel cluster. `date`: the date on which the ghost hotel was
+#'   unique ghost hostel cluster. `date`: the date on which the ghost hostel was
 #'   detected. `host_ID` (or whatever name was passed to the host_ID argument):
-#'   The ID number of the host operating the ghost hotel. `listing_count`: how
-#'   many separate listings comprised the ghost hotel. `housing_units`: an
-#'   estimate of how many housing units the ghost hotel occupies, calculated as
+#'   The ID number of the host operating the ghost hostel. `listing_count`: how
+#'   many separate listings comprised the ghost hostel. `housing_units`: an
+#'   estimate of how many housing units the ghost hostel occupies, calculated as
 #'   `ceiling(listing_count / 4)`. `property_IDs`: A list of the property_ID
 #'   (or whatever name was passed to the property_ID argument) values from the
-#'   listings comprising the ghost hotel. `EH_check`: if EH_check != NULL, a
+#'   listings comprising the ghost hostel. `EH_check`: if EH_check != NULL, a
 #'   list of possible entire-home listing duplicates. `data`: a nested tibble of
 #'   additional variables present in the points object. `geometry`: the polygons
-#'   representing the possible locations of each ghost hotel.
+#'   representing the possible locations of each ghost hostel.
 #' @importFrom dplyr %>% arrange as_tibble enquo filter group_by mutate n pull
 #' @importFrom dplyr rename ungroup
 #' @importFrom methods is
@@ -181,7 +181,7 @@ strr_ghost <- function(
     tidyr::unnest(.data$data)
 
 
-  ## CLUSTER CREATION AND GHOST HOTEL IDENTIFICATION
+  ## CLUSTER CREATION AND GHOST hostel IDENTIFICATION
 
   # Multi-threaded version
   if (cores >= 2) {
@@ -222,7 +222,7 @@ strr_ghost <- function(
   # Store CRS for later
   crs <- st_crs(points$intersects[[1]])
 
-  # Generate compact table of ghost hotels, suppress SF geometry warnings
+  # Generate compact table of ghost hostels, suppress SF geometry warnings
   points <- suppressWarnings(
     tidyr::unnest(points, .data$intersects, .preserve = .data$data)
   )
@@ -325,20 +325,20 @@ strr_ghost <- function(
 }
 
 
-#' Helper function to create potential ghost hotel clusters
+#' Helper function to create potential ghost hostel clusters
 #'
 #' \code{ghost_cluster} takes `points` and splits it into potential clusters.
 #'
-#' A function for splitting `points` into clusters of potential ghost hotels,
+#' A function for splitting `points` into clusters of potential ghost hostels,
 #' with each cluster having length >= min_listings.
 #'
 #' @param points A data frame of STR listings with sf or sp point geometries in
 #'   a projected coordinate system.
 #' @param distance A numeric scalar. The radius (in the units of the CRS) of the
-#'   buffer which will be drawn around points to determine possible ghost hotel
+#'   buffer which will be drawn around points to determine possible ghost hostel
 #'   locations.
 #' @param min_listings A numeric scalar. The minimum number of listings to
-#'   be considered a ghost hotel.
+#'   be considered a ghost hostel.
 #' @return The output will be the `points`` object, rearranged with one row per
 #'   cluster and with a new `predicates` field.
 #' @importFrom dplyr %>% filter mutate
@@ -516,7 +516,7 @@ ghost_intersect_with_done <- function(x, y) {
 #'
 #' @param buffers A data frame of buffers from points$data.
 #' @param min_listings A numeric scalar. The minimum number of listings to
-#'   be considered a ghost hotel.
+#'   be considered a ghost hostel.
 #' @return The output will be an intersect polygon.
 #' @importFrom dplyr %>% as_tibble distinct mutate
 #' @importFrom purrr map reduce
@@ -599,11 +599,11 @@ ghost_stepwise_intersect <- function(buffers, min_listings) {
 }
 
 
-#' Helper function to find ghost hotel locations
+#' Helper function to find ghost hostel locations
 #'
-#' \code{ghost_intersect} finds ghost hotel locations from a set of clusters.
+#' \code{ghost_intersect} finds ghost hostel locations from a set of clusters.
 #'
-#' A function for finding ghost hotel locations from a set of point clusters.
+#' A function for finding ghost hostel locations from a set of point clusters.
 #'
 #' @param points An sf data frame of STR listings nested by cluster.
 #' @param property_ID The name of a character or numeric variable in the points
@@ -611,11 +611,11 @@ ghost_stepwise_intersect <- function(buffers, min_listings) {
 #' @param host_ID The name of a character or numeric variable in the points
 #'   object which uniquely identifies STR hosts.
 #' @param distance A numeric scalar. The radius (in the units of the CRS) of the
-#'   buffer which will be drawn around points to determine possible ghost hotel
+#'   buffer which will be drawn around points to determine possible ghost hostel
 #'   locations.
 #' @param min_listings A numeric scalar. The minimum number of listings to
-#'   be considered a ghost hotel.
-#' @return The output will be `points`, trimmed to valid ghost hotel locations
+#'   be considered a ghost hostel.
+#' @return The output will be `points`, trimmed to valid ghost hostel locations
 #'   and with additional fields added.
 #' @importFrom dplyr %>% filter mutate
 #' @importFrom purrr map map2
@@ -668,12 +668,12 @@ ghost_intersect <- function(
 }
 
 
-#' Helper function to identify leftover ghost hotel candidates
+#' Helper function to identify leftover ghost hostel candidates
 #'
-#' \code{ghost_identify_leftovers} identifies leftover ghost hotel candidates.
+#' \code{ghost_identify_leftovers} identifies leftover ghost hostel candidates.
 #'
-#' A function for identifying leftover ghost hotel candidates after the main
-#' ghost hotel analysis has been run.
+#' A function for identifying leftover ghost hostel candidates after the main
+#' ghost hostel analysis has been run.
 #'
 #' @param points An sf data frame of STR listings nested by cluster.
 #' @param property_ID The name of a character or numeric variable in the points
@@ -681,7 +681,7 @@ ghost_intersect <- function(
 #' @param host_ID The name of a character or numeric variable in the points
 #'   object which uniquely identifies STR hosts.
 #' @param min_listings A numeric scalar. The minimum number of listings to
-#'   be considered a ghost hotel.
+#'   be considered a ghost hostel.
 #' @return The output will be a set of new candidate `points`.
 #' @importFrom dplyr %>% filter mutate select
 #' @importFrom purrr map_int map2
@@ -702,12 +702,12 @@ ghost_identify_leftovers <- function(points, property_ID, host_ID,
 }
 
 
-#' Helper function to rerun analysis on leftover ghost hotel candidates
+#' Helper function to rerun analysis on leftover ghost hostel candidates
 #'
-#' \code{ghost_intersect_leftovers} reruns the ghost hotel analysis on leftover
+#' \code{ghost_intersect_leftovers} reruns the ghost hostel analysis on leftover
 #'  candidates.
 #'
-#' A function for rerunning the ghost hotel analysis on leftover candidates
+#' A function for rerunning the ghost hostel analysis on leftover candidates
 #' after the main analysis has been run.
 #'
 #' @param points An sf data frame of STR listings nested by cluster.
@@ -716,11 +716,11 @@ ghost_identify_leftovers <- function(points, property_ID, host_ID,
 #' @param host_ID The name of a character or numeric variable in the points
 #'   object which uniquely identifies STR hosts.
 #' @param distance A numeric scalar. The radius (in the units of the CRS) of the
-#'   buffer which will be drawn around points to determine possible ghost hotel
+#'   buffer which will be drawn around points to determine possible ghost hostel
 #'   locations.
 #' @param min_listings A numeric scalar. The minimum number of listings to
-#'   be considered a ghost hotel.
-#' @return The output will be the `points` file with additional ghost hotels
+#'   be considered a ghost hostel.
+#' @return The output will be the `points` file with additional ghost hostels
 #'   added.
 #' @importFrom dplyr %>% arrange filter mutate
 #' @importFrom purrr map_int map2
