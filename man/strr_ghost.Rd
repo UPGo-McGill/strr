@@ -2,12 +2,11 @@
 % Please edit documentation in R/strr_ghost.R
 \name{strr_ghost}
 \alias{strr_ghost}
-\title{Function to identify STR ghost hostels}
+\title{Function to identify STR ghost hotels}
 \usage{
-strr_ghost(points, property_ID, host_ID, created = created,
-  scraped = scraped, start_date = NULL, end_date = NULL,
-  distance = 200, min_listings = 3, listing_type = NULL,
-  private_room = "Private room", EH_check = NULL, cores = 1)
+strr_ghost(points, property_ID, host_ID, created, scraped, start_date,
+  end_date, distance = 200, min_listings = 3, listing_type = NULL,
+  private_room = "Private room", cores = 1)
 }
 \arguments{
 \item{points}{A data frame of STR listings with sf or sp point geometries in
@@ -20,62 +19,52 @@ object which uniquely identifies STR listings.}
 object which uniquely identifies STR hosts.}
 
 \item{created}{The name of a date variable in the points object which gives
-the creation date for each listing. Set this argument to NULL to perform
-a single analysis on all points which ignores dates.}
+the creation date for each listing.}
 
 \item{scraped}{The name of a date variable in the points object which gives
-the last-scraped date for each listing. Set this argument to NULL to
-perform a single analysis on all points which ignores dates.}
+the last-scraped date for each listing.}
 
 \item{start_date}{A character string of format YYYY-MM-DD indicating the
-first date for which to run the analysis. If NULL, all dates will be used.}
+first date for which to run the analysis.}
 
 \item{end_date}{A character string of format YYYY-MM-DD indicating the last
-date for which to run the analysis. If NULL, all dates will be used.}
+date for which to run the analysis.}
 
 \item{distance}{A numeric scalar. The radius (in the units of the CRS) of the
-buffer which will be drawn around points to determine possible ghost hostel
+buffer which will be drawn around points to determine possible ghost hotel
 locations.}
 
 \item{min_listings}{A numeric scalar. The minimum number of listings to
-be considered a ghost hostel.}
+be considered a ghost hotel.}
 
 \item{listing_type}{The name of a character variable in the points
 object which identifies private-room listings. If NULL, all listings will
 be used.}
 
 \item{private_room}{A character string which identifies the value of the
-listing_type variable to be used to find ghost hostels.}
-
-\item{EH_check}{A character string which identifies the value of the
-listing_type variable to be used to check ghost hostels against possible
-duplicate entire-home listings operated by the same host. This field is
-ignored if listing_type == NULL.}
+listing_type variable to be used to find ghost hotels.}
 
 \item{cores}{A positive integer scalar. How many processing cores should be
-used to perform the computationally intensive intersection step? The
-implementation of multicore processing does not support Windows, so this
-argument should be left with its default value of 1 in those cases.}
+used to perform the computationally intensive intersection step?}
 }
 \value{
-The output will be a tidy data frame of identified ghost hostels,
+The output will be a tidy data frame of identified ghost hotels,
   organized with the following fields: `ghost_ID`: an identifier for each
-  unique ghost hostel cluster. `date`: the date on which the ghost hostel was
+  unique ghost hotel cluster. `date`: the date on which the ghost hotel was
   detected. `host_ID` (or whatever name was passed to the host_ID argument):
-  The ID number of the host operating the ghost hostel. `listing_count`: how
-  many separate listings comprised the ghost hostel. `housing_units`: an
-  estimate of how many housing units the ghost hostel occupies, calculated as
+  The ID number of the host operating the ghost hotel. `listing_count`: how
+  many separate listings comprised the ghost hotel. `housing_units`: an
+  estimate of how many housing units the ghost hotel occupies, calculated as
   `ceiling(listing_count / 4)`. `property_IDs`: A list of the property_ID
   (or whatever name was passed to the property_ID argument) values from the
-  listings comprising the ghost hostel. `EH_check`: if EH_check != NULL, a
-  list of possible entire-home listing duplicates. `data`: a nested tibble of
-  additional variables present in the points object. `geometry`: the polygons
-  representing the possible locations of each ghost hostel.
+  listings comprising the ghost hotel. `data`: a nested tibble of additional
+  variables present in the points object. `geometry`: the polygons
+  representing the possible locations of each ghost hotel.
 }
 \description{
 \code{strr_ghost} takes reported STR listing locations and identifies
-possible "ghost hostels"--clusters of private-room STR listings operating in
-a single building.
+possible "ghost hotels"--clusters of private-room STR listings operating in a
+single building.
 }
 \details{
 A function for probablistically assigning STR listings to administrative
