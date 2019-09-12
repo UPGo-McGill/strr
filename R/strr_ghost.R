@@ -103,7 +103,7 @@ strr_ghost <- function(
   # Check if EH_check and listing_type agree
   if (missing(listing_type)) EH_check <- NULL
 
-  ## Dates
+  ## Process dates if multi_date is TRUE
   if (multi_date) {
 
     # Check if created and scraped are dates
@@ -144,12 +144,12 @@ strr_ghost <- function(
   }
 
   # Check that points is sf
-  if (is(points, "sf") == FALSE) {
+  if (!is(points, "sf")) {
     stop("The object `points` must be of class sf or sp.")
   }
 
   # Convert points to tibble
-  points <- as_tibble(points) %>% st_as_sf()
+  points <- st_as_sf(as_tibble(points))
 
 
   ### POINTS SETUP
