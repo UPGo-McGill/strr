@@ -38,14 +38,15 @@
 #' @param min_listings A numeric scalar. The minimum number of listings to
 #'   be considered a ghost hostel.
 #' @param listing_type The name of a character variable in the points
-#'   object which identifies private-room listings. Set this argument to NULL to
-#'   use all listings in the `points` table.
+#'   object which identifies private-room listings. Set this argument to FALSE
+#'   or NULL to use all listings in the `points` table.
 #' @param private_room A character string which identifies the value of the
-#'   listing_type variable to be used to find ghost hostels.
+#'   listing_type variable to be used to find ghost hostels. This field is
+#'   ignored if listing_type == FALSE or listing_type == NULL.
 #' @param EH_check A character string which identifies the value of the
 #'   listing_type variable to be used to check ghost hostels against possible
 #'   duplicate entire-home listings operated by the same host. This field is
-#'   ignored if listing_type == NULL.
+#'   ignored if listing_type == FALSE or listing_type == NULL.
 #' @param cores A positive integer scalar. How many processing cores should be
 #'   used to perform the computationally intensive intersection step? The
 #'   implementation of multicore processing does not support Windows, so this
@@ -101,7 +102,8 @@ strr_ghost <- function(
   }
 
   # Check if EH_check and listing_type agree
-  if (missing(listing_type)) EH_check <- NULL
+  if (is.null(listing_type)) listing_type <- FALSE
+  if (listing_type == FALSE) EH_check <- FALSE
 
   ## Process dates if multi_date is TRUE
   if (multi_date) {
@@ -188,14 +190,17 @@ strr_ghost <- function(
           filter(.x, {{ created }} > start_date) %>%
             pull({{ created }}) %>%
             unique() %>%
+            # Add start_date to account for listings with created < start_date
             c(start_date)
         }),
         ends = map(.data$data, ~{
           filter(.x, {{ scraped }} < end_date) %>%
             pull({{ scraped }}) %>%
             unique() %>%
+            # Add end_date to account for listings with scraped > end_date
             c(end_date)
         }),
+        # Make list of all combinations of starts and ends
         date_grid = map2(.data$starts, .data$ends, expand.grid),
         date_grid = map(.data$date_grid, filter, .data$Var1 <= .data$Var2)
       )
