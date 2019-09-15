@@ -61,6 +61,8 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1,
 
   ## Find rows with readr errors and add to error file
 
+  if (!quiet) {message("Beginning error check.")}
+
   error <-
     readr::problems(daily) %>%
     filter(.data$expected != "10 columns",
@@ -130,6 +132,8 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1,
 
   ## Compress processed daily file
 
+  if (!quiet) {message("Error check complete. Beginning compression.")}
+
   if (cores > 1) {
 
     daily_list <- split(daily, daily$property_ID)
@@ -151,6 +155,8 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1,
   ## Write files to disk if output_date is specified
 
   if (!missing(output_date)) {
+
+    if (!quiet) {message("Compression complete. Writing output to disk.")}
 
     save(daily, file = paste0("output/", substr(output_date, 1, 4), "/daily_",
                               output_date, ".Rdata"))
