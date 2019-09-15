@@ -4,9 +4,10 @@
 \alias{strr_ghost}
 \title{Function to identify STR ghost hotels}
 \usage{
-strr_ghost(points, property_ID, host_ID, created, scraped, start_date,
-  end_date, distance = 200, min_listings = 3, listing_type = NULL,
-  private_room = "Private room", cores = 1)
+strr_ghost(points, property_ID, host_ID, created, scraped,
+  start_date = NULL, end_date = NULL, listing_type = NULL,
+  private_room = "Private room", distance = 200, min_listings = 3,
+  cores = 1)
 }
 \arguments{
 \item{points}{A data frame of STR listings with sf or sp point geometries in
@@ -25,17 +26,12 @@ the creation date for each listing.}
 the last-scraped date for each listing.}
 
 \item{start_date}{A character string of format YYYY-MM-DD indicating the
-first date for which to run the analysis.}
+first date for which to run the analysis. If NULL, the earliest date in the
+`created` field will be used.}
 
 \item{end_date}{A character string of format YYYY-MM-DD indicating the last
-date for which to run the analysis.}
-
-\item{distance}{A numeric scalar. The radius (in the units of the CRS) of the
-buffer which will be drawn around points to determine possible ghost hotel
-locations.}
-
-\item{min_listings}{A numeric scalar. The minimum number of listings to
-be considered a ghost hotel.}
+date for which to run the analysis. If NULL, the latest date in the
+`scraped` field will be used.}
 
 \item{listing_type}{The name of a character variable in the points
 object which identifies private-room listings. If NULL, all listings will
@@ -43,6 +39,13 @@ be used.}
 
 \item{private_room}{A character string which identifies the value of the
 listing_type variable to be used to find ghost hotels.}
+
+\item{distance}{A numeric scalar. The radius (in the units of the CRS) of the
+buffer which will be drawn around points to determine possible ghost hotel
+locations.}
+
+\item{min_listings}{A numeric scalar. The minimum number of listings to
+be considered a ghost hotel.}
 
 \item{cores}{A positive integer scalar. How many processing cores should be
 used to perform the computationally intensive intersection step?}
