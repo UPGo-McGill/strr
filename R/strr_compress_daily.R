@@ -138,9 +138,12 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1) {
 
   if (!missing(output_date)) {
 
-    save(daily, file = paste0("output/daily_", output_date, ".Rdata"))
-    write_csv(error, paste0("output/error_", output_date, ".csv"))
-    write_csv(missing_rows, paste0("output/missing_rows", output_date, ".csv"))
+    save(daily, file = paste0("output/", substr(output_date, 1, 4), "/daily_",
+                              output_date, ".Rdata"))
+    write_csv(error, paste0("output/", substr(output_date, 1, 4), "/error_",
+                            output_date, ".csv"))
+    write_csv(missing_rows, paste0("output/", substr(output_date, 1, 4),
+                                   "/missing_rows_", output_date, ".csv"))
 
   }
 
