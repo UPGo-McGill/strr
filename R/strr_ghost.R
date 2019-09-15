@@ -41,14 +41,14 @@
 #'   object which identifies private-room listings. Set this argument to FALSE
 #'   or NULL to use all listings in the `points` table.
 #' @param private_room A character string which identifies the value of the
-#'   listing_type variable to be used to find ghost hostels. This field is
-#'   ignored if listing_type == FALSE or listing_type == NULL.
+#'   `listing_type` variable to be used to find ghost hostels. This field is
+#'   ignored if `listing_type` is FALSE or NULL.
 #' @param EH_check A character string which identifies the value of the
-#'   listing_type variable to be used to check ghost hostels against possible
+#'   `listing_type` variable to be used to check ghost hostels against possible
 #'   duplicate entire-home listings operated by the same host. This field is
-#'   ignored if listing_type == FALSE or listing_type == NULL.
+#'   ignored if `listing_type` is FALSE or NULL.
 #' @param cores A positive integer scalar. How many processing cores should be
-#'   used to perform the computationally intensive intersection step? The
+#'   used to perform the computationally intensive intersection steps? The
 #'   implementation of multicore processing does not support Windows, so this
 #'   argument should be left with its default value of 1 in those cases.
 #' @return The output will be a tidy data frame of identified ghost hostels,
@@ -102,8 +102,8 @@ strr_ghost <- function(
   }
 
   # Check if EH_check and listing_type agree
-  if (is.null(listing_type)) listing_type <- FALSE
-  if (listing_type == FALSE) EH_check <- FALSE
+  # if (is.null(listing_type)) listing_type <- FALSE
+  # if (listing_type == FALSE) EH_check <- FALSE
 
   ## Process dates if multi_date is TRUE
   if (multi_date) {
@@ -218,7 +218,6 @@ strr_ghost <- function(
       tidyr::unnest(.data$data)
   }
 
-
   ### CLUSTER CREATION AND GHOST HOSTEL IDENTIFICATION
 
   # Multi-threaded version
@@ -236,17 +235,17 @@ strr_ghost <- function(
           ghost_intersect({{ property_ID }}, distance, min_listings) %>%
           ghost_intersect_leftovers({{ property_ID }}, {{ host_ID }}, distance,
                                     min_listings)
-        }, cl = cl) %>%
+      }, cl = cl) %>%
       do.call(rbind, .)
 
-    } else {
-      # Single-threaded version
-      points <- ghost_cluster(points, distance, min_listings)
-      points <- ghost_intersect(points, {{ property_ID }}, distance,
-                                min_listings)
-      points <- ghost_intersect_leftovers(points, {{ property_ID }},
-                                          {{ host_ID }}, distance, min_listings)
-      }
+  } else {
+    # Single-threaded version
+    points <- ghost_cluster(points, distance, min_listings)
+    points <- ghost_intersect(points, {{ property_ID }}, distance,
+                              min_listings)
+    points <- ghost_intersect_leftovers(points, {{ property_ID }},
+                                        {{ host_ID }}, distance, min_listings)
+  }
 
 
   ## GHOST TABLE CREATION
@@ -343,6 +342,7 @@ strr_ghost <- function(
 
   points
 }
+
 
 
 #' Helper function to create potential ghost hostel clusters

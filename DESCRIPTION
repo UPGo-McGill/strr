@@ -21,8 +21,8 @@ Imports:
     polyCub (>= 0.7.1),
     purrr (>= 0.3.2),
     rlang (>= 0.3.4),
-    sf (>= 0.7),
-    spatstat (>= 1.59),
+    sf (>= 0.7-7),
+    spatstat (>= 1.60-1),
     tidyr (>= 0.8.3)
 Suggests: 
     parallel (>= 3.5.2),
