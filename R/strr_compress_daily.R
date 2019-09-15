@@ -1,6 +1,6 @@
 #' Function to compress raw daily STR tables into UPGo DB format
 #'
-#' \code{strr_compress_daily} takes raw monthyl daily tables from AirDNA and
+#' \code{strr_compress_daily} takes raw monthly daily tables from AirDNA and
 #' compresses them into the UPGo database storage format.
 #'
 #' A function for compressing the daily activity tables supplied each month from

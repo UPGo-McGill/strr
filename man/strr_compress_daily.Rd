@@ -30,7 +30,7 @@ table identifying property_IDs with missing dates in between their first and
 last date entries, and therefore potentially missing data.
 }
 \description{
-\code{strr_compress_daily} takes raw monthyl daily tables from AirDNA and
+\code{strr_compress_daily} takes raw monthly daily tables from AirDNA and
 compresses them into the UPGo database storage format.
 }
 \details{
