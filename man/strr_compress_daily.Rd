@@ -4,16 +4,23 @@
 \alias{strr_compress_daily}
 \title{Function to compress raw daily STR tables into UPGo DB format}
 \usage{
-strr_compress_daily(daily, output_date = NULL, cores = 1)
+strr_compress_daily(daily, output_date = NULL, cores = 1,
+  quiet = FALSE)
 }
 \arguments{
 \item{daily}{A daily table in the raw AirDNA format.}
 
+\item{output_date}{A character string of the format "YYYY-MM" identifying the
+year and month of the daily table. If a value is supplied to this argument,
+the results of the function will be written to disk in a subfolder
+"/output/YYYY/". If the argument is left NULL (its default), nothing will be
+written to disk.}
+
 \item{cores}{A positive integer scalar. How many processing cores should be
 used to perform the computationally intensive compression step?}
 
-\item{year-month}{A character string of the format "YYYY-MM" identifying the
-year and month of the daily table.}
+\item{quiet}{A logical vector. Should the function execute quietly, or should
+it return status updates throughout the function (default)?}
 }
 \value{
 The output will be a list with three elements: 1) the compressed

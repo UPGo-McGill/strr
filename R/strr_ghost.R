@@ -533,7 +533,7 @@ ghost_combine <- function(buffers, predicates, n) {
 #' @param x A buffer.
 #' @param y A buffer.
 #' @return The output will be an intersect polygon.
-#' @importFrom rlang done
+#' @importFrom rlang .data done
 #' @importFrom sf st_intersection
 
 ghost_intersect_with_done <- function(x, y) {

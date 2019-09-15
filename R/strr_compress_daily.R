@@ -9,21 +9,28 @@
 #' lines in the input file.
 #'
 #' @param daily A daily table in the raw AirDNA format.
-#' @param year-month A character string of the format "YYYY-MM" identifying the
-#' year and month of the daily table.
+#' @param output_date A character string of the format "YYYY-MM" identifying the
+#' year and month of the daily table. If a value is supplied to this argument,
+#' the results of the function will be written to disk in a subfolder
+#' "/output/YYYY/". If the argument is left NULL (its default), nothing will be
+#' written to disk.
 #' @param cores A positive integer scalar. How many processing cores should be
 #' used to perform the computationally intensive compression step?
+#' @param quiet A logical vector. Should the function execute quietly, or should
+#' it return status updates throughout the function (default)?
 #' @return The output will be a list with three elements: 1) the compressed
 #' daily table, ready for upload to a remote database; 2) an error table
 #' identifying corrupt or otherwise invalid row entries; 3) a missing_rows
 #' table identifying property_IDs with missing dates in between their first and
 #' last date entries, and therefore potentially missing data.
 #' @importFrom data.table setDT
-#' @importFrom dplyr %>% filter mutate pull select
+#' @importFrom dplyr %>% bind_rows filter mutate pull select
+#' @importFrom rlang .data
 #' @importFrom tibble as_tibble
 #' @export
 
-strr_compress_daily <- function(daily, output_date = NULL, cores = 1) {
+strr_compress_daily <- function(daily, output_date = NULL, cores = 1,
+                                quiet = FALSE) {
 
   ## Error checking and initialization
 
@@ -47,22 +54,24 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1) {
 
   daily <-
     daily %>%
-    select(`Property ID`, Date, Status, `Booked Date`, `Price (USD)`,
-           `Reservation ID`) %>%
+    select(.data$`Property ID`, .data$Date, .data$Status, .data$`Booked Date`,
+           .data$`Price (USD)`, .data$`Reservation ID`) %>%
     rlang::set_names(c("property_ID", "date", "status", "booked_date", "price",
                 "res_ID"))
 
   ## Find rows with readr errors and add to error file
 
   error <-
-    problems(daily) %>%
-    filter(expected != "10 columns", expected != "no trailing characters") %>%
+    readr::problems(daily) %>%
+    filter(.data$expected != "10 columns",
+           .data$expected != "no trailing characters") %>%
     pull(row) %>%
     daily[.,]
 
   error_vector <-
-    problems(daily) %>%
-    filter(expected != "10 columns", expected != "no trailing characters") %>%
+    readr::problems(daily) %>%
+    filter(.data$expected != "10 columns",
+           .data$expected != "no trailing characters") %>%
     pull(row)
 
   if (length(error_vector) > 0) {daily <- daily[-error_vector,]}
@@ -71,49 +80,53 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1) {
 
   error <-
     daily %>%
-    filter(is.na(property_ID) | is.na(date) | is.na(status)) %>%
+    filter(is.na(.data$property_ID) | is.na(.data$date) |
+             is.na(.data$status)) %>%
     rbind(error)
 
   daily <-
     daily %>%
-    filter(!is.na(property_ID), !is.na(date), !is.na(status))
+    filter(!is.na(.data$property_ID), !is.na(.data$date), !is.na(.data$status))
 
   ## Check status
 
   error <-
     daily %>%
-    filter(!(status %in% c("A", "U", "B", "R"))) %>%
+    filter(!(.data$status %in% c("A", "U", "B", "R"))) %>%
     rbind(error)
 
   daily <-
     daily %>%
-    filter(status %in% c("A", "U", "B", "R"))
+    filter(.data$status %in% c("A", "U", "B", "R"))
 
   ## Remove duplicate listing entries by price, but don't add to error file
 
   daily <-
     daily %>%
-    filter(!is.na(price))
+    filter(!is.na(.data$price))
 
   ## Find missing rows
 
+  .N = property_ID = NULL # due to NSE notes in R CMD check
+
   setDT(daily)
   missing_rows <-
-    daily[, list(count = .N,
+    daily[, .(count = .N,
                  full_count = as.integer(max(date) - min(date) + 1)),
           by = property_ID]
   missing_rows <-
     missing_rows %>%
     as_tibble() %>%
-    mutate(dif = full_count - count) %>%
-    filter(dif != 0)
+    mutate(dif = .data$full_count - .data$count) %>%
+    filter(.data$dif != 0)
 
   ## Produce month and year columns to make unique entries
 
   daily <-
     daily %>%
     as_tibble() %>%
-    mutate(month = month(date), year = year(date))
+    mutate(month = lubridate::month(.data$date),
+           year = lubridate::year(.data$date))
 
   ## Compress processed daily file
 
@@ -121,16 +134,17 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1) {
 
     daily_list <- split(daily, daily$property_ID)
 
-    daily_list <- map(1:1000, function(i) {
-      rbindlist(
-        daily_list[(floor(length(daily_list) * (i - 1) / 1000) +
-                      1):floor(length(daily_list) * i / 1000)])
-
-      daily <-
-        daily_list %>%
-        pbapply::pblapply(strr_compress_helper, cl = cores) %>%
-        do.call(rbind, .)
+    daily_list <- purrr::map(1:100, function(i) {
+      bind_rows(
+        daily_list[(floor(length(daily_list) * (i - 1) / 100) +
+                      1):floor(length(daily_list) * i / 100)])
     })
+
+    daily2 <-
+      daily_list %>%
+      pbapply::pblapply(strr_compress_helper, cl = 3) %>%
+      do.call(rbind, .)
+
   } else daily <- strr_compress_helper(daily)
 
 
@@ -140,9 +154,9 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1) {
 
     save(daily, file = paste0("output/", substr(output_date, 1, 4), "/daily_",
                               output_date, ".Rdata"))
-    write_csv(error, paste0("output/", substr(output_date, 1, 4), "/error_",
-                            output_date, ".csv"))
-    write_csv(missing_rows, paste0("output/", substr(output_date, 1, 4),
+    readr::write_csv(error, paste0("output/", substr(output_date, 1, 4),
+                                   "/error_", output_date, ".csv"))
+    readr::write_csv(missing_rows, paste0("output/", substr(output_date, 1, 4),
                                    "/missing_rows_", output_date, ".csv"))
 
   }
@@ -163,46 +177,58 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1) {
 #' @return The output will be a compressed daily table.
 #' @importFrom dplyr %>% arrange bind_rows filter group_by mutate select
 #' @importFrom dplyr summarize ungroup
-#' @importFrom purrr map
+#' @importFrom purrr map map_dbl
+#' @importFrom rlang .data
 #' @importFrom tidyr unnest
 #' @importFrom tibble tibble
 
 strr_compress_helper <- function(daily) {
   daily <-
     daily %>%
-    group_by(property_ID, status, booked_date, price, res_ID, month, year) %>%
-    summarize(dates = list(date)) %>%
+    group_by(.data$property_ID, .data$status, .data$booked_date, .data$price,
+             .data$res_ID, .data$month, .data$year) %>%
+    summarize(dates = list(.data$date)) %>%
     ungroup()
 
   single_date <-
     daily %>%
-    filter(map(dates, length) == 1) %>%
-    mutate(start_date = as.Date(map_dbl(dates, ~{.x}), origin = "1970-01-01"),
-           end_date = as.Date(map_dbl(dates, ~{.x}), origin = "1970-01-01")) %>%
-    select(property_ID, start_date, end_date, status, booked_date, price,
-           res_ID)
+    filter(map(.data$dates, length) == 1) %>%
+    mutate(start_date = as.Date(map_dbl(.data$dates, ~{.x}),
+                                origin = "1970-01-01"),
+           end_date = as.Date(map_dbl(.data$dates, ~{.x}),
+                              origin = "1970-01-01")) %>%
+    select(.data$property_ID, .data$start_date, .data$end_date, .data$status,
+           .data$booked_date, .data$price, .data$res_ID)
 
   one_length <-
     daily %>%
-    filter(map(dates, length) != 1,
-           map(dates, ~{length(.x) - length(min(.x):max(.x))}) == 0) %>%
-    mutate(start_date = as.Date(map_dbl(dates, min), origin = "1970-01-01"),
-           end_date = as.Date(map_dbl(dates, max), origin = "1970-01-01")) %>%
-    select(property_ID, start_date, end_date, status, booked_date, price,
-           res_ID)
+    filter(map(.data$dates, length) != 1,
+           map(.data$dates, ~{length(.x) - length(min(.x):max(.x))}) == 0) %>%
+    mutate(start_date = as.Date(map_dbl(.data$dates, min),
+                                origin = "1970-01-01"),
+           end_date = as.Date(map_dbl(.data$dates, max),
+                              origin = "1970-01-01")) %>%
+    select(.data$property_ID, .data$start_date, .data$end_date, .data$status,
+           .data$booked_date, .data$price, .data$res_ID)
 
-  remainder <-
-    daily %>%
-    filter(map(dates, length) != 1,
-           map(dates, ~{length(.x) - length(min(.x):max(.x))}) != 0) %>%
-    mutate(date_range = map(dates, ~{
-      tibble(start_date = .x[which(diff(c(0, .x)) > 1)],
-             end_date = .x[which(diff(c(.x, 30000)) > 1)])
-    })) %>%
-    unnest(date_range) %>%
-    select(property_ID, start_date, end_date, status, booked_date, price,
-           res_ID)
+  if ({daily %>%
+      filter(map(.data$dates, length) != 1,
+             map(.data$dates, ~{length(.x) - length(min(.x):max(.x))}) != 0) %>%
+      nrow} > 0) {
 
+    remainder <-
+      daily %>%
+      filter(map(.data$dates, length) != 1,
+             map(.data$dates, ~{length(.x) - length(min(.x):max(.x))}) != 0) %>%
+      mutate(date_range = map(.data$dates, ~{
+        tibble(start_date = .x[which(diff(c(0, .x)) > 1)],
+               end_date = .x[which(diff(c(.x, 30000)) > 1)])
+      })) %>%
+      unnest(.data$date_range) %>%
+      select(.data$property_ID, .data$start_date, .data$end_date, .data$status,
+             .data$booked_date, .data$price, .data$res_ID)
+
+  } else remainder <- single_date[0,]
   bind_rows(single_date, one_length, remainder) %>%
-    arrange(property_ID, start_date)
+    arrange(.data$property_ID, .data$start_date)
 }
