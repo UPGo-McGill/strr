@@ -78,6 +78,8 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1,
 
   if (length(error_vector) > 0) {daily <- daily[-error_vector,]}
 
+  if (!quiet) {message("Initial import errors identified.")}
+
   ## Find rows with missing property_ID, date or status
 
   error <-
@@ -90,6 +92,9 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1,
     daily %>%
     filter(!is.na(.data$property_ID), !is.na(.data$date), !is.na(.data$status))
 
+  if (!quiet) {
+    message("Rows with missing property_ID, date or status identified.")}
+
   ## Check status
 
   error <-
@@ -101,11 +106,15 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1,
     daily %>%
     filter(.data$status %in% c("A", "U", "B", "R"))
 
+  if (!quiet) {message("Rows with invalid status identified.")}
+
   ## Remove duplicate listing entries by price, but don't add to error file
 
   daily <-
     daily %>%
     filter(!is.na(.data$price))
+
+  if (!quiet) {message("Duplicate rows removed.")}
 
   ## Find missing rows
 
@@ -116,11 +125,14 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1,
     daily[, .(count = .N,
                  full_count = as.integer(max(date) - min(date) + 1)),
           by = property_ID]
+
   missing_rows <-
     missing_rows %>%
     as_tibble() %>%
     mutate(dif = .data$full_count - .data$count) %>%
     filter(.data$dif != 0)
+
+  if (!quiet) {message("Missing rows identified.")}
 
   ## Produce month and year columns to make unique entries
 
