@@ -13,23 +13,34 @@
 #' year and month of the daily table.
 #' @param cores A positive integer scalar. How many processing cores should be
 #' used to perform the computationally intensive compression step?
-#' @return The output will be the input points object with a new `winner` field
-#'   appended. The `winner` field specifies which polygon from the polys object
-#'   was probabilistically assigned to the listing, using the field identified
-#'   in the `poly_ID` argument. If diagnostic == TRUE, a `candidates` field will
-#'   also be appended, which lists the possible polygons for each point, along
-#'   with their probabilities.
-#' @importFrom dplyr %>% as_tibble enquo filter group_by left_join mutate
-#' @importFrom dplyr select summarize
-#' @importFrom methods is
-#' @importFrom rlang := .data
-#' @importFrom sf st_area st_as_sf st_buffer st_coordinates st_crs
-#' @importFrom sf st_drop_geometry st_intersection st_set_agr st_sfc
-#' @importFrom sf st_transform
-#' @importFrom stats dnorm
+#' @return The output will be a list with three elements: 1) the compressed
+#' daily table, ready for upload to a remote database; 2) an error table
+#' identifying corrupt or otherwise invalid row entries; 3) a missing_rows
+#' table identifying property_IDs with missing dates in between their first and
+#' last date entries, and therefore potentially missing data.
+#' @importFrom data.table := setDT
+#' @importFrom dplyr %>% filter mutate pull select
+#' @importFrom tibble as_tibble
 #' @export
 
 strr_compress_daily <- function(daily, output_date = NULL, cores = 1) {
+
+  ## Error checking and initialization
+
+  .datatable.aware = TRUE
+
+  # Check that cores is an integer > 0
+  cores <- floor(cores)
+  if (cores <= 0) {
+    stop("The argument `cores` must be a positive integer.")
+  }
+
+  # Check that output_date is in the required format
+  if (!missing(output_date) & !stringr::str_detect(
+    output_date, "[:digit:][:digit:][:digit:][:digit:]_[:digit:][:digit:]")) {
+      stop("The argument `output_date` must be a character string of form ",
+           "'YYYY_MM'")
+    }
 
   ## Subset daily table and rename fields
 
@@ -37,7 +48,7 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1) {
     daily %>%
     select(`Property ID`, Date, Status, `Booked Date`, `Price (USD)`,
            `Reservation ID`) %>%
-    set_names(c("property_ID", "date", "status", "booked_date", "price",
+    rlang::set_names(c("property_ID", "date", "status", "booked_date", "price",
                 "res_ID"))
 
   ## Find rows with readr errors and add to error file
@@ -111,35 +122,14 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1) {
   missing_rows[, dif := full_count - count]
   missing_rows <- missing_rows[dif != 0]
 
-  ## Split into list
+  ## Produce month and year columns to make unique entries
 
   daily <-
     daily %>%
     as_tibble() %>%
     mutate(month = month(date), year = year(date))
 
-
-
-  ## Output
-
-  return(list(daily_list, error, missing_rows))
-
-
-
-  daily_list <- output[[1]]
-  write_csv(output[[2]], paste0("output/error_2019_", n, ".csv"))
-  write_csv(output[[3]], paste0("output/missing_rows_2019_", n, ".csv"))
-
-  rm(output, daily)
-
-  print(Sys.time())
-
-  compressed <- compress(daily_list)
-  save(compressed, file = paste0("output/compressed_2019_", n, ".Rdata"))
-
-
-
-
+  ## Compress processed daily file
 
   if (cores > 1) {
 
@@ -149,63 +139,82 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1) {
       rbindlist(
         daily_list[(floor(length(daily_list) * (i - 1) / 1000) +
                       1):floor(length(daily_list) * i / 1000)])
+
+      daily <-
+        daily_list %>%
+        pbapply::pblapply(strr_compress_helper, cl = cores) %>%
+        do.call(rbind, .)
     })
+  } else daily <- strr_compress_helper(daily)
 
 
-  }
+  ## Write files to disk if output_date is specified
 
+  if (!missing(output_date)) {
 
-
-  splitter <- function(daily) {
-
-    daily <-
-      daily %>%
-      group_by(property_ID, status, booked_date, price, currency, res_id, month,
-               year) %>%
-      summarize(dates = list(date)) %>%
-      ungroup()
-
-    single_date <-
-      daily %>%
-      filter(map(dates, length) == 1) %>%
-      mutate(start_date = as.Date(map_dbl(dates, ~{.x}), origin = "1970-01-01"),
-             end_date = as.Date(map_dbl(dates, ~{.x}), origin = "1970-01-01")) %>%
-      select(property_ID, start_date, end_date, status, booked_date, price,
-             currency, res_id)
-
-    one_length <-
-      daily %>%
-      filter(map(dates, length) != 1,
-             map(dates, ~{length(.x) - length(min(.x):max(.x))}) == 0) %>%
-      mutate(start_date = as.Date(map_dbl(dates, min), origin = "1970-01-01"),
-             end_date = as.Date(map_dbl(dates, max), origin = "1970-01-01")) %>%
-      select(property_ID, start_date, end_date, status, booked_date, price,
-             currency, res_id)
-
-    remainder <-
-      daily %>%
-      filter(map(dates, length) != 1,
-             map(dates, ~{length(.x) - length(min(.x):max(.x))}) != 0) %>%
-      mutate(date_range = map(dates, ~{
-        tibble(start_date = .x[which(diff(c(0, .x)) > 1)],
-               end_date = .x[which(diff(c(.x, 30000)) > 1)])
-      })) %>%
-      unnest(date_range) %>%
-      select(property_ID, start_date, end_date, status, booked_date, price,
-             currency, res_id)
-
-    bind_rows(single_date, one_length, remainder) %>%
-      arrange(property_ID, start_date)
+    save(daily, file = paste0("output/daily_", output_date, ".Rdata"))
+    write_csv(error, paste0("output/error_", output_date, ".csv"))
+    write_csv(missing_rows, paste0("output/missing_rows", output_date, ".csv"))
 
   }
 
-
-  compress <- function(daily_list) {
-    daily_list %>%
-      pbapply::pblapply(splitter, cl = 5) %>%
-      do.call(rbind, .)
-  }
+  return(list(daily_list, error, missing_rows))
+}
 
 
+#' Helper function to compress daily file
+#'
+#' \code{strr_compress_helper} takes a processed `daily` table and generates a
+#' compressed version.
+#'
+#' A helper function for compressing the processed monthly `daily` table.
+#'
+#' @param daily The processed daily table generated through the
+#' strr_compress_daily function.
+#' @return The output will be a compressed daily table.
+#' @importFrom dplyr %>% arrange bind_rows filter group_by mutate select
+#' @importFrom dplyr summarize ungroup
+#' @importFrom purrr map
+#' @importFrom tidyr unnest
+#' @importFrom tibble tibble
 
+strr_compress_helper <- function(daily) {
+  daily <-
+    daily %>%
+    group_by(property_ID, status, booked_date, price, currency, res_id, month,
+             year) %>%
+    summarize(dates = list(date)) %>%
+    ungroup()
+
+  single_date <-
+    daily %>%
+    filter(map(dates, length) == 1) %>%
+    mutate(start_date = as.Date(map_dbl(dates, ~{.x}), origin = "1970-01-01"),
+           end_date = as.Date(map_dbl(dates, ~{.x}), origin = "1970-01-01")) %>%
+    select(property_ID, start_date, end_date, status, booked_date, price,
+           currency, res_id)
+
+  one_length <-
+    daily %>%
+    filter(map(dates, length) != 1,
+           map(dates, ~{length(.x) - length(min(.x):max(.x))}) == 0) %>%
+    mutate(start_date = as.Date(map_dbl(dates, min), origin = "1970-01-01"),
+           end_date = as.Date(map_dbl(dates, max), origin = "1970-01-01")) %>%
+    select(property_ID, start_date, end_date, status, booked_date, price,
+           currency, res_id)
+
+  remainder <-
+    daily %>%
+    filter(map(dates, length) != 1,
+           map(dates, ~{length(.x) - length(min(.x):max(.x))}) != 0) %>%
+    mutate(date_range = map(dates, ~{
+      tibble(start_date = .x[which(diff(c(0, .x)) > 1)],
+             end_date = .x[which(diff(c(.x, 30000)) > 1)])
+    })) %>%
+    unnest(date_range) %>%
+    select(property_ID, start_date, end_date, status, booked_date, price,
+           currency, res_id)
+
+  bind_rows(single_date, one_length, remainder) %>%
+    arrange(property_ID, start_date)
 }
