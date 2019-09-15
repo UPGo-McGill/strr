@@ -18,7 +18,7 @@
 #' identifying corrupt or otherwise invalid row entries; 3) a missing_rows
 #' table identifying property_IDs with missing dates in between their first and
 #' last date entries, and therefore potentially missing data.
-#' @importFrom data.table := setDT
+#' @importFrom data.table setDT
 #' @importFrom dplyr %>% filter mutate pull select
 #' @importFrom tibble as_tibble
 #' @export
@@ -36,11 +36,12 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1) {
   }
 
   # Check that output_date is in the required format
-  if (!missing(output_date) & !stringr::str_detect(
+  if (!missing(output_date)) {
+    if (!stringr::str_detect(
     output_date, "[:digit:][:digit:][:digit:][:digit:]_[:digit:][:digit:]")) {
       stop("The argument `output_date` must be a character string of form ",
            "'YYYY_MM'")
-    }
+    }}
 
   ## Subset daily table and rename fields
 
@@ -94,24 +95,6 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1) {
     daily %>%
     filter(!is.na(price))
 
-  ## Find rows with bad currency entries
-
-  currencies <- c("USD", "EUR", "BRL", "DKK", "NZD", "AED", "CAD", "GBP", "PLN",
-                  "CHF", "AUD", "CNY", "HKD", "THB", "RUB", "JPY", "ILS", "CZK",
-                  "SEK", "HUF", "ZAR", "SGD", "TRY", "MXN", "PHP", "KRW", "ARS",
-                  "NOK", "CLP", "INR", "IDR", "UAH", "COP", "TWD", "BGN", "MYR",
-                  "HRK", "VND", "RON", "PEN", "SAR", "MAD", "CRC", "UYU", "XPF",
-                  NA)
-
-  error <-
-    daily %>%
-    filter(!(currency %in% currencies)) %>%
-    rbind(error)
-
-  daily <-
-    daily %>%
-    filter(currency %in% currencies)
-
   ## Find missing rows
 
   setDT(daily)
@@ -119,8 +102,11 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1) {
     daily[, list(count = .N,
                  full_count = as.integer(max(date) - min(date) + 1)),
           by = property_ID]
-  missing_rows[, dif := full_count - count]
-  missing_rows <- missing_rows[dif != 0]
+  missing_rows <-
+    missing_rows %>%
+    as_tibble() %>%
+    mutate(dif = full_count - count) %>%
+    filter(dif != 0)
 
   ## Produce month and year columns to make unique entries
 
@@ -158,7 +144,7 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1) {
 
   }
 
-  return(list(daily_list, error, missing_rows))
+  return(list(daily, error, missing_rows))
 }
 
 
@@ -181,8 +167,7 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1) {
 strr_compress_helper <- function(daily) {
   daily <-
     daily %>%
-    group_by(property_ID, status, booked_date, price, currency, res_id, month,
-             year) %>%
+    group_by(property_ID, status, booked_date, price, res_ID, month, year) %>%
     summarize(dates = list(date)) %>%
     ungroup()
 
@@ -192,7 +177,7 @@ strr_compress_helper <- function(daily) {
     mutate(start_date = as.Date(map_dbl(dates, ~{.x}), origin = "1970-01-01"),
            end_date = as.Date(map_dbl(dates, ~{.x}), origin = "1970-01-01")) %>%
     select(property_ID, start_date, end_date, status, booked_date, price,
-           currency, res_id)
+           res_ID)
 
   one_length <-
     daily %>%
@@ -201,7 +186,7 @@ strr_compress_helper <- function(daily) {
     mutate(start_date = as.Date(map_dbl(dates, min), origin = "1970-01-01"),
            end_date = as.Date(map_dbl(dates, max), origin = "1970-01-01")) %>%
     select(property_ID, start_date, end_date, status, booked_date, price,
-           currency, res_id)
+           res_ID)
 
   remainder <-
     daily %>%
@@ -213,7 +198,7 @@ strr_compress_helper <- function(daily) {
     })) %>%
     unnest(date_range) %>%
     select(property_ID, start_date, end_date, status, booked_date, price,
-           currency, res_id)
+           res_ID)
 
   bind_rows(single_date, one_length, remainder) %>%
     arrange(property_ID, start_date)
