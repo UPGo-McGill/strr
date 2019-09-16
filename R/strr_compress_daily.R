@@ -247,6 +247,7 @@ strr_compress_helper <- function(daily) {
              .data$booked_date, .data$price, .data$res_ID)
 
   } else remainder <- single_date[0,]
+
   bind_rows(single_date, one_length, remainder) %>%
     arrange(.data$property_ID, .data$start_date)
 }
