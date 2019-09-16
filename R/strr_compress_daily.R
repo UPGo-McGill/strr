@@ -9,11 +9,6 @@
 #' lines in the input file.
 #'
 #' @param daily A daily table in the raw AirDNA format.
-#' @param output_date A character string of the format "YYYY-MM" identifying the
-#' year and month of the daily table. If a value is supplied to this argument,
-#' the results of the function will be written to disk in a subfolder
-#' "/output/YYYY/". If the argument is left NULL (its default), nothing will be
-#' written to disk.
 #' @param cores A positive integer scalar. How many processing cores should be
 #' used to perform the computationally intensive compression step?
 #' @param quiet A logical vector. Should the function execute quietly, or should
@@ -29,8 +24,7 @@
 #' @importFrom tibble as_tibble
 #' @export
 
-strr_compress_daily <- function(daily, output_date = NULL, cores = 1,
-                                quiet = FALSE) {
+strr_compress_daily <- function(daily, cores = 1, quiet = FALSE) {
 
   ## Error checking and initialization
 
@@ -41,14 +35,6 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1,
   if (cores <= 0) {
     stop("The argument `cores` must be a positive integer.")
   }
-
-  # Check that output_date is in the required format
-  if (!missing(output_date)) {
-    if (!stringr::str_detect(
-    output_date, "[:digit:][:digit:][:digit:][:digit:]_[:digit:][:digit:]")) {
-      stop("The argument `output_date` must be a character string of form ",
-           "'YYYY_MM'")
-    }}
 
   ## Subset daily table and rename fields
 
@@ -162,22 +148,6 @@ strr_compress_daily <- function(daily, output_date = NULL, cores = 1,
       do.call(rbind, .)
 
   } else daily <- strr_compress_helper(daily)
-
-
-  ## Write files to disk if output_date is specified
-
-  if (!missing(output_date)) {
-
-    if (!quiet) {message("Compression complete. Writing output to disk.")}
-
-    save(daily, file = paste0("output/", substr(output_date, 1, 4), "/daily_",
-                              output_date, ".Rdata"))
-    readr::write_csv(error, paste0("output/", substr(output_date, 1, 4),
-                                   "/error_", output_date, ".csv"))
-    readr::write_csv(missing_rows, paste0("output/", substr(output_date, 1, 4),
-                                   "/missing_rows_", output_date, ".csv"))
-
-  }
 
   return(list(daily, error, missing_rows))
 }
