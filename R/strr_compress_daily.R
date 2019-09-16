@@ -142,14 +142,14 @@ strr_compress_daily <- function(daily, cores = 1, quiet = FALSE) {
                       1):floor(length(daily_list) * i / 100)])
     })
 
-    daily2 <-
+    compressed <-
       daily_list %>%
       pbapply::pblapply(strr_compress_helper, cl = 3) %>%
       do.call(rbind, .)
 
-  } else daily <- strr_compress_helper(daily)
+  } else compressed <- strr_compress_helper(daily)
 
-  return(list(daily, error, missing_rows))
+  return(list(compressed, error, missing_rows))
 }
 
 
