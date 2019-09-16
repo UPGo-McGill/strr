@@ -39,6 +39,6 @@ test_that("cores/distance/min_listings flags are correctly handled", {
 })
 
 test_that("listing_type is correctly handled", {
-  expect_error
+  expect_error(strr_ghost())
 })
 

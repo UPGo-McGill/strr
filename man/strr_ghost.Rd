@@ -52,16 +52,16 @@ object which identifies private-room listings. Set this argument to FALSE
 or NULL to use all listings in the `points` table.}
 
 \item{private_room}{A character string which identifies the value of the
-listing_type variable to be used to find ghost hostels. This field is
-ignored if listing_type == FALSE or listing_type == NULL.}
+`listing_type` variable to be used to find ghost hostels. This field is
+ignored if `listing_type` is FALSE or NULL.}
 
 \item{EH_check}{A character string which identifies the value of the
-listing_type variable to be used to check ghost hostels against possible
+`listing_type` variable to be used to check ghost hostels against possible
 duplicate entire-home listings operated by the same host. This field is
-ignored if listing_type == FALSE or listing_type == NULL.}
+ignored if `listing_type` is FALSE or NULL.}
 
 \item{cores}{A positive integer scalar. How many processing cores should be
-used to perform the computationally intensive intersection step? The
+used to perform the computationally intensive intersection steps? The
 implementation of multicore processing does not support Windows, so this
 argument should be left with its default value of 1 in those cases.}
 }
