@@ -2,7 +2,7 @@
 % Please edit documentation in R/strr_ghost.R
 \name{ghost_cluster}
 \alias{ghost_cluster}
-\title{Helper function to create potential ghost hotel clusters}
+\title{Helper function to create potential ghost hostel clusters}
 \usage{
 ghost_cluster(points, distance, min_listings)
 }
@@ -11,11 +11,11 @@ ghost_cluster(points, distance, min_listings)
 a projected coordinate system.}
 
 \item{distance}{A numeric scalar. The radius (in the units of the CRS) of the
-buffer which will be drawn around points to determine possible ghost hotel
+buffer which will be drawn around points to determine possible ghost hostel
 locations.}
 
 \item{min_listings}{A numeric scalar. The minimum number of listings to
-be considered a ghost hotel.}
+be considered a ghost hostel.}
 }
 \value{
 The output will be the `points`` object, rearranged with one row per
@@ -25,6 +25,6 @@ The output will be the `points`` object, rearranged with one row per
 \code{ghost_cluster} takes `points` and splits it into potential clusters.
 }
 \details{
-A function for splitting `points` into clusters of potential ghost hotels,
+A function for splitting `points` into clusters of potential ghost hostels,
 with each cluster having length >= min_listings.
 }

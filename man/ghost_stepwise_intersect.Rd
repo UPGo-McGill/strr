@@ -10,7 +10,7 @@ ghost_stepwise_intersect(buffers, min_listings)
 \item{buffers}{A data frame of buffers from points$data.}
 
 \item{min_listings}{A numeric scalar. The minimum number of listings to
-be considered a ghost hotel.}
+be considered a ghost hostel.}
 }
 \value{
 The output will be an intersect polygon.

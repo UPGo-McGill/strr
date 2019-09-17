@@ -2,7 +2,7 @@
 % Please edit documentation in R/strr_ghost.R
 \name{ghost_identify_leftovers}
 \alias{ghost_identify_leftovers}
-\title{Helper function to identify leftover ghost hotel candidates}
+\title{Helper function to identify leftover ghost hostel candidates}
 \usage{
 ghost_identify_leftovers(points, property_ID, host_ID, min_listings)
 }
@@ -16,15 +16,15 @@ object which uniquely identifies STR listings.}
 object which uniquely identifies STR hosts.}
 
 \item{min_listings}{A numeric scalar. The minimum number of listings to
-be considered a ghost hotel.}
+be considered a ghost hostel.}
 }
 \value{
 The output will be a set of new candidate `points`.
 }
 \description{
-\code{ghost_identify_leftovers} identifies leftover ghost hotel candidates.
+\code{ghost_identify_leftovers} identifies leftover ghost hostel candidates.
 }
 \details{
-A function for identifying leftover ghost hotel candidates after the main
-ghost hotel analysis has been run.
+A function for identifying leftover ghost hostel candidates after the main
+ghost hostel analysis has been run.
 }
