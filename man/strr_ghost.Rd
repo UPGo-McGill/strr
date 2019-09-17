@@ -62,6 +62,13 @@ duplicate entire-home listings operated by the same host. If NULL
 (default), the check will not be performed. This field is ignored if
 `listing_type` is FALSE.}
 
+\item{distance}{A numeric scalar. The radius (in the units of the CRS) of the
+buffer which will be drawn around points to determine possible ghost hotel
+locations.}
+
+\item{min_listings}{A numeric scalar. The minimum number of listings to
+be considered a ghost hotel.}
+
 \item{cores}{A positive integer scalar. How many processing cores should be
 used to perform the computationally intensive intersection steps? The
 implementation of multicore processing does not support Windows, so this

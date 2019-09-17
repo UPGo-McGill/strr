@@ -83,9 +83,16 @@ strr_ghost <- function(
   private_room = "Private room", EH_check = NULL, cores = 1, quiet = FALSE) {
 
 
+
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
   ## Cores, distance, min_listings
+
+  # Quote variables
+  property_ID <- enquo(property_ID)
+  host_ID <- enquo(host_ID)
+  created <- enquo(created)
+  scraped <- enquo(scraped)
 
   # Check that cores is an integer > 0
   cores <- floor(cores)
@@ -117,26 +124,29 @@ strr_ghost <- function(
     if (!is(pull(points, {{ scraped }}), "Date")) {
       stop("The `scraped` field must be of class 'Date'")
     }
-
-    # Fill in missing start_date/end_date values
+    
+    # Wrangle start_date/end_date values
     if (missing(start_date)) {
       start_date <-
         points %>%
         pull({{ created }}) %>%
         min(na.rm = TRUE)
-    }
+    } else {
+      start_date <- tryCatch(as.Date(start_date), error = function(e) {
+        stop(paste0('The value of `start_date`` ("', start_date,
+                    '") is not coercible to a date.'))
+      })}
 
     if (missing(end_date)) {
       end_date <-
         points %>%
         pull({{ scraped }}) %>%
         max(na.rm = TRUE)
-    }
-
-    # Convert start_date and end_date strings to dates
-    start_date <- as.Date(start_date)
-    end_date <- as.Date(end_date)
-
+    } else {
+      end_date <- tryCatch(as.Date(end_date), error = function(e) {
+        stop(paste0('The value of `end_date` ("', end_date,
+                    '") is not coercible to a date.'))
+      })}
   }
 
   ## Points table
@@ -151,8 +161,12 @@ strr_ghost <- function(
     stop("The object `points` must be of class sf or sp.")
   }
 
+  # Store CRS for later
+  crs_points <- st_crs(points)
+
   # Convert points to tibble
   points <- st_as_sf(as_tibble(points))
+
 
 
   ### POINTS SETUP #############################################################
@@ -184,6 +198,24 @@ strr_ghost <- function(
     filter(n() >= min_listings) %>%
     tidyr::nest()
 
+  # Error handling for case where no clusters are identified
+  if (nrow(points) == 0) {
+    points <-
+      points %>%
+      mutate(ghost_ID = integer(0),
+             date = as.Date(x = integer(0), origin = "1970-01-01")) %>%
+      select(ghost_ID, date, everything()) %>%
+      mutate(list_count = integer(0),
+             housing_units = integer(0),
+             property_IDs = list()) %>%
+      select(-data, data) %>%
+      mutate(geometry = st_sfc()) %>%
+      st_as_sf() %>%
+      st_set_crs(crs_points)
+
+    return(points)
+    }
+  
   # Identify possible clusters by date if multi_date == TRUE
   if (multi_date) {
 
@@ -211,6 +243,24 @@ strr_ghost <- function(
         date_grid = map(.data$date_grid, filter, .data$Var1 <= .data$Var2)
       )
 
+     # Error handling for case where no clusters are identified
+  if (nrow(points) == 0) {
+    points <-
+      points %>%
+      mutate(ghost_ID = integer(0),
+             date = as.Date(x = integer(0), origin = "1970-01-01")) %>%
+      select(ghost_ID, date, everything()) %>%
+      mutate(list_count = integer(0),
+             housing_units = integer(0),
+             property_IDs = list()) %>%
+      select(-data, data) %>%
+      mutate(geometry = st_sfc()) %>%
+      st_as_sf() %>%
+      st_set_crs(crs_points)
+
+    return(points)
+  }
+    
     # Create a nested tibble for each possible cluster
 
     if (!quiet) message("Preparing possible clusters for analysis.")
@@ -227,6 +277,8 @@ strr_ghost <- function(
       tidyr::unnest(.data$data)
   }
 
+  
+  
   ### CLUSTER CREATION AND GHOST HOSTEL IDENTIFICATION #########################
 
   # Multi-threaded version
@@ -266,6 +318,25 @@ strr_ghost <- function(
                                         {{ host_ID }}, distance, min_listings)
   }
 
+                        
+# Error handling
+   if (nrow(points) == 0) {
+    points <-
+      points %>%
+      mutate(ghost_ID = integer(0),
+             date = as.Date(x = integer(0), origin = "1970-01-01"),
+             listing_count = integer(0),
+             housing_units = integer(0),
+             geometry = st_sfc()) %>%
+      select(ghost_ID, date, !! host_ID, listing_count, housing_units,
+             property_IDs, data, geometry) %>%
+      st_as_sf() %>%
+      st_set_crs(crs_points)
+
+    return(points)
+  }
+                          
+                          
 
   ### GHOST TABLE CREATION #####################################################
 
@@ -574,7 +645,7 @@ ghost_combine <- function(buffers, predicates, n) {
 #' @param x A buffer.
 #' @param y A buffer.
 #' @return The output will be an intersect polygon.
-#' @importFrom rlang done
+#' @importFrom rlang .data done
 #' @importFrom sf st_intersection
 
 ghost_intersect_with_done <- function(x, y) {
@@ -799,6 +870,8 @@ ghost_intersect_leftovers <- function(points, property_ID, host_ID, distance,
 
   property_ID <- enquo(property_ID)
   host_ID <- enquo(host_ID)
+
+  if (nrow(points) == 0) return(points)
 
   # Subset leftover candidates
   leftovers <- ghost_identify_leftovers(points, {{ property_ID }},
