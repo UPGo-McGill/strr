@@ -83,7 +83,7 @@ strr_ghost <- function(
   private_room = "Private room", EH_check = NULL, cores = 1, quiet = FALSE) {
 
 
-  ### ERROR CHECKING AND ARGUMENT INITIALIZATION
+  ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
   ## Cores, distance, min_listings
 
@@ -155,7 +155,7 @@ strr_ghost <- function(
   points <- st_as_sf(as_tibble(points))
 
 
-  ### POINTS SETUP
+  ### POINTS SETUP #############################################################
 
   if (!quiet) message("Filtering listings to ghost hostel candidates.")
 
@@ -164,8 +164,8 @@ strr_ghost <- function(
     points %>%
     filter(!is.na({{ host_ID }}))
 
-  # Filter to private rooms if listing_type != NULL
-  if (!missing(listing_type)) {
+  # Filter to private rooms if listing_type != FALSE
+  # if (!is.null(listing_type)) {
 
     # Save entire-home listings for later if EH_check != NULL
     if (!missing(EH_check)) {
@@ -175,7 +175,7 @@ strr_ghost <- function(
     points <-
       points %>%
       filter({{ listing_type }} == private_room)
-  }
+  # }
 
   # Filter points to clusters >= min_listings, and nest by Host_ID
   points <-
@@ -184,8 +184,8 @@ strr_ghost <- function(
     filter(n() >= min_listings) %>%
     tidyr::nest()
 
-  # Identify possible clusters by date if created/scraped are specified
-  if (!missing(created)) {
+  # Identify possible clusters by date if multi_date == TRUE
+  if (multi_date) {
 
     if (!quiet) message("Identifying possible ghost hostel clusters by date.")
 
@@ -227,7 +227,7 @@ strr_ghost <- function(
       tidyr::unnest(.data$data)
   }
 
-  ### CLUSTER CREATION AND GHOST HOSTEL IDENTIFICATION
+  ### CLUSTER CREATION AND GHOST HOSTEL IDENTIFICATION #########################
 
   # Multi-threaded version
   if (cores >= 2) {
@@ -267,7 +267,7 @@ strr_ghost <- function(
   }
 
 
-  ## GHOST TABLE CREATION
+  ### GHOST TABLE CREATION #####################################################
 
   if (!quiet) message("Combining ghost hostels into output table.")
 
@@ -277,9 +277,9 @@ strr_ghost <- function(
       filter(.x, {{ property_ID }} %in% .y)}))
 
   # Store CRS for later
-  crs <- st_crs(points$intersects[[1]])
+  crs_points <- st_crs(points$intersects[[1]])
 
-  # Generate compact table of ghost hostels, suppress SF geometry warnings
+  # Generate compact table of ghost hostels, suppressing sf geometry warnings
   points <- suppressWarnings(
     tidyr::unnest(points, .data$intersects, .preserve = .data$data)
   )
@@ -305,10 +305,10 @@ strr_ghost <- function(
            .data$housing_units, .data$property_IDs, .data$data, .data$geometry)
 
   # Reattach CRS
-  st_crs(points) <- crs
+  st_crs(points) <- crs_points
 
-  # Calculate dates if created/scraped are specified
-  if (!missing(created)) {
+  # Calculate dates if multi_date == TRUE
+  if (multi_date) {
 
     if (!quiet) message("Identifying active date ranges for ghost hostels.")
 
@@ -338,13 +338,41 @@ strr_ghost <- function(
         subsets = map2(.data$ghost_ID, .data$subsets, ~{.y[.y != .x]}))
   }
 
+  ## EH_check
 
-  ## TIDY TABLE CREATION
+  if (!missing(EH_check)) {
+
+    EH_buffers <-
+      st_buffer(EH_points, distance) %>%
+      st_transform(crs_points) %>%
+      rename(EH_property_ID = {{ property_ID }})
+
+    points <-
+      points %>%
+      mutate(EH_check = map2(.data$geometry, {{ host_ID }}, ~{
+
+        geom <-
+          tibble::tibble(geometry = list(.x)) %>%
+          st_as_sf(crs = crs_points)
+
+        EH_host <-
+          EH_buffers %>%
+          filter({{ host_ID }} == .y)
+
+        suppressWarnings(
+          st_intersection(geom, EH_host) %>%
+          pull(.data$EH_property_ID))
+      }))
+  }
+
+
+  ### TIDY TABLE CREATION ######################################################
 
   # Create tidy version of ghost_points
 
   if (!quiet) message("Producing final output table.")
 
+  #### NOT YET WORKING WITH MULTI_DATE == FALSE
   points <-
     points[c("ghost_ID", "start", "end")] %>%
     st_drop_geometry() %>%
