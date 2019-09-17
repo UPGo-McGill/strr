@@ -27,11 +27,11 @@
 #'   the last-scraped date for each listing. This argument is ignored if
 #'   `multi_date` is FALSE.
 #' @param start_date A character string of format YYYY-MM-DD indicating the
-#'   first date for which to run the analysis. If NULL, all dates will be used.
-#'   This argument is ignored if `multi_date` is FALSE.
+#'   first date for which to run the analysis. If NULL (default), all dates will
+#'   be used. This argument is ignored if `multi_date` is FALSE.
 #' @param end_date A character string of format YYYY-MM-DD indicating the last
-#'   date for which to run the analysis. If NULL, all dates will be used. This
-#'   argument is ignored if `multi_date` is FALSE.
+#'   date for which to run the analysis. If NULL (default), all dates will be
+#'   used. This argument is ignored if `multi_date` is FALSE.
 #' @param distance A numeric scalar. The radius (in the units of the CRS) of the
 #'   buffer which will be drawn around points to determine possible ghost hostel
 #'   locations.
@@ -39,18 +39,21 @@
 #'   be considered a ghost hostel.
 #' @param listing_type The name of a character variable in the points
 #'   object which identifies private-room listings. Set this argument to FALSE
-#'   or NULL to use all listings in the `points` table.
+#'   to use all listings in the `points` table.
 #' @param private_room A character string which identifies the value of the
 #'   `listing_type` variable to be used to find ghost hostels. This field is
-#'   ignored if `listing_type` is FALSE or NULL.
+#'   ignored if `listing_type` is FALSE.
 #' @param EH_check A character string which identifies the value of the
 #'   `listing_type` variable to be used to check ghost hostels against possible
-#'   duplicate entire-home listings operated by the same host. This field is
-#'   ignored if `listing_type` is FALSE or NULL.
+#'   duplicate entire-home listings operated by the same host. If NULL
+#'   (default), the check will not be performed. This field is ignored if
+#'   `listing_type` is FALSE.
 #' @param cores A positive integer scalar. How many processing cores should be
 #'   used to perform the computationally intensive intersection steps? The
 #'   implementation of multicore processing does not support Windows, so this
 #'   argument should be left with its default value of 1 in those cases.
+#' @param quiet A logical vector. Should the function execute quietly, or should
+#' it return status updates throughout the function (default)?
 #' @return The output will be a tidy data frame of identified ghost hostels,
 #'   organized with the following fields: `ghost_ID`: an identifier for each
 #'   unique ghost hostel cluster. `date`: the date on which the ghost hostel was
@@ -61,23 +64,23 @@
 #'   many housing units the ghost hostel occupies, calculated as
 #'   `ceiling(listing_count / 4)`. `property_IDs`: A list of the property_ID
 #'   (or whatever name was passed to the property_ID argument) values from the
-#'   listings comprising the ghost hostel. `EH_check`: if EH_check != NULL, a
-#'   list of possible entire-home listing duplicates. `data`: a nested tibble of
-#'   additional variables present in the points object. `geometry`: the polygons
-#'   representing the possible locations of each ghost hostel.
+#'   listings comprising the ghost hostel. `EH_check`: if EH_check is not NULL,
+#'   a list of possible entire-home listing duplicates. `data`: a nested tibble
+#'   of additional variables present in the points object. `geometry`: the
+#'   polygons representing the possible locations of each ghost hostel.
 #' @importFrom dplyr %>% arrange as_tibble enquo filter group_by mutate n pull
 #' @importFrom dplyr quo_name rename ungroup
 #' @importFrom methods is
 #' @importFrom purrr map map2 map_dbl map_lgl
 #' @importFrom rlang .data
-#' @importFrom sf st_as_sf st_crs st_crs<- st_transform
+#' @importFrom sf st_as_sf st_crs st_crs<- st_point st_transform
 #' @export
 
 strr_ghost <- function(
   points, property_ID = property_ID, host_ID = host_ID, multi_date = TRUE,
   created = created, scraped = scraped, start_date = NULL, end_date = NULL,
   distance = 200, min_listings = 3, listing_type = listing_type,
-  private_room = "Private room", EH_check = NULL, cores = 1) {
+  private_room = "Private room", EH_check = NULL, cores = 1, quiet = FALSE) {
 
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION
@@ -101,11 +104,9 @@ strr_ghost <- function(
     stop("The argument `min_listings` must be a positive integer.")
   }
 
-  # Check if EH_check and listing_type agree
-  # if (is.null(listing_type)) listing_type <- FALSE
-  # if (listing_type == FALSE) EH_check <- FALSE
 
   ## Process dates if multi_date is TRUE
+
   if (multi_date) {
 
     # Check if created and scraped are dates
@@ -156,6 +157,8 @@ strr_ghost <- function(
 
   ### POINTS SETUP
 
+  if (!quiet) message("Filtering listings to ghost hostel candidates.")
+
   # Remove invalid listings
   points <-
     points %>%
@@ -183,6 +186,9 @@ strr_ghost <- function(
 
   # Identify possible clusters by date if created/scraped are specified
   if (!missing(created)) {
+
+    if (!quiet) message("Identifying possible ghost hostel clusters by date.")
+
     points <-
       points %>%
       mutate(
@@ -206,6 +212,9 @@ strr_ghost <- function(
       )
 
     # Create a nested tibble for each possible cluster
+
+    if (!quiet) message("Preparing possible clusters for analysis.")
+
     points <-
       points %>%
       mutate(data = map2(.data$date_grid, .data$data, function(x, y) {
@@ -223,9 +232,13 @@ strr_ghost <- function(
   # Multi-threaded version
   if (cores >= 2) {
 
+    if (!quiet) message("Splitting clusters for multicore processing.")
+
     clusters <- pbapply::splitpb(nrow(points), cores, nout = 100)
     points_list <- lapply(clusters, function(x) points[x,])
     cl <- parallel::makeForkCluster(cores)
+
+    if (!quiet) message("Identifying ghost hostels.")
 
     points <-
       points_list %>%
@@ -240,15 +253,23 @@ strr_ghost <- function(
 
   } else {
     # Single-threaded version
+
+    if (!quiet) message("Splitting clusters for ghost hostel identification.")
     points <- ghost_cluster(points, distance, min_listings)
+
+    if (!quiet) message("Identifying ghost hostels.")
     points <- ghost_intersect(points, {{ property_ID }}, distance,
                               min_listings)
+
+    if (!quiet) message("Rerunning analysis on leftover points.")
     points <- ghost_intersect_leftovers(points, {{ property_ID }},
                                         {{ host_ID }}, distance, min_listings)
   }
 
 
   ## GHOST TABLE CREATION
+
+  if (!quiet) message("Combining ghost hostels into output table.")
 
   points <-
     points %>%
@@ -289,6 +310,8 @@ strr_ghost <- function(
   # Calculate dates if created/scraped are specified
   if (!missing(created)) {
 
+    if (!quiet) message("Identifying active date ranges for ghost hostels.")
+
     # Calculate date ranges
     points <-
       points %>%
@@ -319,6 +342,9 @@ strr_ghost <- function(
   ## TIDY TABLE CREATION
 
   # Create tidy version of ghost_points
+
+  if (!quiet) message("Producing final output table.")
+
   points <-
     points[c("ghost_ID", "start", "end")] %>%
     st_drop_geometry() %>%

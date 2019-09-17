@@ -8,7 +8,8 @@ strr_ghost(points, property_ID = property_ID, host_ID = host_ID,
   multi_date = TRUE, created = created, scraped = scraped,
   start_date = NULL, end_date = NULL, distance = 200,
   min_listings = 3, listing_type = listing_type,
-  private_room = "Private room", EH_check = NULL, cores = 1)
+  private_room = "Private room", EH_check = NULL, cores = 1,
+  quiet = FALSE)
 }
 \arguments{
 \item{points}{A data frame of STR listings with sf or sp point geometries in
@@ -33,12 +34,12 @@ the last-scraped date for each listing. This argument is ignored if
 `multi_date` is FALSE.}
 
 \item{start_date}{A character string of format YYYY-MM-DD indicating the
-first date for which to run the analysis. If NULL, all dates will be used.
-This argument is ignored if `multi_date` is FALSE.}
+first date for which to run the analysis. If NULL (default), all dates will
+be used. This argument is ignored if `multi_date` is FALSE.}
 
 \item{end_date}{A character string of format YYYY-MM-DD indicating the last
-date for which to run the analysis. If NULL, all dates will be used. This
-argument is ignored if `multi_date` is FALSE.}
+date for which to run the analysis. If NULL (default), all dates will be
+used. This argument is ignored if `multi_date` is FALSE.}
 
 \item{distance}{A numeric scalar. The radius (in the units of the CRS) of the
 buffer which will be drawn around points to determine possible ghost hostel
@@ -49,21 +50,25 @@ be considered a ghost hostel.}
 
 \item{listing_type}{The name of a character variable in the points
 object which identifies private-room listings. Set this argument to FALSE
-or NULL to use all listings in the `points` table.}
+to use all listings in the `points` table.}
 
 \item{private_room}{A character string which identifies the value of the
 `listing_type` variable to be used to find ghost hostels. This field is
-ignored if `listing_type` is FALSE or NULL.}
+ignored if `listing_type` is FALSE.}
 
 \item{EH_check}{A character string which identifies the value of the
 `listing_type` variable to be used to check ghost hostels against possible
-duplicate entire-home listings operated by the same host. This field is
-ignored if `listing_type` is FALSE or NULL.}
+duplicate entire-home listings operated by the same host. If NULL
+(default), the check will not be performed. This field is ignored if
+`listing_type` is FALSE.}
 
 \item{cores}{A positive integer scalar. How many processing cores should be
 used to perform the computationally intensive intersection steps? The
 implementation of multicore processing does not support Windows, so this
 argument should be left with its default value of 1 in those cases.}
+
+\item{quiet}{A logical vector. Should the function execute quietly, or should
+it return status updates throughout the function (default)?}
 }
 \value{
 The output will be a tidy data frame of identified ghost hostels,
@@ -76,10 +81,10 @@ The output will be a tidy data frame of identified ghost hostels,
   many housing units the ghost hostel occupies, calculated as
   `ceiling(listing_count / 4)`. `property_IDs`: A list of the property_ID
   (or whatever name was passed to the property_ID argument) values from the
-  listings comprising the ghost hostel. `EH_check`: if EH_check != NULL, a
-  list of possible entire-home listing duplicates. `data`: a nested tibble of
-  additional variables present in the points object. `geometry`: the polygons
-  representing the possible locations of each ghost hostel.
+  listings comprising the ghost hostel. `EH_check`: if EH_check is not NULL,
+  a list of possible entire-home listing duplicates. `data`: a nested tibble
+  of additional variables present in the points object. `geometry`: the
+  polygons representing the possible locations of each ghost hostel.
 }
 \description{
 \code{strr_ghost} takes reported STR listing locations and identifies
