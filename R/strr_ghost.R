@@ -370,29 +370,32 @@ strr_ghost <- function(
 
   # Create tidy version of ghost_points
 
-  if (!quiet) message("Producing final output table.")
+  if (multi_date) {
 
-  #### NOT YET WORKING WITH MULTI_DATE == FALSE
-  points <-
-    points[c("ghost_ID", "start", "end")] %>%
-    st_drop_geometry() %>%
-    mutate(date = map2(.data$start, .data$end, ~{
-      seq(unique(.x), unique(.y), 1)
-    })) %>%
-    tidyr::unnest(.data$date) %>%
-    select(-.data$start, -.data$end) %>%
-    filter(.data$date >= start_date, .data$date <= end_date) %>%
-    left_join(points, by = "ghost_ID") %>%
-    select(-.data$start, -.data$end) %>%
-    st_as_sf()
+    if (!quiet) message("Producing final output table.")
 
-  # Remove rows from ghost_tidy which are in ghost_subset overlaps
-  points <-
-    points %>%
-    group_by(.data$date) %>%
-    filter(!.data$ghost_ID %in% unlist(.data$subsets)) %>%
-    select(-.data$subsets) %>%
-    ungroup()
+    points <-
+      points[c("ghost_ID", "start", "end")] %>%
+      st_drop_geometry() %>%
+      mutate(date = map2(.data$start, .data$end, ~{
+        seq(unique(.x), unique(.y), 1)
+      })) %>%
+      tidyr::unnest(.data$date) %>%
+      select(-.data$start, -.data$end) %>%
+      filter(.data$date >= start_date, .data$date <= end_date) %>%
+      left_join(points, by = "ghost_ID") %>%
+      select(-.data$start, -.data$end) %>%
+      st_as_sf()
+
+    # Remove rows from ghost_tidy which are in ghost_subset overlaps
+    points <-
+      points %>%
+      group_by(.data$date) %>%
+      filter(!.data$ghost_ID %in% unlist(.data$subsets)) %>%
+      select(-.data$subsets) %>%
+      ungroup()
+
+  }
 
   points
 }
