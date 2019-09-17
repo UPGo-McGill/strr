@@ -124,7 +124,7 @@ strr_ghost <- function(
     if (!is(pull(points, {{ scraped }}), "Date")) {
       stop("The `scraped` field must be of class 'Date'")
     }
-    
+
     # Wrangle start_date/end_date values
     if (missing(start_date)) {
       start_date <-
@@ -199,23 +199,8 @@ strr_ghost <- function(
     tidyr::nest()
 
   # Error handling for case where no clusters are identified
-  if (nrow(points) == 0) {
-    points <-
-      points %>%
-      mutate(ghost_ID = integer(0),
-             date = as.Date(x = integer(0), origin = "1970-01-01")) %>%
-      select(ghost_ID, date, everything()) %>%
-      mutate(list_count = integer(0),
-             housing_units = integer(0),
-             property_IDs = list()) %>%
-      select(-data, data) %>%
-      mutate(geometry = st_sfc()) %>%
-      st_as_sf() %>%
-      st_set_crs(crs_points)
+  if (nrow(points) == 0) return(ghost_empty())
 
-    return(points)
-    }
-  
   # Identify possible clusters by date if multi_date == TRUE
   if (multi_date) {
 
@@ -243,24 +228,9 @@ strr_ghost <- function(
         date_grid = map(.data$date_grid, filter, .data$Var1 <= .data$Var2)
       )
 
-     # Error handling for case where no clusters are identified
-  if (nrow(points) == 0) {
-    points <-
-      points %>%
-      mutate(ghost_ID = integer(0),
-             date = as.Date(x = integer(0), origin = "1970-01-01")) %>%
-      select(ghost_ID, date, everything()) %>%
-      mutate(list_count = integer(0),
-             housing_units = integer(0),
-             property_IDs = list()) %>%
-      select(-data, data) %>%
-      mutate(geometry = st_sfc()) %>%
-      st_as_sf() %>%
-      st_set_crs(crs_points)
+    # Error handling for case where no clusters are identified
+    if (nrow(points) == 0) return(ghost_empty())
 
-    return(points)
-  }
-    
     # Create a nested tibble for each possible cluster
 
     if (!quiet) message("Preparing possible clusters for analysis.")
@@ -277,8 +247,8 @@ strr_ghost <- function(
       tidyr::unnest(.data$data)
   }
 
-  
-  
+
+
   ### CLUSTER CREATION AND GHOST HOSTEL IDENTIFICATION #########################
 
   # Multi-threaded version
@@ -318,25 +288,10 @@ strr_ghost <- function(
                                         {{ host_ID }}, distance, min_listings)
   }
 
-                        
-# Error handling
-   if (nrow(points) == 0) {
-    points <-
-      points %>%
-      mutate(ghost_ID = integer(0),
-             date = as.Date(x = integer(0), origin = "1970-01-01"),
-             listing_count = integer(0),
-             housing_units = integer(0),
-             geometry = st_sfc()) %>%
-      select(ghost_ID, date, !! host_ID, listing_count, housing_units,
-             property_IDs, data, geometry) %>%
-      st_as_sf() %>%
-      st_set_crs(crs_points)
+  # Error handling for case where no clusters are identified
+  if (nrow(points) == 0) return(ghost_empty())
 
-    return(points)
-  }
-                          
-                          
+
 
   ### GHOST TABLE CREATION #####################################################
 
@@ -907,4 +862,32 @@ ghost_intersect_leftovers <- function(points, property_ID, host_ID, distance,
   }
 
   points
+}
+
+
+#' Helper function to output an empty ghost hostel table
+#'
+#' \code{ghost_empty} produces an empty output table.
+#'
+#' A function for producing an empty output table if there are no valid ghost
+#' hostels.
+#'
+#' @param points An sf data frame of STR listings nested by cluster.
+#' @param crs_points The CRS of the points table.
+#' @importFrom dplyr %>% everything mutate select
+#' @importFrom sf st_as_sf st_set_crs
+#' @importFrom rlang .data
+
+ghost_empty <- function(points = points, crs_points = crs_points) {
+  points %>%
+    mutate(ghost_ID = integer(0),
+           date = as.Date(x = integer(0), origin = "1970-01-01")) %>%
+    select(.data$ghost_ID, .data$date, everything()) %>%
+    mutate(list_count = integer(0),
+           housing_units = integer(0),
+           property_IDs = list()) %>%
+    select(-.data$data, .data$data) %>%
+    mutate(geometry = st_sfc()) %>%
+    st_as_sf() %>%
+    st_set_crs(crs_points)
 }
