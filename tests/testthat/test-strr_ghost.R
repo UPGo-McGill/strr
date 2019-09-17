@@ -1,4 +1,4 @@
-context("strr_ghost arguments")
+context("strr_ghost tests")
 
 #' @importFrom dplyr %>% arrange
 #' @importFrom tibble tibble
@@ -8,14 +8,14 @@ points <- tibble::tibble(
   property_ID = 1:15,
   host_ID = c(rep(c("4 to 3", "EH_check TRUE", "EH_check FALSE", "No GH"), 3),
               c("4 to 3", "EH_check TRUE", "EH_check FALSE")),
-  created = c("2018-01-01", "2018-02-01", "2016-04-01", "2018-04-01",
+  created = as.Date(c("2018-01-01", "2018-02-01", "2016-04-01", "2018-04-01",
               "2014-01-01", "2017-06-01", "2016-01-01", "2012-01-01",
               "2015-09-01", "2017-06-01", "2016-01-01", "2015-01-01",
-              "2018-01-01", "2015-01-01", "2016-01-01"),
-  scraped = c("2019-04-01", "2019-04-01", "2018-05-01", "2018-05-01",
+              "2018-01-01", "2015-01-01", "2016-01-01")),
+  scraped = as.Date(c("2019-04-01", "2019-04-01", "2018-05-01", "2018-05-01",
               "2019-01-01", "2019-04-01", "2017-01-01", "2017-01-01",
               "2019-04-01", "2019-04-01", "2017-01-01", "2016-01-01",
-              "2019-03-01", "2019-04-01", "2018-08-01"),
+              "2019-03-01", "2019-04-01", "2018-08-01")),
   listing_type = "Private room",
   geometry = st_sfc(st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)),
                     st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)),
@@ -43,4 +43,27 @@ test_that("cores/distance/min_listings flags are correctly handled", {
 # test_that("listing_type is correctly handled", {
 #   expect_error(strr_ghost())
 # })
+
+test_that("strr_ghost multi_date produces the expected outputs", {
+  expect_equal({
+    strr_ghost(points, quiet = TRUE) %>%
+      filter(date == "2016-01-01", host_ID == "4 to 3") %>%
+      nrow()}, 0)
+  expect_equal({
+    strr_ghost(points, quiet = TRUE) %>%
+      filter(date == "2018-01-01", host_ID == "4 to 3") %>%
+      pull(listing_count)}, 4)
+  expect_equal({
+    strr_ghost(points, quiet = TRUE) %>%
+      filter(date == "2019-03-01", host_ID == "4 to 3") %>%
+      pull(listing_count)}, 3)
+  expect_equal({
+    strr_ghost(points, quiet = TRUE) %>%
+      filter(date == "2019-04-01", host_ID == "4 to 3") %>%
+      nrow()}, 0)
+  expect_equal({
+    strr_ghost(points, multi_date = FALSE, quiet = TRUE) %>%
+      filter(host_ID == "4 to 3") %>%
+      pull(listing_count)}, 4)
+})
 

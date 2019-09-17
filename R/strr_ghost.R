@@ -302,9 +302,6 @@ strr_ghost <- function(
     mutate(data = map2(.data$data, .data$property_IDs, ~{
       filter(.x, {{ property_ID }} %in% .y)}))
 
-  # Store CRS for later
-  crs_points <- st_crs(points$intersects[[1]])
-
   # Generate compact table of ghost hostels, suppressing sf geometry warnings
   points <- suppressWarnings(
     tidyr::unnest(points, .data$intersects, .preserve = .data$data)
