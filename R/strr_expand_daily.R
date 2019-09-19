@@ -1,33 +1,28 @@
-#' Function to expand compressed STR daily tables
+#' Function to expand compressed daily STR tables
 #'
-#' \code{strr_expand_daily} takes a compressed STR daily file and expands it to
-#' a one-row-per-date format.
+#' \code{strr_expand_daily} takes STR daily file compressed in the UPGo DB
+#' format and expands it to a one-row-per-date format.
 #'
-#' A function for probablistically assigning STR listings to administrative
-#' geographies (e.g. census tracts) based on reported latitude/longitude.
-#' The function works by combining a known probability density function (e.g.
-#' Airbnb's spatial obfuscation of listing locations) with an additional source
-#' of information about possible listing locations--either population or housing
-#' densities.
+#' A function for expanding compressed daily activity tables from AirDNA. The
+#' function will also optionally truncated the table by a supplied date range.
 #'
-#' @param daily An sf or sp point-geometry object, in a projected coordinate
-#'   system.
+#' @param daily A daily table in the compressed UPGo DB format (e.g. created
+#' by running \code{\link{strr_compress_daily}} on a raw daily table from
+#' AirDNA).
+#' @param start A character string of format YYYY-MM-DD indicating the
+#'   first date to be provided in the output table. If NULL (default), the
+#'   earliest date present in the data will be used.
+#' @param end A character string of format YYYY-MM-DD indicating the
+#'   last date to be provided in the output table. If NULL (default), the
+#'   latest date present in the data will be used.
 #' @param cores A positive integer scalar. How many processing cores should be
 #'   used to perform the computationally intensive numeric integration step?
-#' @return The output will be the input points object with a new `winner` field
-#'   appended. The `winner` field specifies which polygon from the polys object
-#'   was probabilistically assigned to the listing, using the field identified
-#'   in the `poly_ID` argument. If diagnostic == TRUE, a `candidates` field will
-#'   also be appended, which lists the possible polygons for each point, along
-#'   with their probabilities.
-#' @importFrom dplyr %>% as_tibble enquo filter group_by left_join mutate
-#' @importFrom dplyr select summarize
-#' @importFrom methods is
-#' @importFrom rlang := .data
-#' @importFrom sf st_area st_as_sf st_buffer st_coordinates st_crs
-#' @importFrom sf st_drop_geometry st_intersection st_set_agr st_sfc
-#' @importFrom sf st_transform
-#' @importFrom stats dnorm
+#' @return A table of daily STR activity with one row per date and all other
+#' fields returned unaltered.
+#' @importFrom dplyr %>% bind_rows filter mutate select
+#' @importFrom purrr map2
+#' @importFrom rlang .data
+#' @importFrom tidyr unnest
 #' @export
 
 strr_expand_daily <- function(daily, start = NULL, end = NULL, cores = 1) {
@@ -60,7 +55,7 @@ strr_expand_daily <- function(daily, start = NULL, end = NULL, cores = 1) {
 
   daily <-
     daily %>%
-    mutate(date = map2(start_date, end_date, ~{.x:.y}))
+    mutate(date = map2(.data$start_date, .data$end_date, ~{.x:.y}))
 
 
   ## SINGLE-CORE VERSION
@@ -70,8 +65,9 @@ strr_expand_daily <- function(daily, start = NULL, end = NULL, cores = 1) {
     daily <-
       daily %>%
       unnest(cols = c(date)) %>%
-      mutate(date = as.Date(date, origin = "1970-01-01")) %>%
-      select(property_ID, date, everything(), -start_date, -end_date)
+      mutate(date = as.Date(.data$date, origin = "1970-01-01")) %>%
+      select(.data$property_ID, .data$date, everything(), -.data$start_date,
+             -.data$end_date)
 
   ## MULTI-CORE VERSION
 
@@ -81,7 +77,7 @@ strr_expand_daily <- function(daily, start = NULL, end = NULL, cores = 1) {
       split(daily, 0:(nrow(daily) - 1) %/% ceiling(nrow(daily) / 100))
 
     daily <-
-      pblapply(daily_list, function(x) {
+      pbapply::pblapply(daily_list, function(x) {
         x %>%
           unnest(cols = c(date)) %>%
           mutate(date = as.Date(date, origin = "1970-01-01")) %>%
