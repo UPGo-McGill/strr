@@ -50,7 +50,7 @@ be considered a ghost hostel.}
 
 \item{listing_type}{The name of a character variable in the points
 object which identifies private-room listings. Set this argument to FALSE
-to use all listings in the `points` table.}
+to use all listings in the `points` table. (FALSE NOT CURRENTLY WORKING)}
 
 \item{private_room}{A character string which identifies the value of the
 `listing_type` variable to be used to find ghost hostels. This field is

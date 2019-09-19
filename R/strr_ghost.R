@@ -39,7 +39,7 @@
 #'   be considered a ghost hostel.
 #' @param listing_type The name of a character variable in the points
 #'   object which identifies private-room listings. Set this argument to FALSE
-#'   to use all listings in the `points` table.
+#'   to use all listings in the `points` table. (FALSE NOT CURRENTLY WORKING)
 #' @param private_room A character string which identifies the value of the
 #'   `listing_type` variable to be used to find ghost hostels. This field is
 #'   ignored if `listing_type` is FALSE.
@@ -87,12 +87,6 @@ strr_ghost <- function(
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
   ## Cores, distance, min_listings
-
-  # Quote variables
-  property_ID <- enquo(property_ID)
-  host_ID <- enquo(host_ID)
-  created <- enquo(created)
-  scraped <- enquo(scraped)
 
   # Check that cores is an integer > 0
   cores <- floor(cores)
@@ -179,6 +173,7 @@ strr_ghost <- function(
     filter(!is.na({{ host_ID }}))
 
   # Filter to private rooms if listing_type != FALSE
+  # THIS CHECK ISN'T CURRENTLY WORKING TKTK
   # if (!is.null(listing_type)) {
 
     # Save entire-home listings for later if EH_check != NULL
@@ -196,7 +191,8 @@ strr_ghost <- function(
     points %>%
     group_by({{ host_ID }}) %>%
     filter(n() >= min_listings) %>%
-    tidyr::nest()
+    tidyr::nest() %>%
+    ungroup()
 
   # Error handling for case where no clusters are identified
   if (nrow(points) == 0) return(ghost_empty())
@@ -244,7 +240,8 @@ strr_ghost <- function(
           unique() %>%
           `[`(lapply(., nrow) >= min_listings)
       })) %>%
-      tidyr::unnest(.data$data)
+      tidyr::unnest(.data$data) %>%
+      select(-.data$starts, -.data$ends, -.data$date_grid)
   }
 
 
@@ -303,8 +300,9 @@ strr_ghost <- function(
       filter(.x, {{ property_ID }} %in% .y)}))
 
   # Generate compact table of ghost hostels, suppressing sf geometry warnings
+  # THE NEW UNNEST SEEMS TO HAVE AN SF FAILURE TKTK
   points <- suppressWarnings(
-    tidyr::unnest(points, .data$intersects, .preserve = .data$data)
+    tidyr::unnest_legacy(points, .data$intersects, .preserve = .data$data)
   )
 
   # Remove duplicates
@@ -317,6 +315,7 @@ strr_ghost <- function(
     mutate(ghost_ID = 1:n())
 
   # Extract geometry, coerce to sf, join back to ghost_points, clean up
+  ### THIS IS STEP THAT GENERATES OGR UNSUPPORTED TKTK
   points <-
     points[c("ghost_ID","geometry")] %>%
     st_as_sf() %>%
@@ -403,7 +402,7 @@ strr_ghost <- function(
       mutate(date = map2(.data$start, .data$end, ~{
         seq(unique(.x), unique(.y), 1)
       })) %>%
-      tidyr::unnest(.data$date) %>%
+      tidyr::unnest_legacy(.data$date) %>%
       select(-.data$start, -.data$end) %>%
       filter(.data$date >= start_date, .data$date <= end_date) %>%
       left_join(points, by = "ghost_ID") %>%
@@ -476,7 +475,7 @@ ghost_cluster <- function(points, distance, min_listings) {
     mutate(data = map2(.data$data, .data$predicates, function(x, y) {
       map(y, ~{x[.,]})
       })) %>%
-    tidyr::unnest(.data$data, .drop = TRUE)
+    tidyr::unnest_legacy(.data$data)
 
   # Remove duplicate clusters
   points <- points[!duplicated(points$data),]
