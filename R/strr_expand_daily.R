@@ -80,8 +80,9 @@ strr_expand_daily <- function(daily, start = NULL, end = NULL, cores = 1) {
       pbapply::pblapply(daily_list, function(x) {
         x %>%
           unnest(cols = c(date)) %>%
-          mutate(date = as.Date(date, origin = "1970-01-01")) %>%
-          select(property_ID, date, everything(), -start_date, -end_date)
+          mutate(date = as.Date(.data$date, origin = "1970-01-01")) %>%
+          select(.data$property_ID, .data$date, everything(), -.data$start_date,
+                 -.data$end_date)
       }, cl = cores) %>%
       bind_rows()
   }
@@ -90,11 +91,11 @@ strr_expand_daily <- function(daily, start = NULL, end = NULL, cores = 1) {
   ## OPTIONALLY TRIM BASED ON START/END DATE
 
   if (!missing(start)) {
-    daily <- filter(daily, date >= start)
+    daily <- filter(daily, .data$date >= start)
   }
 
   if (!missing(end)) {
-    daily <- filter(daily, date <= end)
+    daily <- filter(daily, .data$date <= end)
   }
 
 
