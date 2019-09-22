@@ -53,8 +53,8 @@ strr_expand <- function(.data, start = NULL, end = NULL, cores = 1) {
 
   ## PREPARE DATE FIELD
 
-  daily <-
-    daily %>%
+  .data <-
+    .data %>%
     mutate(date = map2(.data$start_date, .data$end_date, ~{.x:.y}))
 
 
@@ -62,8 +62,8 @@ strr_expand <- function(.data, start = NULL, end = NULL, cores = 1) {
 
   if (cores == 1) {
 
-    daily <-
-      daily %>%
+    .data <-
+      .data %>%
       unnest(cols = c(date)) %>%
       mutate(date = as.Date(.data$date, origin = "1970-01-01"))
 
@@ -72,9 +72,9 @@ strr_expand <- function(.data, start = NULL, end = NULL, cores = 1) {
   } else {
 
     daily_list <-
-      split(daily, ceiling(1:nrow(daily)/1000))
+      split(.data, ceiling(1:nrow(.data)/1000))
 
-    daily <-
+    .data <-
       pbapply::pblapply(daily_list, function(x) {
         x %>%
           unnest(cols = c(date)) %>%
@@ -85,14 +85,14 @@ strr_expand <- function(.data, start = NULL, end = NULL, cores = 1) {
 
   ## ARRANGE COLUMNS
 
-  if (length(daily) == 16) {
-    daily <-
-      daily %>%
+  if (length(.data) == 16) {
+    .data <-
+      .data %>%
       select(.data$property_ID, .data$date, everything(), -.data$start_date,
              -.data$end_date)
   } else {
-    daily <-
-      daily %>%
+    .data <-
+      .data %>%
       select(.data$host_ID, .data$date, everything(), -.data$start_date,
              -.data$end_date)
   }
@@ -100,15 +100,15 @@ strr_expand <- function(.data, start = NULL, end = NULL, cores = 1) {
   ## OPTIONALLY TRIM BASED ON START/END DATE
 
   if (!missing(start)) {
-    daily <- filter(daily, .data$date >= start)
+    .data <- filter(.data, .data$date >= start)
   }
 
   if (!missing(end)) {
-    daily <- filter(daily, .data$date <= end)
+    .data <- filter(.data, .data$date <= end)
   }
 
 
   ## OUTPUT DATA FRAME
 
-  return(daily)
+  return(.data)
 }
