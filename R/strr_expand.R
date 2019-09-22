@@ -1,14 +1,15 @@
-#' Function to expand compressed daily STR tables
+#' Function to expand compressed STR tables
 #'
-#' \code{strr_expand_daily} takes STR daily file compressed in the UPGo DB
-#' format and expands it to a one-row-per-date format.
+#' \code{strr_expand} takes an STR file compressed in the UPGo DB format and
+#' expands it to a one-row-per-date format.
 #'
-#' A function for expanding compressed daily activity tables from AirDNA. The
-#' function will also optionally truncated the table by a supplied date range.
+#' A function for expanding compressed daily activity tables from AirDNA or the
+#' ML summary tables UPGo produces. The function will also optionally truncate
+#' the table by a supplied date range.
 #'
-#' @param daily A daily table in the compressed UPGo DB format (e.g. created
-#' by running \code{\link{strr_compress_daily}} on a raw daily table from
-#' AirDNA).
+#' @param .data A table in compressed UPGo DB format (e.g. created by running
+#' \code{\link{strr_compress}}). Currently daily activity files and ML daily
+#' summary tables are recognized.
 #' @param start A character string of format YYYY-MM-DD indicating the
 #'   first date to be provided in the output table. If NULL (default), the
 #'   earliest date present in the data will be used.
@@ -17,15 +18,14 @@
 #'   latest date present in the data will be used.
 #' @param cores A positive integer scalar. How many processing cores should be
 #'   used to perform the computationally intensive numeric integration step?
-#' @return A table of daily STR activity with one row per date and all other
-#' fields returned unaltered.
+#' @return A table with one row per date and all other fields returned unaltered.
 #' @importFrom dplyr %>% bind_rows filter mutate select
 #' @importFrom purrr map2
 #' @importFrom rlang .data
 #' @importFrom tidyr unnest
 #' @export
 
-strr_expand_daily <- function(daily, start = NULL, end = NULL, cores = 1) {
+strr_expand <- function(.data, start = NULL, end = NULL, cores = 1) {
 
   ## ERROR CHECKING AND ARGUMENT INITIALIZATION
 
@@ -65,9 +65,7 @@ strr_expand_daily <- function(daily, start = NULL, end = NULL, cores = 1) {
     daily <-
       daily %>%
       unnest(cols = c(date)) %>%
-      mutate(date = as.Date(.data$date, origin = "1970-01-01")) %>%
-      select(.data$property_ID, .data$date, everything(), -.data$start_date,
-             -.data$end_date)
+      mutate(date = as.Date(.data$date, origin = "1970-01-01"))
 
   ## MULTI-CORE VERSION
 
@@ -80,13 +78,24 @@ strr_expand_daily <- function(daily, start = NULL, end = NULL, cores = 1) {
       pbapply::pblapply(daily_list, function(x) {
         x %>%
           unnest(cols = c(date)) %>%
-          mutate(date = as.Date(.data$date, origin = "1970-01-01")) %>%
-          select(.data$property_ID, .data$date, everything(), -.data$start_date,
-                 -.data$end_date)
+          mutate(date = as.Date(.data$date, origin = "1970-01-01"))
       }, cl = cores) %>%
       bind_rows()
   }
 
+  ## ARRANGE COLUMNS
+
+  if (length(daily) == 16) {
+    daily <-
+      daily %>%
+      select(.data$property_ID, .data$date, everything(), -.data$start_date,
+             -.data$end_date)
+  } else {
+    daily <-
+      daily %>%
+      select(.data$host_ID, .data$date, everything(), -.data$start_date,
+             -.data$end_date)
+  }
 
   ## OPTIONALLY TRIM BASED ON START/END DATE
 
