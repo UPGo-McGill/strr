@@ -2,12 +2,13 @@
 % Please edit documentation in R/strr_compress.R
 \name{strr_compress}
 \alias{strr_compress}
-\title{Function to compress raw daily STR tables into UPGo DB format}
+\title{Function to compress daily STR tables into UPGo DB format}
 \usage{
-strr_compress(daily, cores = 1, quiet = FALSE)
+strr_compress(.data, cores = 1, quiet = FALSE)
 }
 \arguments{
-\item{daily}{A daily table in the raw AirDNA format.}
+\item{.data}{An unprocessed daily table in either the raw AirDNA format or
+the UPGo ML summary table format.}
 
 \item{cores}{A positive integer scalar. How many processing cores should be
 used to perform the computationally intensive compression step?}
@@ -16,19 +17,24 @@ used to perform the computationally intensive compression step?}
 it return status updates throughout the function (default)?}
 }
 \value{
-The output will be a list with three elements: 1) the compressed
-daily table, ready for upload to a remote database; 2) an error table
-identifying corrupt or otherwise invalid row entries; 3) a missing_rows
-table identifying property_IDs with missing dates in between their first and
-last date entries, and therefore potentially missing data.
+The output will depend on the input. In the case where the input is
+a raw AirDNA daily table, the output will be a list with three elements: 1)
+the compressed daily table, ready for upload to a remote database; 2) an
+error table identifying corrupt or otherwise invalid row entries; 3) a
+missing_rows table identifying property_IDs with missing dates in between
+their first and last date entries, and therefore potentially missing data. In
+the case where the input is an UPGo ML summary table, the output will be the
+compressed ML table, ready for upload to a remote database.
 }
 \description{
-\code{strr_compress} takes raw monthly daily tables from AirDNA and
-compresses them into the UPGo database storage format.
+\code{strr_compress} takes daily tables (either monthly daily tables from
+AirDNA or ML summary tables produced by UPGo) and compresses them into the
+UPGo database storage format.
 }
 \details{
-A function for compressing the daily activity tables supplied each month from
-AirDNA into a more storage-efficient one-activity-block-per-row format. The
-function also produces error files which identify possible corrupt or missing
-lines in the input file.
+A function for compressing daily activity tables (either raw daily tables
+supplied each month from AirDNA or ML summary tables produced by UPGo) into a
+more storage-efficient one-activity-block-per-row format. In the case of the
+monthly AirDNA files, the function also produces error files which identify
+possible corrupt or missing lines in the input file.
 }

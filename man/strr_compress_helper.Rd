@@ -4,11 +4,11 @@
 \alias{strr_compress_helper}
 \title{Helper function to compress daily file}
 \usage{
-strr_compress_helper(daily)
+strr_compress_helper(.data)
 }
 \arguments{
-\item{daily}{The processed daily table generated through the
-strr_compress_daily function.}
+\item{.data}{The processed daily table generated through the strr_compress
+function.}
 }
 \value{
 The output will be a compressed daily table.
