@@ -74,7 +74,7 @@ strr_expand_daily <- function(daily, start = NULL, end = NULL, cores = 1) {
   } else {
 
     daily_list <-
-      split(daily, 0:(nrow(daily) - 1) %/% ceiling(nrow(daily) / 100))
+      split(daily, 0:(nrow(daily) - 1) %/% ceiling(nrow(daily) / 1000))
 
     daily <-
       pbapply::pblapply(daily_list, function(x) {
