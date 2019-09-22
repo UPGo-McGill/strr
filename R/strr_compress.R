@@ -1,6 +1,6 @@
 #' Function to compress raw daily STR tables into UPGo DB format
 #'
-#' \code{strr_compress_daily} takes raw monthly daily tables from AirDNA and
+#' \code{strr_compress} takes raw monthly daily tables from AirDNA and
 #' compresses them into the UPGo database storage format.
 #'
 #' A function for compressing the daily activity tables supplied each month from
@@ -24,7 +24,7 @@
 #' @importFrom tibble as_tibble
 #' @export
 
-strr_compress_daily <- function(daily, cores = 1, quiet = FALSE) {
+strr_compress <- function(daily, cores = 1, quiet = FALSE) {
 
   ## Error checking and initialization
 
