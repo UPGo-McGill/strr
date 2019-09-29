@@ -174,10 +174,10 @@ strr_compress <- function(.data, cores = 1, quiet = FALSE) {
 
     daily_list <- split(.data, .data$property_ID)
 
-    daily_list <- purrr::map(1:100, function(i) {
+    daily_list <- purrr::map(1:10000, function(i) {
       bind_rows(
-        daily_list[(floor(length(daily_list) * (i - 1) / 100) +
-                      1):floor(length(daily_list) * i / 100)])
+        daily_list[(floor(length(daily_list) * (i - 1) / 10000) +
+                      1):floor(length(daily_list) * i / 10000)])
     })
 
     compressed <-
