@@ -64,7 +64,7 @@ strr_compress <- function(.data, cores = 1, chunks = 10000, quiet = FALSE) {
       compressed <-
         daily_list %>%
         pbapply::pblapply(strr_compress_helper_ML, cl = cores) %>%
-        do.call(rbind, .)
+        bind_rows()
 
     } else compressed <- strr_compress_helper_ML(.data)
 
@@ -184,7 +184,7 @@ strr_compress <- function(.data, cores = 1, chunks = 10000, quiet = FALSE) {
     compressed <-
       daily_list %>%
       pbapply::pblapply(strr_compress_helper, cl = cores) %>%
-      do.call(rbind, .)
+      bind_rows()
 
   } else compressed <- strr_compress_helper(.data)
 
