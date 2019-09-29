@@ -177,8 +177,8 @@ strr_compress <- function(.data, cores = 1, chunks = 10000, quiet = FALSE) {
     if (length(daily_list) > chunks) {
       daily_list <- purrr::map(1:chunks, function(i) {
         bind_rows(
-          daily_list[(floor(as.numeric(length(daily_list) * (i - 1) / chunks)) +
-                        1):floor(as.numeric(length(daily_list) * i / chunks))])
+          daily_list[(floor(as.numeric(length(daily_list)) * (i - 1) / chunks) +
+                        1):floor(as.numeric(length(daily_list)) * i / chunks)])
       })}
 
     compressed <-
