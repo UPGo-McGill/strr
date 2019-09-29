@@ -30,7 +30,7 @@
 #' @importFrom tibble as_tibble
 #' @export
 
-strr_compress <- function(.data, cores = 1, chunks = 10000, quiet = FALSE) {
+strr_compress <- function(.data, cores = 1, quiet = FALSE) {
 
   ## Error checking and initialization
 
@@ -55,11 +55,12 @@ strr_compress <- function(.data, cores = 1, chunks = 10000, quiet = FALSE) {
 
       daily_list <- split(.data, .data$host_ID)
 
-      daily_list <- purrr::map(1:100, function(i) {
-        bind_rows(
-          daily_list[(floor(length(daily_list) * (i - 1) / 100) +
-                        1):floor(length(daily_list) * i / 100)])
-      })
+      if (length(daily_list) > 10000) {
+        daily_list <- purrr::map(1:10000, function(i) {
+          bind_rows(
+            daily_list[(floor(length(daily_list) * (i - 1) / 10000) +
+                          1):floor(length(daily_list) * i / 10000)])
+          })}
 
       compressed <-
         daily_list %>%
@@ -174,11 +175,11 @@ strr_compress <- function(.data, cores = 1, chunks = 10000, quiet = FALSE) {
 
     daily_list <- split(.data, .data$property_ID)
 
-    if (length(daily_list) > chunks) {
-      daily_list <- purrr::map(1:chunks, function(i) {
+    if (length(daily_list) > 10000) {
+      daily_list <- purrr::map(1:10000, function(i) {
         bind_rows(
-          daily_list[(floor(as.numeric(length(daily_list)) * (i - 1) / chunks) +
-                        1):floor(as.numeric(length(daily_list)) * i / chunks)])
+          daily_list[(floor(as.numeric(length(daily_list)) * (i - 1) / 10000) +
+                        1):floor(as.numeric(length(daily_list)) * i / 10000)])
       })}
 
     compressed <-
