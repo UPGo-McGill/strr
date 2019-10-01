@@ -53,14 +53,15 @@ strr_compress <- function(.data, cores = 1, quiet = FALSE) {
 
     if (cores > 1) {
 
-      daily_list <- split(.data, .data$host_ID)
+      daily_list <- split(.data, .data$property_ID)
 
       if (length(daily_list) > 10000) {
         daily_list <- purrr::map(1:10000, function(i) {
           bind_rows(
-            daily_list[(floor(length(daily_list) * (i - 1) / 10000) +
-                          1):floor(length(daily_list) * i / 10000)])
-          })}
+            daily_list[(floor(as.numeric(length(daily_list)) *
+                                (i - 1) / 10000) +
+                          1):floor(as.numeric(length(daily_list)) * i / 10000)])
+        })}
 
       compressed <-
         daily_list %>%
