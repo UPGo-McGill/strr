@@ -35,6 +35,8 @@
 
 strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
+  time_1 <- Sys.time()
+
   ## Error checking and initialization
 
   .datatable.aware = TRUE
@@ -94,9 +96,11 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
     } else compressed <- strr_compress_helper_ML(.data, dates = date_flag)
 
+    total_time <- Sys.time() - time_1
+
     if (!quiet) {message("Compression complete (",
                          substr(Sys.time(), 12, 19), "). Total time: ",
-                         substr(total_time, 1, 4), " ",
+                         substr(total_time, 1, 5), " ",
                          attr(total_time, "units"), ".")}
 
     return(compressed)
@@ -241,9 +245,11 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
   } else compressed <- strr_compress_helper(.data, dates = date_flag)
 
+  total_time <- Sys.time() - time_1
+
   if (!quiet) {message("Compression complete (",
                        substr(Sys.time(), 12, 19), "). Total time: ",
-                       substr(total_time, 1, 4), " ",
+                       substr(total_time, 1, 5), " ",
                        attr(total_time, "units"), ".")}
 
   return(list(compressed, error, missing_rows))
