@@ -28,7 +28,8 @@
 #' the case where the input is an UPGo ML summary table, the output will be the
 #' compressed ML table, ready for upload to a remote database.
 #' @importFrom data.table setDT
-#' @importFrom dplyr %>% bind_rows filter mutate pull select
+#' @importFrom dplyr %>% bind_rows filter group_by group_split mutate pull
+#' @importFrom dplyr select
 #' @importFrom rlang .data
 #' @importFrom tibble as_tibble
 #' @export
@@ -74,7 +75,10 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
       if (!quiet) {message("Splitting table for multi-core processing (",
                            substr(Sys.time(), 12, 19), ").")}
 
-      daily_list <- split(.data, .data$host_ID)
+      daily_list <-
+        .data %>%
+        group_by(.data$host_ID) %>%
+        group_split()
 
       if (length(daily_list) > 10000 & chunks == TRUE) {
 
@@ -225,7 +229,10 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
     if (!quiet) {message("Splitting table for multi-core processing (",
                          substr(Sys.time(), 12, 19), ").")}
 
-    daily_list <- split(.data, .data$property_ID)
+    daily_list <-
+      .data %>%
+      group_by(.data$property_ID) %>%
+      group_split()
 
     if (length(daily_list) > 10000 & chunks == TRUE) {
 
