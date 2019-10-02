@@ -54,7 +54,7 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
     date_flag = FALSE
 
-   if (lubridate::month(min(.data$date)) == lubridate::month(max(.data$date))) {
+   if (lubridate::month(min(.data$date)) != lubridate::month(max(.data$date))) {
 
       if (!quiet) {message("Splitting table by year and month (",
                            substr(Sys.time(), 12, 19), ").")}
@@ -95,7 +95,9 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
     } else compressed <- strr_compress_helper_ML(.data, dates = date_flag)
 
     if (!quiet) {message("Compression complete (",
-                         substr(Sys.time(), 12, 19), ").")}
+                         substr(Sys.time(), 12, 19), "). Total time: ",
+                         substr(total_time, 1, 4), " ",
+                         attr(total_time, "units"), ".")}
 
     return(compressed)
   }
@@ -196,7 +198,7 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
   date_flag = FALSE
 
-  if (lubridate::month(min(.data$date)) == lubridate::month(max(.data$date))) {
+  if (lubridate::month(min(.data$date)) != lubridate::month(max(.data$date))) {
 
     if (!quiet) {message("Splitting table by year and month (",
                          substr(Sys.time(), 12, 19), ").")}
@@ -240,7 +242,9 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
   } else compressed <- strr_compress_helper(.data, dates = date_flag)
 
   if (!quiet) {message("Compression complete (",
-                       substr(Sys.time(), 12, 19), ").")}
+                       substr(Sys.time(), 12, 19), "). Total time: ",
+                       substr(total_time, 1, 4), " ",
+                       attr(total_time, "units"), ".")}
 
   return(list(compressed, error, missing_rows))
 }
