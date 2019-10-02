@@ -46,6 +46,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
   if (length(.data) == 4) {
 
+    if (!quiet) {message("ML table identified.")}
+
     .data <-
       .data %>%
       mutate(month = lubridate::month(.data$date),
@@ -53,9 +55,14 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
     if (cores > 1) {
 
+      if (!quiet) {message("Splitting table for multi-core processing.")}
+
       daily_list <- split(.data, .data$host_ID)
 
-      if (length(daily_list) > 10000) {
+      if (length(daily_list) > 10000 & chunks = TRUE) {
+
+        if (!quiet) {message("Reassembling table pieces for compression.")}
+
         daily_list <- purrr::map(1:10000, function(i) {
           bind_rows(
             daily_list[(floor(as.numeric(length(daily_list)) *
@@ -174,9 +181,14 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
   if (cores > 1) {
 
+    if (!quiet) {message("Splitting table for multi-core processing.")}
+
     daily_list <- split(.data, .data$property_ID)
 
     if (length(daily_list) > 10000 & chunks == TRUE) {
+
+      if (!quiet) {message("Reassembling table pieces for compression.")}
+
       daily_list <- purrr::map(1:10000, function(i) {
         bind_rows(
           daily_list[(floor(as.numeric(length(daily_list)) * (i - 1) / 10000) +
