@@ -46,7 +46,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
   if (length(.data) == 4) {
 
-    if (!quiet) {message("ML table identified.")}
+    if (!quiet) {message("ML table identified (",
+                         substr(Sys.time(), 12, 19), ").")}
 
     date_flag = FALSE
 
@@ -56,6 +57,10 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
                 max_date = max(date))
 
     if (lubridate::month(dates$min_date) != lubridate::month(dates$max_date)) {
+
+      if (!quiet) {message("Splitting table by year and month (",
+                           substr(Sys.time(), 12, 19), ").")}
+
       .data <-
         .data %>%
         mutate(month = lubridate::month(.data$date),
@@ -66,13 +71,15 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
     if (cores > 1) {
 
-      if (!quiet) {message("Splitting table for multi-core processing.")}
+      if (!quiet) {message("Splitting table for multi-core processing (",
+                           substr(Sys.time(), 12, 19), ").")}
 
       daily_list <- split(.data, .data$host_ID)
 
       if (length(daily_list) > 10000 & chunks == TRUE) {
 
-        if (!quiet) {message("Reassembling table pieces for compression.")}
+        if (!quiet) {message("Reassembling table pieces for compression (",
+                             substr(Sys.time(), 12, 19), ").")}
 
         daily_list <- purrr::map(1:10000, function(i) {
           bind_rows(
@@ -106,7 +113,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
   ## Find rows with readr errors and add to error file
 
-  if (!quiet) {message("Beginning error check.")}
+  if (!quiet) {message("Beginning error check (",
+                       substr(Sys.time(), 12, 19), ").")}
 
   error <-
     readr::problems(.data) %>%
@@ -123,7 +131,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
   if (length(error_vector) > 0) {.data <- .data[-error_vector,]}
 
-  if (!quiet) {message("Initial import errors identified.")}
+  if (!quiet) {message("Initial import errors identified (",
+                       substr(Sys.time(), 12, 19), ").")}
 
   ## Find rows with missing property_ID, date or status
 
@@ -138,7 +147,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
     filter(!is.na(.data$property_ID), !is.na(.data$date), !is.na(.data$status))
 
   if (!quiet) {
-    message("Rows with missing property_ID, date or status identified.")}
+    message("Rows with missing property_ID, date or status identified (",
+            substr(Sys.time(), 12, 19), ").")}
 
   ## Check status
 
@@ -151,7 +161,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
     .data %>%
     filter(.data$status %in% c("A", "U", "B", "R"))
 
-  if (!quiet) {message("Rows with invalid status identified.")}
+  if (!quiet) {message("Rows with invalid status identified (",
+                       substr(Sys.time(), 12, 19), ").")}
 
   ## Remove duplicate listing entries by price, but don't add to error file
 
@@ -159,7 +170,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
     .data %>%
     filter(!is.na(.data$price))
 
-  if (!quiet) {message("Duplicate rows removed.")}
+  if (!quiet) {message("Duplicate rows removed (",
+                       substr(Sys.time(), 12, 19), ").")}
 
   ## Find missing rows
 
@@ -177,29 +189,47 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
     mutate(dif = .data$full_count - .data$count) %>%
     filter(.data$dif != 0)
 
-  if (!quiet) {message("Missing rows identified.")}
+  if (!quiet) {message("Missing rows identified (",
+                       substr(Sys.time(), 12, 19), ").")}
 
-  ## Produce month and year columns to make unique entries
+  ## Produce month and year columns if data spans multiple months
 
-  .data <-
-    .data %>%
-    as_tibble() %>%
-    mutate(month = lubridate::month(.data$date),
-           year = lubridate::year(.data$date))
+  date_flag = FALSE
+
+  dates <-
+    ML %>%
+    summarize(min_date = min(date),
+              max_date = max(date))
+
+  if (lubridate::month(dates$min_date) != lubridate::month(dates$max_date)) {
+
+    if (!quiet) {message("Splitting table by year and month (",
+                         substr(Sys.time(), 12, 19), ").")}
+
+    .data <-
+      .data %>%
+      mutate(month = lubridate::month(.data$date),
+             year = lubridate::year(.data$date))
+
+    date_flag = TRUE
+  }
 
   ## Compress processed .data file
 
-  if (!quiet) {message("Error check complete. Beginning compression.")}
+  if (!quiet) {message("Error check complete. Beginning compression (",
+                       substr(Sys.time(), 12, 19), ").")}
 
   if (cores > 1) {
 
-    if (!quiet) {message("Splitting table for multi-core processing.")}
+    if (!quiet) {message("Splitting table for multi-core processing (",
+                         substr(Sys.time(), 12, 19), ").")}
 
     daily_list <- split(.data, .data$property_ID)
 
     if (length(daily_list) > 10000 & chunks == TRUE) {
 
-      if (!quiet) {message("Reassembling table pieces for compression.")}
+      if (!quiet) {message("Reassembling table pieces for compression (",
+                           substr(Sys.time(), 12, 19), ").")}
 
       daily_list <- purrr::map(1:10000, function(i) {
         bind_rows(
@@ -209,10 +239,10 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
     compressed <-
       daily_list %>%
-      pbapply::pblapply(strr_compress_helper, cl = cores) %>%
+      pbapply::pblapply(strr_compress_helper, dates = date_flag, cl = cores) %>%
       bind_rows()
 
-  } else compressed <- strr_compress_helper(.data)
+  } else compressed <- strr_compress_helper(.data, dates = date_flag)
 
   return(list(compressed, error, missing_rows))
 }
@@ -236,12 +266,22 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 #' @importFrom tibble tibble
 
 strr_compress_helper <- function(.data) {
-  .data <-
-    .data %>%
-    group_by(.data$property_ID, .data$status, .data$booked_date, .data$price,
-             .data$res_ID, .data$month, .data$year) %>%
-    summarize(dates = list(.data$date)) %>%
-    ungroup()
+  if (dates) {
+    .data <-
+      .data %>%
+      group_by(.data$property_ID, .data$status, .data$booked_date, .data$price,
+               .data$res_ID, .data$month, .data$year) %>%
+      summarize(dates = list(.data$date)) %>%
+      ungroup()
+
+  } else {
+    .data <-
+      .data %>%
+      group_by(.data$property_ID, .data$status, .data$booked_date, .data$price,
+               .data$res_ID) %>%
+      summarize(dates = list(.data$date)) %>%
+      ungroup()
+  }
 
   single_date <-
     .data %>%
@@ -322,7 +362,6 @@ strr_compress_helper_ML <- function(.data, dates) {
       summarize(dates = list(.data$date)) %>%
       ungroup()
   }
-
 
   single_date <-
     .data %>%
