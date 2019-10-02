@@ -4,7 +4,8 @@
 \alias{strr_expand}
 \title{Function to expand compressed STR tables}
 \usage{
-strr_expand(.data, start = NULL, end = NULL, cores = 1)
+strr_expand(.data, start = NULL, end = NULL, cores = 1,
+  quiet = FALSE)
 }
 \arguments{
 \item{.data}{A table in compressed UPGo DB format (e.g. created by running
@@ -21,9 +22,13 @@ latest date present in the data will be used.}
 
 \item{cores}{A positive integer scalar. How many processing cores should be
 used to perform the computationally intensive numeric integration step?}
+
+\item{quiet}{A logical scalar. Should the function execute quietly, or should
+it return status updates throughout the function (default)?}
 }
 \value{
-A table with one row per date and all other fields returned unaltered.
+A table with one row per date and all other fields returned
+unaltered.
 }
 \description{
 \code{strr_expand} takes an STR file compressed in the UPGo DB format and
