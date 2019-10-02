@@ -59,7 +59,7 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
       daily_list <- split(.data, .data$host_ID)
 
-      if (length(daily_list) > 10000 & chunks = TRUE) {
+      if (length(daily_list) > 10000 & chunks == TRUE) {
 
         if (!quiet) {message("Reassembling table pieces for compression.")}
 
