@@ -4,7 +4,7 @@
 \alias{strr_compress}
 \title{Function to compress daily STR tables into UPGo DB format}
 \usage{
-strr_compress(.data, cores = 1, quiet = FALSE)
+strr_compress(.data, cores = 1, chunks = TRUE, quiet = FALSE)
 }
 \arguments{
 \item{.data}{An unprocessed daily table in either the raw AirDNA format or
@@ -13,7 +13,11 @@ the UPGo ML summary table format.}
 \item{cores}{A positive integer scalar. How many processing cores should be
 used to perform the computationally intensive compression step?}
 
-\item{quiet}{A logical vector. Should the function execute quietly, or should
+\item{chunks}{A logical scalar. Should list elements in the table be
+reassembled before compression? A value of `TRUE` implies faster processing
+but higher memory usage.}
+
+\item{quiet}{A logical scalar. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}
 }
 \value{

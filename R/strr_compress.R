@@ -12,9 +12,12 @@
 #'
 #' @param .data An unprocessed daily table in either the raw AirDNA format or
 #' the UPGo ML summary table format.
+#' @param chunks A logical scalar. Should list elements in the table be
+#' reassembled before compression? A value of `TRUE` implies faster processing
+#' but higher memory usage.
 #' @param cores A positive integer scalar. How many processing cores should be
 #' used to perform the computationally intensive compression step?
-#' @param quiet A logical vector. Should the function execute quietly, or should
+#' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return The output will depend on the input. In the case where the input is
 #' a raw AirDNA daily table, the output will be a list with three elements: 1)
@@ -52,7 +55,7 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
     date_flag = FALSE
 
     dates <-
-      ML %>%
+      .data %>%
       summarize(min_date = min(date),
                 max_date = max(date))
 
@@ -197,7 +200,7 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
   date_flag = FALSE
 
   dates <-
-    ML %>%
+    .data %>%
     summarize(min_date = min(date),
               max_date = max(date))
 
@@ -257,6 +260,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 #'
 #' @param .data The processed daily table generated through the strr_compress
 #' function.
+#' @param dates A logical scalar. Were `year` and `month` fields created in the
+#' input table?
 #' @return The output will be a compressed daily table.
 #' @importFrom dplyr %>% arrange bind_rows filter group_by mutate select
 #' @importFrom dplyr summarize ungroup
@@ -265,7 +270,7 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 #' @importFrom tidyr unnest
 #' @importFrom tibble tibble
 
-strr_compress_helper <- function(.data) {
+strr_compress_helper <- function(.data, dates) {
   if (dates) {
     .data <-
       .data %>%
@@ -337,6 +342,8 @@ strr_compress_helper <- function(.data) {
 #'
 #' @param .data The processed ML table generated through the strr_compress
 #' function.
+#' @param dates A logical scalar. Were `year` and `month` fields created in the
+#' input table?
 #' @return The output will be a compressed ML table.
 #' @importFrom dplyr %>% arrange bind_rows filter group_by mutate select
 #' @importFrom dplyr summarize ungroup
