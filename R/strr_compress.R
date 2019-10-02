@@ -54,12 +54,7 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
     date_flag = FALSE
 
-    dates <-
-      .data %>%
-      summarize(min_date = min(date),
-                max_date = max(date))
-
-    if (lubridate::month(dates$min_date) != lubridate::month(dates$max_date)) {
+   if (lubridate::month(min(.data$date)) == lubridate::month(max(.data$date))) {
 
       if (!quiet) {message("Splitting table by year and month (",
                            substr(Sys.time(), 12, 19), ").")}
@@ -199,12 +194,7 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
   date_flag = FALSE
 
-  dates <-
-    .data %>%
-    summarize(min_date = min(date),
-              max_date = max(date))
-
-  if (lubridate::month(dates$min_date) != lubridate::month(dates$max_date)) {
+  if (lubridate::month(min(.data$date)) == lubridate::month(max(.data$date))) {
 
     if (!quiet) {message("Splitting table by year and month (",
                          substr(Sys.time(), 12, 19), ").")}
