@@ -48,10 +48,21 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
     if (!quiet) {message("ML table identified.")}
 
-    .data <-
-      .data %>%
-      mutate(month = lubridate::month(.data$date),
-             year = lubridate::year(.data$date))
+    date_flag = FALSE
+
+    dates <-
+      ML %>%
+      summarize(min_date = min(date),
+                max_date = max(date))
+
+    if (lubridate::month(dates$min_date) != lubridate::month(dates$max_date)) {
+      .data <-
+        .data %>%
+        mutate(month = lubridate::month(.data$date),
+               year = lubridate::year(.data$date))
+
+      date_flag = TRUE
+    }
 
     if (cores > 1) {
 
@@ -72,10 +83,11 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
       compressed <-
         daily_list %>%
-        pbapply::pblapply(strr_compress_helper_ML, cl = cores) %>%
+        pbapply::pblapply(strr_compress_helper_ML, dates = date_flag,
+                          cl = cores) %>%
         bind_rows()
 
-    } else compressed <- strr_compress_helper_ML(.data)
+    } else compressed <- strr_compress_helper_ML(.data, dates = date_flag)
 
 
      return(compressed)
@@ -293,13 +305,24 @@ strr_compress_helper <- function(.data) {
 #' @importFrom tidyr unnest
 #' @importFrom tibble tibble
 
-strr_compress_helper_ML <- function(.data) {
-  .data <-
-    .data %>%
-    group_by(.data$host_ID, .data$listing_type, .data$count, .data$month,
-             .data$year) %>%
-    summarize(dates = list(.data$date)) %>%
-    ungroup()
+strr_compress_helper_ML <- function(.data, dates) {
+
+  if (dates) {
+    .data <-
+      .data %>%
+      group_by(.data$host_ID, .data$listing_type, .data$count, .data$month,
+               .data$year) %>%
+      summarize(dates = list(.data$date)) %>%
+      ungroup()
+
+  } else {
+    .data <-
+      .data %>%
+      group_by(.data$host_ID, .data$listing_type, .data$count) %>%
+      summarize(dates = list(.data$date)) %>%
+      ungroup()
+  }
+
 
   single_date <-
     .data %>%
