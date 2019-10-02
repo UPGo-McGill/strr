@@ -94,8 +94,10 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
     } else compressed <- strr_compress_helper_ML(.data, dates = date_flag)
 
+    if (!quiet) {message("Compression complete (",
+                         substr(Sys.time(), 12, 19), ").")}
 
-     return(compressed)
+    return(compressed)
   }
 
 
@@ -236,6 +238,9 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
       bind_rows()
 
   } else compressed <- strr_compress_helper(.data, dates = date_flag)
+
+  if (!quiet) {message("Compression complete (",
+                       substr(Sys.time(), 12, 19), ").")}
 
   return(list(compressed, error, missing_rows))
 }
