@@ -4,14 +4,11 @@
 \alias{strr_compress_helper}
 \title{Helper function to compress daily file}
 \usage{
-strr_compress_helper(.data, dates)
+strr_compress_helper(.data)
 }
 \arguments{
 \item{.data}{The processed daily table generated through the strr_compress
 function.}
-
-\item{dates}{A logical scalar. Were `year` and `month` fields created in the
-input table?}
 }
 \value{
 The output will be a compressed daily table.

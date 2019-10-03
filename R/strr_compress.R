@@ -94,11 +94,10 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
       compressed <-
         daily_list %>%
-        pbapply::pblapply(strr_compress_helper_ML, dates = date_flag,
-                          cl = cores) %>%
+        pbapply::pblapply(strr_compress_helper_ML, cl = cores) %>%
         bind_rows()
 
-    } else compressed <- strr_compress_helper_ML(.data, dates = date_flag)
+    } else compressed <- strr_compress_helper_ML(.data)
 
     total_time <- Sys.time() - time_1
 
@@ -249,10 +248,10 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
     compressed <-
       daily_list %>%
-      pbapply::pblapply(strr_compress_helper, dates = date_flag, cl = cores) %>%
+      pbapply::pblapply(strr_compress_helper, cl = cores) %>%
       bind_rows()
 
-  } else compressed <- strr_compress_helper(.data, dates = date_flag)
+  } else compressed <- strr_compress_helper(.data)
 
   total_time <- Sys.time() - time_1
 
@@ -276,33 +275,22 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 #'
 #' @param .data The processed daily table generated through the strr_compress
 #' function.
-#' @param dates A logical scalar. Were `year` and `month` fields created in the
-#' input table?
 #' @return The output will be a compressed daily table.
-#' @importFrom dplyr %>% arrange bind_rows filter group_by mutate select
-#' @importFrom dplyr summarize ungroup
+#' @importFrom dplyr %>% arrange bind_rows filter group_by group_by_at mutate
+#' @importFrom dplyr select summarize ungroup vars
 #' @importFrom purrr map map_dbl
 #' @importFrom rlang .data
 #' @importFrom tidyr unnest
 #' @importFrom tibble tibble
 
-strr_compress_helper <- function(.data, dates) {
-  if (dates) {
-    .data <-
-      .data %>%
-      group_by(.data$property_ID, .data$status, .data$booked_date, .data$price,
-               .data$res_ID, .data$month, .data$year) %>%
-      summarize(dates = list(.data$date)) %>%
-      ungroup()
+strr_compress_helper <- function(.data) {
 
-  } else {
-    .data <-
+  # Group .data by all columns except date
+  .data <-
       .data %>%
-      group_by(.data$property_ID, .data$status, .data$booked_date, .data$price,
-               .data$res_ID) %>%
+      group_by_at(vars(-.data$date)) %>%
       summarize(dates = list(.data$date)) %>%
       ungroup()
-  }
 
   single_date <-
     .data %>%
@@ -358,33 +346,22 @@ strr_compress_helper <- function(.data, dates) {
 #'
 #' @param .data The processed ML table generated through the strr_compress
 #' function.
-#' @param dates A logical scalar. Were `year` and `month` fields created in the
-#' input table?
 #' @return The output will be a compressed ML table.
-#' @importFrom dplyr %>% arrange bind_rows filter group_by mutate select
-#' @importFrom dplyr summarize ungroup
+#' @importFrom dplyr %>% arrange bind_rows filter group_by group_by_at mutate
+#' @importFrom dplyr  select summarize ungroup vars
 #' @importFrom purrr map map_dbl
 #' @importFrom rlang .data
 #' @importFrom tidyr unnest
 #' @importFrom tibble tibble
 
-strr_compress_helper_ML <- function(.data, dates) {
+strr_compress_helper_ML <- function(.data) {
 
-  if (dates) {
-    .data <-
-      .data %>%
-      group_by(.data$host_ID, .data$listing_type, .data$count, .data$month,
-               .data$year) %>%
-      summarize(dates = list(.data$date)) %>%
-      ungroup()
-
-  } else {
-    .data <-
-      .data %>%
-      group_by(.data$host_ID, .data$listing_type, .data$count) %>%
-      summarize(dates = list(.data$date)) %>%
-      ungroup()
-  }
+  # Group .data by all columns except date
+  .data <-
+    .data %>%
+    group_by_at(vars(-.data$date)) %>%
+    summarize(dates = list(.data$date)) %>%
+    ungroup()
 
   single_date <-
     .data %>%
@@ -394,7 +371,7 @@ strr_compress_helper_ML <- function(.data, dates) {
            end_date = as.Date(map_dbl(.data$dates, ~{.x}),
                               origin = "1970-01-01")) %>%
     select(.data$host_ID, .data$start_date, .data$end_date, .data$listing_type,
-           .data$count)
+           .data$housing, .data$date_status, .data$count)
 
   one_length <-
     .data %>%
@@ -405,7 +382,7 @@ strr_compress_helper_ML <- function(.data, dates) {
            end_date = as.Date(map_dbl(.data$dates, max),
                               origin = "1970-01-01")) %>%
     select(.data$host_ID, .data$start_date, .data$end_date, .data$listing_type,
-           .data$count)
+           .data$housing, .data$date_status, .data$count)
 
   if ({.data %>%
       filter(map(.data$dates, length) != 1,
@@ -422,7 +399,7 @@ strr_compress_helper_ML <- function(.data, dates) {
       })) %>%
       unnest(.data$date_range) %>%
       select(.data$host_ID, .data$start_date, .data$end_date, .data$listing_type,
-             .data$count)
+             .data$housing, .data$date_status, .data$count)
 
   } else remainder <- single_date[0,]
 
