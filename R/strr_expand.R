@@ -18,9 +18,11 @@
 #'   latest date present in the data will be used.
 #' @param cores A positive integer scalar. How many processing cores should be
 #'   used to perform the computationally intensive numeric integration step?
-#' @param n_chunks A positive integer scalar. How many elements should the
-#' table be split into for multicore processing? If cores == 1, this argument
-#' is ignored.
+#' @param chunk_size A positive integer scalar. How large should each element be
+#' when the table is split for multicore processing? Larger elements should lead
+#' to faster processing times but higher memory usage, so low values are
+#' recommended for RAM-constrained computers. If cores == 1, this argument is
+#' ignored.
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return A table with one row per date and all other fields returned
@@ -32,7 +34,7 @@
 #' @export
 
 strr_expand <- function(.data, start = NULL, end = NULL, cores = 1,
-                        n_chunks = 10000, quiet = FALSE) {
+                        chunk_size = 1000, quiet = FALSE) {
 
   time_1 <- Sys.time()
 
@@ -90,7 +92,7 @@ strr_expand <- function(.data, start = NULL, end = NULL, cores = 1,
                          substr(Sys.time(), 12, 19), ")")}
 
     daily_list <-
-      split(.data, ceiling(1:nrow(.data)/n_chunks))
+      split(.data, 1:chunk_size)
 
     if (!quiet) {message("Beginning expansion. (",
                          substr(Sys.time(), 12, 19), ")")}

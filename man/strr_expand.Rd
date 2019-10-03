@@ -5,7 +5,7 @@
 \title{Function to expand compressed STR tables}
 \usage{
 strr_expand(.data, start = NULL, end = NULL, cores = 1,
-  n_chunks = 10000, quiet = FALSE)
+  chunk_size = 1000, quiet = FALSE)
 }
 \arguments{
 \item{.data}{A table in compressed UPGo DB format (e.g. created by running
@@ -23,9 +23,11 @@ latest date present in the data will be used.}
 \item{cores}{A positive integer scalar. How many processing cores should be
 used to perform the computationally intensive numeric integration step?}
 
-\item{n_chunks}{A positive integer scalar. How many elements should the
-table be split into for multicore processing? If cores == 1, this argument
-is ignored.}
+\item{chunk_size}{A positive integer scalar. How large should each element be
+when the table is split for multicore processing? Larger elements should lead
+to faster processing times but higher memory usage, so low values are
+recommended for RAM-constrained computers. If cores == 1, this argument is
+ignored.}
 
 \item{quiet}{A logical scalar. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}
