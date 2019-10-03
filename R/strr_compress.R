@@ -50,17 +50,17 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
   ## Perform simple compression if the input is an ML table
 
-  if (length(.data) == 4) {
+  if (names(.data)[1] == "host_ID") {
 
-    if (!quiet) {message("ML table identified (",
-                         substr(Sys.time(), 12, 19), ").")}
+    if (!quiet) {message("ML table identified. (",
+                         substr(Sys.time(), 12, 19), ")")}
 
     date_flag = FALSE
 
    if (lubridate::month(min(.data$date)) != lubridate::month(max(.data$date))) {
 
-      if (!quiet) {message("Splitting table by year and month (",
-                           substr(Sys.time(), 12, 19), ").")}
+      if (!quiet) {message("Splitting table by year and month. (",
+                           substr(Sys.time(), 12, 19), ")")}
 
       .data <-
         .data %>%
@@ -72,8 +72,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
     if (cores > 1) {
 
-      if (!quiet) {message("Splitting table for multi-core processing (",
-                           substr(Sys.time(), 12, 19), ").")}
+      if (!quiet) {message("Splitting table for multi-core processing. (",
+                           substr(Sys.time(), 12, 19), ")")}
 
       daily_list <-
         .data %>%
@@ -82,8 +82,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
       if (length(daily_list) > 10000 & chunks == TRUE) {
 
-        if (!quiet) {message("Reassembling table pieces for compression (",
-                             substr(Sys.time(), 12, 19), ").")}
+        if (!quiet) {message("Reassembling table pieces for compression. (",
+                             substr(Sys.time(), 12, 19), ")")}
 
         daily_list <- purrr::map(1:10000, function(i) {
           bind_rows(
@@ -102,8 +102,10 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
     total_time <- Sys.time() - time_1
 
-    if (!quiet) {message("Compression complete (",
-                         substr(Sys.time(), 12, 19), "). Total time: ",
+    if (!quiet) {message("Compression complete. (",
+                         substr(Sys.time(), 12, 19), ")")}
+
+    if (!quiet) {message("Total time: ",
                          substr(total_time, 1, 5), " ",
                          attr(total_time, "units"), ".")}
 
@@ -123,8 +125,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
   ## Find rows with readr errors and add to error file
 
-  if (!quiet) {message("Beginning error check (",
-                       substr(Sys.time(), 12, 19), ").")}
+  if (!quiet) {message("Beginning error check. (",
+                       substr(Sys.time(), 12, 19), ")")}
 
   error <-
     readr::problems(.data) %>%
@@ -157,8 +159,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
     filter(!is.na(.data$property_ID), !is.na(.data$date), !is.na(.data$status))
 
   if (!quiet) {
-    message("Rows with missing property_ID, date or status identified (",
-            substr(Sys.time(), 12, 19), ").")}
+    message("Rows with missing property_ID, date or status identified. (",
+            substr(Sys.time(), 12, 19), ")")}
 
   ## Check status
 
@@ -171,8 +173,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
     .data %>%
     filter(.data$status %in% c("A", "U", "B", "R"))
 
-  if (!quiet) {message("Rows with invalid status identified (",
-                       substr(Sys.time(), 12, 19), ").")}
+  if (!quiet) {message("Rows with invalid status identified. (",
+                       substr(Sys.time(), 12, 19), ")")}
 
   ## Remove duplicate listing entries by price, but don't add to error file
 
@@ -180,8 +182,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
     .data %>%
     filter(!is.na(.data$price))
 
-  if (!quiet) {message("Duplicate rows removed (",
-                       substr(Sys.time(), 12, 19), ").")}
+  if (!quiet) {message("Duplicate rows removed. (",
+                       substr(Sys.time(), 12, 19), ")")}
 
   ## Find missing rows
 
@@ -199,8 +201,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
     mutate(dif = .data$full_count - .data$count) %>%
     filter(.data$dif != 0)
 
-  if (!quiet) {message("Missing rows identified (",
-                       substr(Sys.time(), 12, 19), ").")}
+  if (!quiet) {message("Missing rows identified. (",
+                       substr(Sys.time(), 12, 19), ")")}
 
   ## Produce month and year columns if data spans multiple months
 
@@ -208,8 +210,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
   if (lubridate::month(min(.data$date)) != lubridate::month(max(.data$date))) {
 
-    if (!quiet) {message("Splitting table by year and month (",
-                         substr(Sys.time(), 12, 19), ").")}
+    if (!quiet) {message("Splitting table by year and month. (",
+                         substr(Sys.time(), 12, 19), ")")}
 
     .data <-
       .data %>%
@@ -221,13 +223,13 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
   ## Compress processed .data file
 
-  if (!quiet) {message("Error check complete. Beginning compression (",
-                       substr(Sys.time(), 12, 19), ").")}
+  if (!quiet) {message("Error check complete. Beginning compression. (",
+                       substr(Sys.time(), 12, 19), ")")}
 
   if (cores > 1) {
 
-    if (!quiet) {message("Splitting table for multi-core processing (",
-                         substr(Sys.time(), 12, 19), ").")}
+    if (!quiet) {message("Splitting table for multi-core processing. (",
+                         substr(Sys.time(), 12, 19), ")")}
 
     daily_list <-
       .data %>%
@@ -236,8 +238,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
     if (length(daily_list) > 10000 & chunks == TRUE) {
 
-      if (!quiet) {message("Reassembling table pieces for compression (",
-                           substr(Sys.time(), 12, 19), ").")}
+      if (!quiet) {message("Reassembling table pieces for compression. (",
+                           substr(Sys.time(), 12, 19), ")")}
 
       daily_list <- purrr::map(1:10000, function(i) {
         bind_rows(
@@ -254,8 +256,10 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
   total_time <- Sys.time() - time_1
 
-  if (!quiet) {message("Compression complete (",
-                       substr(Sys.time(), 12, 19), "). Total time: ",
+  if (!quiet) {message("Compression complete. (",
+                       substr(Sys.time(), 12, 19), ")")}
+
+  if (!quiet) {message("Total time: ",
                        substr(total_time, 1, 5), " ",
                        attr(total_time, "units"), ".")}
 
