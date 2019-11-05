@@ -72,7 +72,7 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
     if (cores > 1) {
 
-      if (!quiet) {message("Splitting table for multi-core processing. (",
+      if (!quiet) {message("Splitting table for multicore processing. (",
                            substr(Sys.time(), 12, 19), ")")}
 
       daily_list <-
@@ -227,7 +227,7 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
   if (cores > 1) {
 
-    if (!quiet) {message("Splitting table for multi-core processing. (",
+    if (!quiet) {message("Splitting table for multicore processing. (",
                          substr(Sys.time(), 12, 19), ")")}
 
     daily_list <-

@@ -86,6 +86,8 @@ strr_ghost <- function(
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
+  time_1 <- Sys.time()
+
   ## Cores, distance, min_listings
 
   # Check that cores is an integer > 0
@@ -165,7 +167,8 @@ strr_ghost <- function(
 
   ### POINTS SETUP #############################################################
 
-  if (!quiet) message("Filtering listings to ghost hostel candidates.")
+  if (!quiet) message("Filtering listings to ghost hostel candidates. (",
+                      substr(Sys.time(), 12, 19), ")")
 
   # Remove invalid listings
   points <-
@@ -200,7 +203,8 @@ strr_ghost <- function(
   # Identify possible clusters by date if multi_date == TRUE
   if (multi_date) {
 
-    if (!quiet) message("Identifying possible ghost hostel clusters by date.")
+    if (!quiet) message("Identifying possible ghost hostel clusters by date. (",
+                        substr(Sys.time(), 12, 19), ")")
 
     points <-
       points %>%
@@ -229,7 +233,8 @@ strr_ghost <- function(
 
     # Create a nested tibble for each possible cluster
 
-    if (!quiet) message("Preparing possible clusters for analysis.")
+    if (!quiet) message("Preparing possible clusters for analysis. (",
+                        substr(Sys.time(), 12, 19), ")")
 
     points <-
       points %>%
@@ -251,13 +256,15 @@ strr_ghost <- function(
   # Multi-threaded version
   if (cores >= 2) {
 
-    if (!quiet) message("Splitting clusters for multicore processing.")
+    if (!quiet) message("Splitting clusters for multicore processing. (",
+                        substr(Sys.time(), 12, 19), ")")
 
     clusters <- pbapply::splitpb(nrow(points), cores, nout = 100)
     points_list <- lapply(clusters, function(x) points[x,])
     cl <- parallel::makeForkCluster(cores)
 
-    if (!quiet) message("Identifying ghost hostels.")
+    if (!quiet) message("Identifying ghost hostels. (",
+                        substr(Sys.time(), 12, 19), ")")
 
     points <-
       points_list %>%
@@ -273,14 +280,17 @@ strr_ghost <- function(
   } else {
     # Single-threaded version
 
-    if (!quiet) message("Splitting clusters for ghost hostel identification.")
+    if (!quiet) message("Splitting clusters for ghost hostel identification. (",
+                        substr(Sys.time(), 12, 19), ")")
     points <- ghost_cluster(points, distance, min_listings)
 
-    if (!quiet) message("Identifying ghost hostels.")
+    if (!quiet) message("Identifying ghost hostels. (",
+                        substr(Sys.time(), 12, 19), ")")
     points <- ghost_intersect(points, {{ property_ID }}, distance,
                               min_listings)
 
-    if (!quiet) message("Rerunning analysis on leftover points.")
+    if (!quiet) message("Rerunning analysis on leftover points. (",
+                        substr(Sys.time(), 12, 19), ")")
     points <- ghost_intersect_leftovers(points, {{ property_ID }},
                                         {{ host_ID }}, distance, min_listings)
   }
@@ -292,7 +302,8 @@ strr_ghost <- function(
 
   ### GHOST TABLE CREATION #####################################################
 
-  if (!quiet) message("Combining ghost hostels into output table.")
+  if (!quiet) message("Combining ghost hostels into output table. (",
+                      substr(Sys.time(), 12, 19), ")")
 
   points <-
     points %>%
@@ -332,7 +343,8 @@ strr_ghost <- function(
   # Calculate dates if multi_date == TRUE
   if (multi_date) {
 
-    if (!quiet) message("Identifying active date ranges for ghost hostels.")
+    if (!quiet) message("Identifying active date ranges for ghost hostels. (",
+                        substr(Sys.time(), 12, 19), ")")
 
     # Calculate date ranges
     points <-
@@ -394,7 +406,8 @@ strr_ghost <- function(
 
   if (multi_date) {
 
-    if (!quiet) message("Producing final output table.")
+    if (!quiet) message("Producing final output table. (",
+                        substr(Sys.time(), 12, 19), ")")
 
     points <-
       points[c("ghost_ID", "start", "end")] %>%
@@ -419,7 +432,16 @@ strr_ghost <- function(
 
   }
 
-  points
+  total_time <- Sys.time() - time_1
+
+  if (!quiet) {message("Analysis complete. (",
+                       substr(Sys.time(), 12, 19), ")")}
+
+  if (!quiet) {message("Total time: ",
+                       substr(total_time, 1, 5), " ",
+                       attr(total_time, "units"), ".")}
+
+  return(points)
 }
 
 
