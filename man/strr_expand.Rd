@@ -4,8 +4,14 @@
 \alias{strr_expand}
 \title{Function to expand compressed STR tables}
 \usage{
-strr_expand(.data, start = NULL, end = NULL, cores = 1,
-  chunk_size = 1000, quiet = FALSE)
+strr_expand(
+  .data,
+  start = NULL,
+  end = NULL,
+  cores = 1,
+  chunk_size = 1000,
+  quiet = FALSE
+)
 }
 \arguments{
 \item{.data}{A table in compressed UPGo DB format (e.g. created by running

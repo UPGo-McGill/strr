@@ -33,4 +33,4 @@ Suggests:
     parallel (>= 3.5.2),
     pbapply (>= 1.4),
     testthat (>= 2.1.0)
-RoxygenNote: 6.1.1
+RoxygenNote: 7.0.0

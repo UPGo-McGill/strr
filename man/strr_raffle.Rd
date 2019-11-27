@@ -4,8 +4,15 @@
 \alias{strr_raffle}
 \title{Raffle to assign STR listings to administrative units for spatial analysis}
 \usage{
-strr_raffle(points, polys, poly_ID, units, distance = 200,
-  diagnostic = FALSE, cores = 1)
+strr_raffle(
+  points,
+  polys,
+  poly_ID,
+  units,
+  distance = 200,
+  diagnostic = FALSE,
+  cores = 1
+)
 }
 \arguments{
 \item{points}{An sf or sp point-geometry object, in a projected coordinate
