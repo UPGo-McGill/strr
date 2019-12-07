@@ -4,7 +4,7 @@
 \alias{ghost_empty}
 \title{Helper function to output an empty ghost hostel table}
 \usage{
-ghost_empty(points = points, crs_points = crs_points)
+ghost_empty(points, crs_points)
 }
 \arguments{
 \item{points}{An sf data frame of STR listings nested by cluster.}

@@ -19,7 +19,8 @@
 #'   object which uniquely identifies STR hosts.
 #' @param multi_date A logical scalar. Should the analysis be run for separate
 #'   dates (controlled by the `created`, `scraped`, `start_date` and `end_date`
-#'   arguments), or only run a single time, treating all listings as active?
+#'   arguments), or only run a single time, treating all listings as
+#'   simultaneously active?
 #' @param created The name of a date variable in the points object which gives
 #'   the creation date for each listing. This argument is ignored if
 #'   `multi_date` is FALSE.
@@ -39,15 +40,16 @@
 #'   be considered a ghost hostel.
 #' @param listing_type The name of a character variable in the points
 #'   object which identifies private-room listings. Set this argument to FALSE
-#'   to use all listings in the `points` table. (FALSE NOT CURRENTLY WORKING)
+#'   to use all listings in the `points` table.
 #' @param private_room A character string which identifies the value of the
 #'   `listing_type` variable to be used to find ghost hostels. This field is
 #'   ignored if `listing_type` is FALSE.
-#' @param EH_check A character string which identifies the value of the
-#'   `listing_type` variable to be used to check ghost hostels against possible
-#'   duplicate entire-home listings operated by the same host. If NULL
-#'   (default), the check will not be performed. This field is ignored if
-#'   `listing_type` is FALSE.
+#' @param EH_check A logical scalar. Should ghost hostels be checked against
+#'   possible duplicate entire-home listings operated by the same host? This
+#'   field is ignored if `listing_type` is FALSE.
+#' @param entire_home A character string which identifies the value of the
+#'   `listing_type` variable to be used to find possible duplicate entire-home
+#'   listings. This field is ignored if `listing_type` or `EH_check` are FALSE.
 #' @param cores A positive integer scalar. How many processing cores should be
 #'   used to perform the computationally intensive intersection steps? The
 #'   implementation of multicore processing does not support Windows, so this
@@ -80,7 +82,8 @@ strr_ghost <- function(
   points, property_ID = property_ID, host_ID = host_ID, multi_date = TRUE,
   created = created, scraped = scraped, start_date = NULL, end_date = NULL,
   distance = 200, min_listings = 3, listing_type = listing_type,
-  private_room = "Private room", EH_check = NULL, cores = 1, quiet = FALSE) {
+  private_room = "Private room", EH_check = FALSE,
+  entire_home = "Entire home/apt", cores = 1, quiet = FALSE) {
 
 
 
@@ -106,6 +109,74 @@ strr_ghost <- function(
   if (min_listings <= 0) {
     stop("The argument `min_listings` must be a positive integer.")
   }
+
+
+  ## Points table
+
+  # Convert points from sp
+  if (is(points, "Spatial")) {
+    points <- st_as_sf(points)
+  }
+
+  # Check that points is sf
+  if (!is(points, "sf")) {
+    stop("The object `points` must be of class sf or sp.")
+  }
+
+  # Store CRS for later
+  crs_points <- st_crs(points)
+
+
+  ## Check that points fields exist
+
+  tryCatch(
+    pull(points, {{ property_ID }}),
+    error = function(e) {
+      stop("The value of `property_ID` is not a valid field in the input table."
+           )})
+
+  tryCatch(
+    pull(points, {{ host_ID }}),
+    error = function(e) {
+      stop("The value of `host_ID` is not a valid field in the input table."
+           )})
+
+  tryCatch(
+    pull(points, {{ created }}),
+    error = function(e) {
+      stop("The value of `created` is not a valid field in the input table."
+           )})
+
+  tryCatch(
+    pull(points, {{ scraped }}),
+    error = function(e) {
+      stop("The value of `scraped` is not a valid field in the input table."
+           )})
+
+
+  ## Set lt_flag and check validity of listing_type
+
+  lt_flag <-
+    tryCatch(
+      {
+        # If listing_type is a field in points, set lt_flag = TRUE
+        pull(points, {{ listing_type }})
+        TRUE
+        },
+      error = function(e) {
+        tryCatch(
+          {
+            # If listing_type == FALSE, set lt_flag = FALSE
+            if (!listing_type) { FALSE
+            } else stop("`listing_type` must be a valid field name or FALSE.")
+            },
+          error = function(e2) {
+            # Otherwise, fail with an informative error
+            stop("`listing_type` must be a valid field name or FALSE.")
+            }
+          )
+        }
+      )
 
 
   ## Process dates if multi_date is TRUE
@@ -145,25 +216,6 @@ strr_ghost <- function(
       })}
   }
 
-  ## Points table
-
-  # Convert points from sp
-  if (is(points, "Spatial")) {
-    points <- st_as_sf(points)
-  }
-
-  # Check that points is sf
-  if (!is(points, "sf")) {
-    stop("The object `points` must be of class sf or sp.")
-  }
-
-  # Store CRS for later
-  crs_points <- st_crs(points)
-
-  # Convert points to tibble
-  points <- st_as_sf(as_tibble(points))
-
-
 
   ### POINTS SETUP #############################################################
 
@@ -176,20 +228,19 @@ strr_ghost <- function(
     filter(!is.na({{ host_ID }}))
 
   # Filter to private rooms if listing_type != FALSE
-  # THIS CHECK ISN'T CURRENTLY WORKING TKTK
-  # if (!is.null(listing_type)) {
+  if (lt_flag) {
 
-    # Save entire-home listings for later if EH_check != NULL
-    if (!missing(EH_check)) {
-      EH_points <- filter(points, {{ listing_type }} == EH_check)
+    # Save entire-home listings for later if EH_check == TRUE
+    if (EH_check) {
+      EH_points <- filter(points, {{ listing_type }} == entire_home)
     }
 
     points <-
       points %>%
       filter({{ listing_type }} == private_room)
-  # }
+  }
 
-  # Filter points to clusters >= min_listings, and nest by Host_ID
+  # Filter points to clusters >= min_listings, and nest by host_ID
   points <-
     points %>%
     group_by({{ host_ID }}) %>%
@@ -198,7 +249,7 @@ strr_ghost <- function(
     ungroup()
 
   # Error handling for case where no clusters are identified
-  if (nrow(points) == 0) return(ghost_empty())
+  if (nrow(points) == 0) return(ghost_empty(points, crs_points))
 
   # Identify possible clusters by date if multi_date == TRUE
   if (multi_date) {
@@ -229,7 +280,7 @@ strr_ghost <- function(
       )
 
     # Error handling for case where no clusters are identified
-    if (nrow(points) == 0) return(ghost_empty())
+    if (nrow(points) == 0) return(ghost_empty(points, crs_points))
 
     # Create a nested tibble for each possible cluster
 
@@ -296,7 +347,7 @@ strr_ghost <- function(
   }
 
   # Error handling for case where no clusters are identified
-  if (nrow(points) == 0) return(ghost_empty())
+  if (nrow(points) == 0) return(ghost_empty(points, crs_points))
 
 
 
@@ -666,7 +717,7 @@ ghost_stepwise_intersect <- function(buffers, min_listings) {
   combinations <- ghost_combine(buffers, predicates, n)
 
   # Ensure valid combination list
-  while (ncol(combinations) == 0 & n >= min_listings) {
+  while (ncol(combinations) == 0 && n >= min_listings) {
     n <- n - 1
     combinations <- ghost_combine(buffers, predicates, n)
   }
@@ -896,7 +947,7 @@ ghost_intersect_leftovers <- function(points, property_ID, host_ID, distance,
 #' @importFrom sf st_as_sf st_set_crs
 #' @importFrom rlang .data
 
-ghost_empty <- function(points = points, crs_points = crs_points) {
+ghost_empty <- function(points, crs_points) {
   points %>%
     mutate(ghost_ID = integer(0),
            date = as.Date(x = integer(0), origin = "1970-01-01")) %>%

@@ -4,12 +4,24 @@
 \alias{strr_ghost}
 \title{Function to identify STR ghost hostels}
 \usage{
-strr_ghost(points, property_ID = property_ID, host_ID = host_ID,
-  multi_date = TRUE, created = created, scraped = scraped,
-  start_date = NULL, end_date = NULL, distance = 200,
-  min_listings = 3, listing_type = listing_type,
-  private_room = "Private room", EH_check = NULL, cores = 1,
-  quiet = FALSE)
+strr_ghost(
+  points,
+  property_ID = property_ID,
+  host_ID = host_ID,
+  multi_date = TRUE,
+  created = created,
+  scraped = scraped,
+  start_date = NULL,
+  end_date = NULL,
+  distance = 200,
+  min_listings = 3,
+  listing_type = listing_type,
+  private_room = "Private room",
+  EH_check = FALSE,
+  entire_home = "Entire home/apt",
+  cores = 1,
+  quiet = FALSE
+)
 }
 \arguments{
 \item{points}{A data frame of STR listings with sf or sp point geometries in
@@ -23,7 +35,8 @@ object which uniquely identifies STR hosts.}
 
 \item{multi_date}{A logical scalar. Should the analysis be run for separate
 dates (controlled by the `created`, `scraped`, `start_date` and `end_date`
-arguments), or only run a single time, treating all listings as active?}
+arguments), or only run a single time, treating all listings as
+simultaneously active?}
 
 \item{created}{The name of a date variable in the points object which gives
 the creation date for each listing. This argument is ignored if
@@ -50,17 +63,19 @@ be considered a ghost hostel.}
 
 \item{listing_type}{The name of a character variable in the points
 object which identifies private-room listings. Set this argument to FALSE
-to use all listings in the `points` table. (FALSE NOT CURRENTLY WORKING)}
+to use all listings in the `points` table.}
 
 \item{private_room}{A character string which identifies the value of the
 `listing_type` variable to be used to find ghost hostels. This field is
 ignored if `listing_type` is FALSE.}
 
-\item{EH_check}{A character string which identifies the value of the
-`listing_type` variable to be used to check ghost hostels against possible
-duplicate entire-home listings operated by the same host. If NULL
-(default), the check will not be performed. This field is ignored if
-`listing_type` is FALSE.}
+\item{EH_check}{A logical scalar. Should ghost hostels be checked against
+possible duplicate entire-home listings operated by the same host? This
+field is ignored if `listing_type` is FALSE.}
+
+\item{entire_home}{A character string which identifies the value of the
+`listing_type` variable to be used to find possible duplicate entire-home
+listings. This field is ignored if `listing_type` or `EH_check` are FALSE.}
 
 \item{cores}{A positive integer scalar. How many processing cores should be
 used to perform the computationally intensive intersection steps? The
