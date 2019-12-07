@@ -38,7 +38,7 @@ points <- tibble::tibble(
     st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)),
     st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)),
     st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)),
-    st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)),
+    st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(300, 1)),
     crs = 32617)
   ) %>% st_as_sf()
 
@@ -66,8 +66,7 @@ test_that("handling of sf/sp classes is correct", {
   # Convert sp
   ### TEST FOR sp CONVERSION TKTK
   # CRS handling
-  ### TEST FOR CRS HANDLING? TKTK
-
+  expect_equal(st_crs(points), st_crs(strr_ghost(points)))
 })
 
 
@@ -99,7 +98,6 @@ test_that("listing_type is correctly handled", {
       filter(host_ID == "listing_type", date == "2019-04-01") %>%
       pull(listing_count)
   }, 3)
-
   # listing_type = FALSE
   expect_equal({
     strr_ghost(points, listing_type = FALSE, quiet = TRUE) %>%
@@ -108,33 +106,59 @@ test_that("listing_type is correctly handled", {
     }, 4)
 })
 
+test_that("private_room and entire_home warnings are issued", {
+  # Bad private_room input, listing_type specified
+  expect_warning(strr_ghost(points, private_room = "Bad input"),
+                 "`private_room` returns")
+  # Bad private_room input, listing_type FALSE
+  expect_warning(strr_ghost(points, private_room = "Bad input",
+                            listing_type = FALSE), regexp = NA)
+  # Bad entire_home input, EH_check TRUE
+  expect_warning(strr_ghost(points, entire_home = "Bad input", EH_check = TRUE),
+                 "`entire_home` returns")
+  # Bad entire_home input, EH_check FALSE
+  expect_warning(strr_ghost(points, entire_home = "Bad input"), regexp = NA)
+})
+
 test_that("multi_date produces the expected outputs", {
+  # 4 to 3 with early date
   expect_equal({
     strr_ghost(points, quiet = TRUE) %>%
       filter(date == "2016-01-01", host_ID == "4 to 3") %>%
       nrow()}, 0)
-
+  # 4 to 3 with mid date
   expect_equal({
     strr_ghost(points, quiet = TRUE) %>%
       filter(date == "2018-01-01", host_ID == "4 to 3") %>%
       pull(listing_count)}, 4)
-
+  # 4 to 3 with late date
   expect_equal({
     strr_ghost(points, quiet = TRUE) %>%
       filter(date == "2019-03-01", host_ID == "4 to 3") %>%
       pull(listing_count)}, 3)
-
+  # 4 to 3 with final date
   expect_equal({
     strr_ghost(points, quiet = TRUE) %>%
       filter(date == "2019-04-01", host_ID == "4 to 3") %>%
       nrow()}, 0)
-
+  # 4 to 3 with multi_date = FALSE
   expect_equal({
     strr_ghost(points, multi_date = FALSE, quiet = TRUE) %>%
       filter(host_ID == "4 to 3") %>%
       pull(listing_count)}, 4)
 })
 
-# test_that("EH_check works correctly", {
-#
-# })
+test_that("EH_check works correctly", {
+  # Valid EH point is included
+  expect_equal({
+    strr_ghost(points, EH_check = TRUE) %>%
+      filter(host_ID == "EH_check TRUE", date == "2018-02-01") %>%
+      pull(EH_check) %>% unlist()
+    }, 15)
+  # Invalid EH point is excluded
+  expect_equal({
+    strr_ghost(points, EH_check = TRUE) %>%
+      filter(host_ID == "EH_check FALSE", date == "2018-02-01") %>%
+      pull(EH_check) %>% length()
+    }, 0)
+})

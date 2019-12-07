@@ -178,6 +178,23 @@ strr_ghost <- function(
         }
       )
 
+  ## Check private_room and entire_home arguments
+
+  if (lt_flag) {
+
+    if (points %>% filter({{ listing_type }} == private_room) %>% nrow() == 0) {
+      warning(paste0("The supplied argument to `private_room` returns no ",
+                     "matches in the input table. Are you sure the argument ",
+                     "is correct?"))
+    }
+
+    if (EH_check &&
+        points %>% filter({{ listing_type }} == entire_home) %>% nrow() == 0) {
+      warning(paste0("The supplied argument to `entire_home` returns no ",
+                     "matches in the input table. Are you sure the argument ",
+                     "is correct?"))
+    }
+  }
 
   ## Process dates if multi_date is TRUE
 
@@ -362,7 +379,6 @@ strr_ghost <- function(
       filter(.x, {{ property_ID }} %in% .y)}))
 
   # Generate compact table of ghost hostels, suppressing sf geometry warnings
-  # THE NEW UNNEST SEEMS TO HAVE AN SF FAILURE TKTK
   points <- suppressWarnings(
     tidyr::unnest_legacy(points, .data$intersects, .preserve = .data$data)
   )
@@ -376,20 +392,19 @@ strr_ghost <- function(
     arrange( {{ host_ID }}) %>%
     mutate(ghost_ID = 1:n())
 
-  # Extract geometry, coerce to sf, join back to ghost_points, clean up
-  ### THIS IS STEP THAT GENERATES OGR UNSUPPORTED TKTK
+  # Extract geometry, coerce to sf, join back to points, clean up
   points <-
-    points[c("ghost_ID","geometry")] %>%
-    st_as_sf() %>%
-    left_join(st_drop_geometry(st_as_sf(points)), ., by = "ghost_ID") %>%
-    st_as_sf() %>%
+    points %>%
+    select(.data$ghost_ID, {{ host_ID }}, .data$n.overlaps, .data$data,
+           .data$geometry) %>%
+    # Reattach CRS
+    st_as_sf(crs = crs_points) %>%
+    left_join(select(points, ghost_ID, property_IDs), by = "ghost_ID") %>%
     rename(listing_count = .data$n.overlaps) %>%
     mutate(housing_units = as.integer(ceiling(.data$listing_count / 4))) %>%
     select(.data$ghost_ID, {{ host_ID }}, .data$listing_count,
-           .data$housing_units, .data$property_IDs, .data$data, .data$geometry)
-
-  # Reattach CRS
-  st_crs(points) <- crs_points
+           .data$housing_units, .data$property_IDs, .data$data,
+           .data$geometry)
 
   # Calculate dates if multi_date == TRUE
   if (multi_date) {
@@ -425,7 +440,7 @@ strr_ghost <- function(
 
   ## EH_check
 
-  if (!missing(EH_check)) {
+  if (EH_check) {
 
     EH_buffers <-
       st_buffer(EH_points, distance) %>%
@@ -447,7 +462,8 @@ strr_ghost <- function(
         suppressWarnings(
           st_intersection(geom, EH_host) %>%
           pull(.data$EH_property_ID))
-      }))
+      })) %>%
+      select(-.data$geometry, everything(), .data$geometry)
   }
 
 
