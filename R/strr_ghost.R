@@ -528,7 +528,7 @@ strr_ghost <- function(
 #'   locations.
 #' @param min_listings A numeric scalar. The minimum number of listings to
 #'   be considered a ghost hostel.
-#' @return The output will be the `points`` object, rearranged with one row per
+#' @return The output will be the `points` object, rearranged with one row per
 #'   cluster and with a new `predicates` field.
 #' @importFrom dplyr %>% filter mutate
 #' @importFrom purrr map map2
@@ -583,7 +583,7 @@ ghost_cluster <- function(points, distance, min_listings) {
 #' and `predicates` from points$data.
 #'
 #' @param buffers A data frame of buffers from points$data.
-#' @param predicates The points$data field generated from st_intersects.
+#' @param predicates The points$data field generated from \code{st_intersects}.
 #' @param n A numeric scalar. The number of points to attempt to find a set of
 #'   combinations for
 #' @return The output will be a matrix of possible intersection combinations.
