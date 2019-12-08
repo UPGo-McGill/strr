@@ -4,12 +4,15 @@
 #' possible "ghost hostels"--clusters of private-room STR listings operating in
 #' a single building.
 #'
-#' A function for probablistically assigning STR listings to administrative
-#' geographies (e.g. census tracts) based on reported latitude/longitude.
-#' The function works by combining a known probability density function (e.g.
-#' Airbnb's spatial obfuscation of listing locations) with an additional source
-#' of information about possible listing locations--either population or housing
-#' densities.
+#' A function for identifying clusters of possible "ghost hostels"--clusters of
+#' private-room STR listings operating in a single building. The function works
+#' by intersecting the possible locations of listings operated by a single host
+#' with each other, to find areas which could the common location of the
+#' listings, and thus be one or more housing units subdivided into private rooms
+#' rather than a set of geographically disparate listings. The function can
+#' optionally run its analysis separately for each date within a time period,
+#' and can also check for possible duplication with entire-home listings
+#' operated by the same host.
 #'
 #' @param points A data frame of STR listings with sf or sp point geometries in
 #'   a projected coordinate system.

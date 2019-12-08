@@ -18,7 +18,7 @@ locations.}
 be considered a ghost hostel.}
 }
 \value{
-The output will be the `points`` object, rearranged with one row per
+The output will be the `points` object, rearranged with one row per
   cluster and with a new `predicates` field.
 }
 \description{

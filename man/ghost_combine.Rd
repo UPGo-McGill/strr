@@ -9,7 +9,7 @@ ghost_combine(buffers, predicates, n)
 \arguments{
 \item{buffers}{A data frame of buffers from points$data.}
 
-\item{predicates}{The points$data field generated from st_intersects.}
+\item{predicates}{The points$data field generated from \code{st_intersects}.}
 
 \item{n}{A numeric scalar. The number of points to attempt to find a set of
 combinations for}
