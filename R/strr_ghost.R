@@ -386,7 +386,7 @@ strr_ghost <- function(
   # Remove duplicates
   points <- points[!duplicated(points$property_IDs),]
 
-  # Create Ghost_ID
+  # Create ghost_ID
   points <-
     points %>%
     arrange( {{ host_ID }}) %>%
@@ -399,7 +399,8 @@ strr_ghost <- function(
            .data$geometry) %>%
     # Reattach CRS
     st_as_sf(crs = crs_points) %>%
-    left_join(select(points, ghost_ID, property_IDs), by = "ghost_ID") %>%
+    left_join(select(points, .data$ghost_ID, .data$property_IDs),
+              by = "ghost_ID") %>%
     rename(listing_count = .data$n.overlaps) %>%
     mutate(housing_units = as.integer(ceiling(.data$listing_count / 4))) %>%
     select(.data$ghost_ID, {{ host_ID }}, .data$listing_count,

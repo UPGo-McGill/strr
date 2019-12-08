@@ -1,7 +1,7 @@
 Package: strr
 Type: Package
 Title: Tools for Analysis of Short-Term Rental Data
-Version: 0.0.0.9000
+Version: 0.0.1.9000
 Authors@R: person("David", "Wachsmuth", email = "david.wachsmuth@mcgill.ca",
   role = c("aut", "cre"))
 Author: David Wachsmuth
