@@ -15,7 +15,11 @@
 #' operated by the same host.
 #'
 #' @param points A data frame of STR listings with sf or sp point geometries in
-#'   a projected coordinate system.
+#'   a projected coordinate system. If the data frame does not have spatial
+#'   attributes, an attempt will be made to convert it to sf using
+#'   \code{strr_as_sf}. The result will be transformed into the Web Mercator
+#'   projection (EPSG: 3857) for distance calculations. To use a projection more
+#'   suitable to the data, supply an sf or sp object.
 #' @param property_ID The name of a character or numeric variable in the points
 #'   object which uniquely identifies STR listings.
 #' @param host_ID The name of a character or numeric variable in the points
@@ -114,7 +118,7 @@ strr_ghost <- function(
   }
 
 
-  ## Points table
+  ## Handle spatial attributes
 
   # Convert points from sp
   if (is(points, "Spatial")) {
@@ -123,7 +127,15 @@ strr_ghost <- function(
 
   # Check that points is sf
   if (!is(points, "sf")) {
-    stop("The object `points` must be of class sf or sp.")
+    tryCatch({
+      points <- strr_as_sf(points, 3857)
+      if (!quiet) message("Converting input table to sf. (",
+                          substr(Sys.time(), 12, 19), ")")
+      },
+             error = function(e) {
+               stop(paste0("The object `points` must be of class sf or sp, ",
+                           "or must be coercable to sf using strr_as_sf."))
+               })
   }
 
   # Store CRS for later
