@@ -24,8 +24,8 @@ An sf table with the longitude and latitude fields converted to a
 geometry field and all other fields returned unaltered.
 }
 \description{
-\code{strr_as_sf} is a convenience wrapper around \code{sf::st_as_sf} for STR
-property tables.
+\code{strr_as_sf} is a convenience wrapper around \code{\link[sf]{st_as_sf}}
+for STR property tables.
 }
 \details{
 A function for converting a raw property table into an sf object with point

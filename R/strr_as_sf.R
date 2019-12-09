@@ -1,7 +1,7 @@
 #' Function to convert property tables to sf objects
 #'
-#' \code{strr_as_sf} is a convenience wrapper around \code{sf::st_as_sf} for STR
-#' property tables.
+#' \code{strr_as_sf} is a convenience wrapper around \code{\link[sf]{st_as_sf}}
+#' for STR property tables.
 #'
 #' A function for converting a raw property table into an sf object with point
 #' geometries. The function makes use of a pair of fields specifying longitude
