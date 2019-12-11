@@ -27,9 +27,9 @@ strr_ghost(
 \item{points}{A data frame of STR listings with sf or sp point geometries in
 a projected coordinate system. If the data frame does not have spatial
 attributes, an attempt will be made to convert it to sf using
-\code{\link{strr_as_sf}}. The result will be transformed into the Web Mercator
-projection (EPSG: 3857) for distance calculations. To use a projection more
-suitable to the data, supply an sf or sp object.}
+\code{\link{strr_as_sf}}. The result will be transformed into the Web
+Mercator projection (EPSG: 3857) for distance calculations. To use a
+projection more suitable to the data, supply an sf or sp object.}
 
 \item{property_ID}{The name of a character or numeric variable in the points
 object which uniquely identifies STR listings.}
