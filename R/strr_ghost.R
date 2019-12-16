@@ -356,7 +356,9 @@ strr_ghost <- function(
           ghost_cluster(distance, min_listings) %>%
           ghost_intersect({{ property_ID }}, distance, min_listings) %>%
           ghost_intersect_leftovers({{ property_ID }}, {{ host_ID }}, distance,
-                                    min_listings)
+                                    min_listings) %>%
+          select(.data$host_ID, .data$data, .data$intersects,
+                 .data$property_IDs)
       }, cl = cl) %>%
       do.call(rbind, .)
 
