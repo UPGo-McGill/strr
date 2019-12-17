@@ -57,7 +57,7 @@
 #' @param entire_home A character string which identifies the value of the
 #'   `listing_type` variable to be used to find possible duplicate entire-home
 #'   listings. This field is ignored if `listing_type` or `EH_check` are FALSE.
-#' @param quiet A logical vector. Should the function execute quietly, or should
+#' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return The output will be a tidy data frame of identified ghost hostels,
 #'   organized with the following fields: `ghost_ID`: an identifier for each
@@ -354,9 +354,7 @@ strr_ghost <- function(
         ghost_intersect_leftovers(distance, min_listings)
       },
       # Suppress progress bar if quiet == FALSE or the plan is remote
-      .progress = tryCatch(
-        !("remote" %in% class(future::plan())),
-        error = function(e) TRUE) * !quiet
+      .progress = helper_progress(quiet)
       ) %>%
     do.call(rbind, .)
 

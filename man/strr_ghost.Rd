@@ -80,7 +80,7 @@ field is ignored if `listing_type` is FALSE.}
 `listing_type` variable to be used to find possible duplicate entire-home
 listings. This field is ignored if `listing_type` or `EH_check` are FALSE.}
 
-\item{quiet}{A logical vector. Should the function execute quietly, or should
+\item{quiet}{A logical scalar. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}
 }
 \value{
