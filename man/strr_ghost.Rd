@@ -19,7 +19,6 @@ strr_ghost(
   private_room = "Private room",
   EH_check = FALSE,
   entire_home = "Entire home/apt",
-  cores = 1,
   quiet = FALSE
 )
 }
@@ -81,11 +80,6 @@ field is ignored if `listing_type` is FALSE.}
 `listing_type` variable to be used to find possible duplicate entire-home
 listings. This field is ignored if `listing_type` or `EH_check` are FALSE.}
 
-\item{cores}{A positive integer scalar. How many processing cores should be
-used to perform the computationally intensive intersection steps? The
-implementation of multicore processing does not support Windows, so this
-argument should be left with its default value of 1 in those cases.}
-
 \item{quiet}{A logical vector. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}
 }
@@ -106,7 +100,7 @@ The output will be a tidy data frame of identified ghost hostels,
   polygons representing the possible locations of each ghost hostel.
 }
 \description{
-\code{strr_ghost} takes reported STR listing locations and identifies
+\code{strr_ghost_future} takes reported STR listing locations and identifies
 possible "ghost hostels"--clusters of private-room STR listings operating in
 a single building.
 }

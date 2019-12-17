@@ -4,16 +4,10 @@
 \alias{ghost_intersect_leftovers}
 \title{Helper function to rerun analysis on leftover ghost hostel candidates}
 \usage{
-ghost_intersect_leftovers(points, property_ID, host_ID, distance, min_listings)
+ghost_intersect_leftovers(points, distance, min_listings)
 }
 \arguments{
 \item{points}{An sf data frame of STR listings nested by cluster.}
-
-\item{property_ID}{The name of a character or numeric variable in the points
-object which uniquely identifies STR listings.}
-
-\item{host_ID}{The name of a character or numeric variable in the points
-object which uniquely identifies STR hosts.}
 
 \item{distance}{A numeric scalar. The radius (in the units of the CRS) of the
 buffer which will be drawn around points to determine possible ghost hostel

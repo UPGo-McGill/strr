@@ -1,6 +1,6 @@
 #' Function to identify STR ghost hostels
 #'
-#' \code{strr_ghost} takes reported STR listing locations and identifies
+#' \code{strr_ghost_future} takes reported STR listing locations and identifies
 #' possible "ghost hostels"--clusters of private-room STR listings operating in
 #' a single building.
 #'
@@ -57,10 +57,6 @@
 #' @param entire_home A character string which identifies the value of the
 #'   `listing_type` variable to be used to find possible duplicate entire-home
 #'   listings. This field is ignored if `listing_type` or `EH_check` are FALSE.
-#' @param cores A positive integer scalar. How many processing cores should be
-#'   used to perform the computationally intensive intersection steps? The
-#'   implementation of multicore processing does not support Windows, so this
-#'   argument should be left with its default value of 1 in those cases.
 #' @param quiet A logical vector. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return The output will be a tidy data frame of identified ghost hostels,
@@ -77,12 +73,14 @@
 #'   a list of possible entire-home listing duplicates. `data`: a nested tibble
 #'   of additional variables present in the points object. `geometry`: the
 #'   polygons representing the possible locations of each ghost hostel.
-#' @importFrom dplyr %>% arrange as_tibble enquo filter group_by mutate n pull
-#' @importFrom dplyr quo_name rename ungroup
+#' @importFrom dplyr %>% arrange desc filter group_by mutate n pull rename
+#' @importFrom dplyr ungroup
+#' @importFrom furrr future_map
 #' @importFrom methods is
-#' @importFrom purrr map map2 map_dbl map_lgl
+#' @importFrom purrr map map2 map_dbl map_int map_lgl
 #' @importFrom rlang .data
-#' @importFrom sf st_as_sf st_crs st_crs<- st_point st_transform
+#' @importFrom sf st_as_sf st_as_sfc st_crs st_point st_transform
+#' @importFrom tidyr nest unnest
 #' @export
 
 strr_ghost <- function(
@@ -90,21 +88,14 @@ strr_ghost <- function(
   created = created, scraped = scraped, start_date = NULL, end_date = NULL,
   distance = 200, min_listings = 3, listing_type = listing_type,
   private_room = "Private room", EH_check = FALSE,
-  entire_home = "Entire home/apt", cores = 1, quiet = FALSE) {
-
+  entire_home = "Entire home/apt", quiet = FALSE) {
 
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
   time_1 <- Sys.time()
 
-  ## Check cores, distance, min_listings flags
-
-  # Check that cores is an integer > 0
-  cores <- floor(cores)
-  if (cores <= 0) {
-    stop("The argument `cores` must be a positive integer.")
-  }
+  ## Check distance, min_listings flags
 
   # Check that distance > 0
   if (distance <= 0) {
@@ -125,17 +116,17 @@ strr_ghost <- function(
     points <- st_as_sf(points)
   }
 
-  # Check that points is sf
+  # Check that points is sf, and convert to sf if possible
   if (!is(points, "sf")) {
     tryCatch({
       points <- strr_as_sf(points, 3857)
       if (!quiet) message("Converting input table to sf. (",
                           substr(Sys.time(), 12, 19), ")")
-      },
-             error = function(e) {
-               stop(paste0("The object `points` must be of class sf or sp, ",
-                           "or must be coercable to sf using strr_as_sf."))
-               })
+    },
+    error = function(e) {
+      stop(paste0("The object `points` must be of class sf or sp, ",
+                  "or must be convertable to sf using strr_as_sf."))
+    })
   }
 
   # Store CRS for later
@@ -148,25 +139,25 @@ strr_ghost <- function(
     pull(points, {{ property_ID }}),
     error = function(e) {
       stop("The value of `property_ID` is not a valid field in the input table."
-           )})
+      )})
 
   tryCatch(
     pull(points, {{ host_ID }}),
     error = function(e) {
       stop("The value of `host_ID` is not a valid field in the input table."
-           )})
+      )})
 
   tryCatch(
     pull(points, {{ created }}),
     error = function(e) {
       stop("The value of `created` is not a valid field in the input table."
-           )})
+      )})
 
   tryCatch(
     pull(points, {{ scraped }}),
     error = function(e) {
       stop("The value of `scraped` is not a valid field in the input table."
-           )})
+      )})
 
 
   ## Set lt_flag and check validity of listing_type
@@ -177,21 +168,21 @@ strr_ghost <- function(
         # If listing_type is a field in points, set lt_flag = TRUE
         pull(points, {{ listing_type }})
         TRUE
-        },
+      },
       error = function(e) {
         tryCatch(
           {
             # If listing_type == FALSE, set lt_flag = FALSE
             if (!listing_type) { FALSE
             } else stop("`listing_type` must be a valid field name or FALSE.")
-            },
+          },
           error = function(e2) {
             # Otherwise, fail with an informative error
             stop("`listing_type` must be a valid field name or FALSE.")
-            }
-          )
-        }
-      )
+          }
+        )
+      }
+    )
 
   ## Check private_room and entire_home arguments
 
@@ -254,10 +245,16 @@ strr_ghost <- function(
   if (!quiet) message("Filtering listings to ghost hostel candidates. (",
                       substr(Sys.time(), 12, 19), ")")
 
+  # Rename fields for easier processing with future package
+  points <-
+    points %>%
+    rename(property_ID = {{ property_ID }},
+           host_ID = {{ host_ID }})
+
   # Remove invalid listings
   points <-
     points %>%
-    filter(!is.na({{ host_ID }}))
+    filter(!is.na(host_ID))
 
   # Filter to private rooms if listing_type != FALSE
   if (lt_flag) {
@@ -275,9 +272,9 @@ strr_ghost <- function(
   # Filter points to clusters >= min_listings, and nest by host_ID
   points <-
     points %>%
-    group_by({{ host_ID }}) %>%
+    group_by(host_ID) %>%
     filter(n() >= min_listings) %>%
-    tidyr::nest() %>%
+    nest() %>%
     ungroup()
 
   # Error handling for case where no clusters are identified
@@ -315,7 +312,6 @@ strr_ghost <- function(
     if (nrow(points) == 0) return(ghost_empty(points, crs_points))
 
     # Create a nested tibble for each possible cluster
-
     if (!quiet) message("Preparing possible clusters for analysis. (",
                         substr(Sys.time(), 12, 19), ")")
 
@@ -328,59 +324,40 @@ strr_ghost <- function(
           unique() %>%
           `[`(lapply(., nrow) >= min_listings)
       })) %>%
-      tidyr::unnest(.data$data) %>%
+      unnest(.data$data) %>%
       select(-.data$starts, -.data$ends, -.data$date_grid)
   }
 
 
-
   ### CLUSTER CREATION AND GHOST HOSTEL IDENTIFICATION #########################
 
-  # Multi-threaded version
-  if (cores >= 2) {
+  suppressWarnings({
+    # Split points into at most 100 chunks, and adjust down for small tables
+    n_chunks <- max(100, nrow(points) / 10)
 
-    if (!quiet) message("Splitting clusters for multicore processing. (",
-                        substr(Sys.time(), 12, 19), ")")
+    # Sort clusters from most to fewest listings to optimize computation time
+    points_list <-
+      points %>%
+      arrange(desc(map_int(.data$data, nrow))) %>%
+      split(1:n_chunks)
+  })
 
-    clusters <- pbapply::splitpb(nrow(points), cores, nout = 100)
-    points_list <- lapply(clusters, function(x) points[x,])
-    cl <- parallel::makeForkCluster(cores)
+  if (!quiet) message("Identifying ghost hostels. (",
+                      substr(Sys.time(), 12, 19), ")")
 
-    if (!quiet) message("Identifying ghost hostels. (",
-                        substr(Sys.time(), 12, 19), ")")
+  points <-
+    points_list %>%
+    furrr::future_map(~{
+      .x %>%
+        ghost_cluster(distance, min_listings) %>%
+        ghost_intersect(distance, min_listings) %>%
+        ghost_intersect_leftovers(distance, min_listings)
+    }, .progress = !quiet) %>%
+    do.call(rbind, .)
 
-    points <-
-      points_list %>%
-      pbapply::pblapply(function(x) {
-        x %>%
-          ghost_cluster(distance, min_listings) %>%
-          ghost_intersect({{ property_ID }}, distance, min_listings) %>%
-          ghost_intersect_leftovers({{ property_ID }}, {{ host_ID }}, distance,
-                                    min_listings)
-      }, cl = cl) %>%
-      do.call(rbind, .)
-
-  } else {
-    # Single-threaded version
-
-    if (!quiet) message("Splitting clusters for ghost hostel identification. (",
-                        substr(Sys.time(), 12, 19), ")")
-    points <- ghost_cluster(points, distance, min_listings)
-
-    if (!quiet) message("Identifying ghost hostels. (",
-                        substr(Sys.time(), 12, 19), ")")
-    points <- ghost_intersect(points, {{ property_ID }}, distance,
-                              min_listings)
-
-    if (!quiet) message("Rerunning analysis on leftover points. (",
-                        substr(Sys.time(), 12, 19), ")")
-    points <- ghost_intersect_leftovers(points, {{ property_ID }},
-                                        {{ host_ID }}, distance, min_listings)
-  }
 
   # Error handling for case where no clusters are identified
   if (nrow(points) == 0) return(ghost_empty(points, crs_points))
-
 
 
   ### GHOST TABLE CREATION #####################################################
@@ -391,36 +368,32 @@ strr_ghost <- function(
   points <-
     points %>%
     mutate(data = map2(.data$data, .data$property_IDs, ~{
-      filter(.x, {{ property_ID }} %in% .y)}))
+      filter(.x, .data$property_ID %in% .y)}))
 
-  # Generate compact table of ghost hostels, suppressing sf geometry warnings
-  points <- suppressWarnings(
-    tidyr::unnest_legacy(points, .data$intersects, .preserve = .data$data)
-  )
+  # Generate geometry column for ghost table
+  ghost_geom <-
+    points$intersects %>%
+    map(~{.x$geometry}) %>%
+    do.call(rbind, .) %>%
+    st_as_sfc()
 
-  # Remove duplicates
-  points <- points[!duplicated(points$property_IDs),]
-
-  # Create ghost_ID
+  # Create ghost table
   points <-
     points %>%
-    arrange( {{ host_ID }}) %>%
-    mutate(ghost_ID = 1:n())
-
-  # Extract geometry, coerce to sf, join back to points, clean up
-  points <-
-    points %>%
-    select(.data$ghost_ID, {{ host_ID }}, .data$n.overlaps, .data$data,
-           .data$geometry) %>%
-    # Reattach CRS
-    st_as_sf(crs = crs_points) %>%
-    left_join(select(points, .data$ghost_ID, .data$property_IDs),
-              by = "ghost_ID") %>%
-    rename(listing_count = .data$n.overlaps) %>%
-    mutate(housing_units = as.integer(ceiling(.data$listing_count / 4))) %>%
-    select(.data$ghost_ID, {{ host_ID }}, .data$listing_count,
+    # Create new fields and join geometry
+    mutate(listing_count = map_dbl(.data$intersects, ~{.x$n.overlaps}),
+           housing_units = as.integer(ceiling(.data$listing_count / 4)),
+           geometry = ghost_geom) %>%
+    # Remove duplicates
+    {.[!duplicated(.$property_IDs),]} %>%
+    arrange(host_ID) %>%
+    # Create ghost_ID
+    mutate(ghost_ID = 1:n()) %>%
+    select(.data$ghost_ID, .data$host_ID, .data$listing_count,
            .data$housing_units, .data$property_IDs, .data$data,
-           .data$geometry)
+           .data$geometry) %>%
+    # Convert to sf and reattach CRS
+    st_as_sf(crs = crs_points)
 
   # Calculate dates if multi_date == TRUE
   if (multi_date) {
@@ -458,14 +431,16 @@ strr_ghost <- function(
 
   if (EH_check) {
 
+    if (!quiet) message("Checking for possible entire-home duplicates. (",
+                        substr(Sys.time(), 12, 19), ")")
     EH_buffers <-
       st_buffer(EH_points, distance) %>%
       st_transform(crs_points) %>%
-      rename(EH_property_ID = {{ property_ID }})
+      rename(EH_property_ID = property_ID)
 
     points <-
       points %>%
-      mutate(EH_check = map2(.data$geometry, {{ host_ID }}, ~{
+      mutate(EH_check = map2(.data$geometry, host_ID, ~{
 
         geom <-
           tibble::tibble(geometry = list(.x)) %>%
@@ -473,14 +448,22 @@ strr_ghost <- function(
 
         EH_host <-
           EH_buffers %>%
-          filter({{ host_ID }} == .y)
+          filter(host_ID == .y)
 
         suppressWarnings(
           st_intersection(geom, EH_host) %>%
-          pull(.data$EH_property_ID))
+            pull(.data$EH_property_ID))
       })) %>%
       select(-.data$geometry, everything(), .data$geometry)
   }
+
+  # Rename fields to match input fields
+  points <-
+    points %>%
+    rename({{ host_ID }} := .data$host_ID) %>%
+    mutate(data = map(.data$data, ~{
+      rename(.x, {{ property_ID }} := .data$property_ID)
+    }))
 
 
   ### TIDY TABLE CREATION ######################################################
@@ -498,7 +481,7 @@ strr_ghost <- function(
       mutate(date = map2(.data$start, .data$end, ~{
         seq(unique(.x), unique(.y), 1)
       })) %>%
-      tidyr::unnest_legacy(.data$date) %>%
+      unnest(.data$date) %>%
       select(-.data$start, -.data$end) %>%
       filter(.data$date >= start_date, .data$date <= end_date) %>%
       left_join(points, by = "ghost_ID") %>%
@@ -514,6 +497,9 @@ strr_ghost <- function(
       ungroup()
 
   }
+
+
+  ### RETURN OUTPUT ############################################################
 
   total_time <- Sys.time() - time_1
 
@@ -546,9 +532,10 @@ strr_ghost <- function(
 #' @return The output will be the `points` object, rearranged with one row per
 #'   cluster and with a new `predicates` field.
 #' @importFrom dplyr %>% filter mutate
-#' @importFrom purrr map map2
+#' @importFrom purrr map map2 reduce
 #' @importFrom rlang .data
 #' @importFrom sf st_buffer st_intersects
+#' @importFrom tidyr unnest
 
 ghost_cluster <- function(points, distance, min_listings) {
 
@@ -558,15 +545,15 @@ ghost_cluster <- function(points, distance, min_listings) {
     mutate(
       predicates = map(.data$data, ~st_intersects(st_buffer(.x, distance))) %>%
         map(function(pred) {
-               map(seq_along(pred), ~{
-                 reduce(pred, function(x, y){
-                   if (any(y %in% x)) unique(c(x, y)) else x
-                 }, # Merge lists with common elements
-                 .init = pred[[.]]) # Compile lists starting at each position
-               }) %>%
-                 map(sort) %>%
-                 unique() # Remove duplicate lists
-             }))
+          map(seq_along(pred), ~{
+            reduce(pred, function(x, y){
+              if (any(y %in% x)) unique(c(x, y)) else x
+            }, # Merge lists with common elements
+            .init = pred[[.]]) # Compile lists starting at each position
+          }) %>%
+            map(sort) %>%
+            unique() # Remove duplicate lists
+        }))
 
   # Remove lists < min_listings
   points <-
@@ -579,8 +566,9 @@ ghost_cluster <- function(points, distance, min_listings) {
     filter(map(.data$predicates, length) > 0) %>%
     mutate(data = map2(.data$data, .data$predicates, function(x, y) {
       map(y, ~{x[.,]})
-      })) %>%
-    tidyr::unnest_legacy(.data$data)
+    })) %>%
+    select(-.data$predicates) %>%
+    unnest(.data$data)
 
   # Remove duplicate clusters
   points <- points[!duplicated(points$data),]
@@ -602,7 +590,7 @@ ghost_cluster <- function(points, distance, min_listings) {
 #' @param n A numeric scalar. The number of points to attempt to find a set of
 #'   combinations for
 #' @return The output will be a matrix of possible intersection combinations.
-#' @importFrom dplyr %>%
+#' @importFrom dplyr %>% as_tibble
 #' @importFrom purrr map map_dbl
 #' @importFrom rlang .data
 #' @importFrom sf st_centroid st_distance st_union
@@ -740,8 +728,8 @@ ghost_stepwise_intersect <- function(buffers, min_listings) {
   )
   h_score <- max(matrix[matrix[,2] >= matrix[,1],1])
 
-  # Setup variables
-  st_agr(buffers) = "constant"
+  # Set up variables
+  st_agr(buffers) <- "constant"
   n <- h_score # Get working number of rows for combinations
   cols <- ncol(buffers) - 1 # Get total columns for clean-up
 
@@ -793,7 +781,7 @@ ghost_stepwise_intersect <- function(buffers, min_listings) {
 
       if (any(st_is(intersect_output, "POLYGON") == FALSE)) {
         stop("Invalid geometry produced")
-        }
+      }
 
       return(intersect_output)
     }
@@ -810,8 +798,6 @@ ghost_stepwise_intersect <- function(buffers, min_listings) {
 #' A function for finding ghost hostel locations from a set of point clusters.
 #'
 #' @param points An sf data frame of STR listings nested by cluster.
-#' @param property_ID The name of a character or numeric variable in the points
-#'   object which uniquely identifies STR listings.
 #' @param distance A numeric scalar. The radius (in the units of the CRS) of the
 #'   buffer which will be drawn around points to determine possible ghost hostel
 #'   locations.
@@ -824,8 +810,7 @@ ghost_stepwise_intersect <- function(buffers, min_listings) {
 #' @importFrom rlang .data
 #' @importFrom sf st_area st_buffer
 
-ghost_intersect <- function(
-  points, property_ID, distance, min_listings) {
+ghost_intersect <- function(points, distance, min_listings) {
 
   # Prepare buffers
   points <-
@@ -856,7 +841,7 @@ ghost_intersect <- function(
     rbind(points_to_add)
 
   # Add $property_IDs field
-  data_PIDs <- map(points$data, `$`, {{ property_ID }})
+  data_PIDs <- map(points$data, `$`, "property_ID")
   int_origs <- map(points$intersects, `$`, "origins")
   points <-
     points %>%
@@ -874,10 +859,6 @@ ghost_intersect <- function(
 #' ghost hostel analysis has been run.
 #'
 #' @param points An sf data frame of STR listings nested by cluster.
-#' @param property_ID The name of a character or numeric variable in the points
-#'   object which uniquely identifies STR listings.
-#' @param host_ID The name of a character or numeric variable in the points
-#'   object which uniquely identifies STR hosts.
 #' @param min_listings A numeric scalar. The minimum number of listings to
 #'   be considered a ghost hostel.
 #' @return The output will be a set of new candidate `points`.
@@ -885,15 +866,14 @@ ghost_intersect <- function(
 #' @importFrom purrr map_int map2
 #' @importFrom rlang .data
 
-ghost_identify_leftovers <- function(points, property_ID, host_ID,
-                                     min_listings) {
+ghost_identify_leftovers <- function(points, min_listings) {
   points %>%
     filter(map_int(.data$data, nrow) - lengths(.data$property_IDs) >=
              min_listings) %>%
     mutate(data = map2(.data$data, .data$property_IDs, ~{
-      filter(.x, !({{ property_ID }} %in% .y))
+      filter(.x, !property_ID %in% .y)
     })) %>%
-    select({{ host_ID }}, .data$data)
+    select(.data$host_ID, .data$data)
 }
 
 
@@ -906,10 +886,6 @@ ghost_identify_leftovers <- function(points, property_ID, host_ID,
 #' after the main analysis has been run.
 #'
 #' @param points An sf data frame of STR listings nested by cluster.
-#' @param property_ID The name of a character or numeric variable in the points
-#'   object which uniquely identifies STR listings.
-#' @param host_ID The name of a character or numeric variable in the points
-#'   object which uniquely identifies STR hosts.
 #' @param distance A numeric scalar. The radius (in the units of the CRS) of the
 #'   buffer which will be drawn around points to determine possible ghost hostel
 #'   locations.
@@ -921,17 +897,12 @@ ghost_identify_leftovers <- function(points, property_ID, host_ID,
 #' @importFrom purrr map_int map2
 #' @importFrom rlang .data
 
-ghost_intersect_leftovers <- function(points, property_ID, host_ID, distance,
-                                      min_listings) {
-
-  property_ID <- enquo(property_ID)
-  host_ID <- enquo(host_ID)
+ghost_intersect_leftovers <- function(points, distance, min_listings) {
 
   if (nrow(points) == 0) return(points)
 
   # Subset leftover candidates
-  leftovers <- ghost_identify_leftovers(points, {{ property_ID }},
-                                        {{ host_ID }}, min_listings)
+  leftovers <- ghost_identify_leftovers(points, min_listings)
 
   # Condition to run ghost_intersect on leftovers
   while (nrow(leftovers) > 0) {
@@ -946,20 +917,18 @@ ghost_intersect_leftovers <- function(points, property_ID, host_ID, distance,
           filter(map_int(.data$data, nrow) - lengths(.data$property_IDs) >=
                    min_listings) %>%
           mutate(data = map2(.data$data, .data$property_IDs, ~{
-            filter(.x, {{ property_ID }} %in% .y)
+            filter(.x, property_ID %in% .y)
           }))
       )
 
     # Apply ghost_intersect to leftovers
-    leftover_outcome <- ghost_intersect(leftovers, {{ property_ID }}, distance,
-                                        min_listings)
+    leftover_outcome <- ghost_intersect(leftovers, distance, min_listings)
 
     # Add leftover_outcome to points and remove duplicate Property_IDs
     points <- rbind(points, leftover_outcome)
 
     # Subset leftover candidates again
-    leftovers <- ghost_identify_leftovers(points, {{ property_ID }},
-                                          {{ host_ID }}, min_listings)
+    leftovers <- ghost_identify_leftovers(points, min_listings)
   }
 
   points
@@ -976,7 +945,7 @@ ghost_intersect_leftovers <- function(points, property_ID, host_ID, distance,
 #' @param points An sf data frame of STR listings nested by cluster.
 #' @param crs_points The CRS of the points table.
 #' @importFrom dplyr %>% everything mutate select
-#' @importFrom sf st_as_sf st_set_crs
+#' @importFrom sf st_as_sf st_sfc
 #' @importFrom rlang .data
 
 ghost_empty <- function(points, crs_points) {
@@ -989,6 +958,5 @@ ghost_empty <- function(points, crs_points) {
            property_IDs = list()) %>%
     select(-.data$data, .data$data) %>%
     mutate(geometry = st_sfc()) %>%
-    st_as_sf() %>%
-    st_set_crs(crs_points)
+    st_as_sf(crs = crs_points)
 }

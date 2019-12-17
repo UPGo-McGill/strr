@@ -4,16 +4,10 @@
 \alias{ghost_identify_leftovers}
 \title{Helper function to identify leftover ghost hostel candidates}
 \usage{
-ghost_identify_leftovers(points, property_ID, host_ID, min_listings)
+ghost_identify_leftovers(points, min_listings)
 }
 \arguments{
 \item{points}{An sf data frame of STR listings nested by cluster.}
-
-\item{property_ID}{The name of a character or numeric variable in the points
-object which uniquely identifies STR listings.}
-
-\item{host_ID}{The name of a character or numeric variable in the points
-object which uniquely identifies STR hosts.}
 
 \item{min_listings}{A numeric scalar. The minimum number of listings to
 be considered a ghost hostel.}
