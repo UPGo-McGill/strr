@@ -1,8 +1,12 @@
+#### TESTS FOR strr_ghost ######################################################
+
+### Setup ######################################################################
+
 context("strr_ghost tests")
 
 #' @importFrom dplyr %>% arrange
 #' @importFrom tibble tibble
-#' @importFrom sf st_as_sf st_drop_geometry st_point
+#' @importFrom sf st_as_sf st_crs st_drop_geometry st_point st_sfc
 
 points <- tibble::tibble(
   property_ID = 1:19,
@@ -42,6 +46,9 @@ points <- tibble::tibble(
     crs = 32617)
   ) %>% st_as_sf()
 
+
+### Tests ######################################################################
+
 test_that("cores/distance/min_listings flags are correctly handled", {
   # cores
   expect_error(strr_ghost(points, property_ID, host_ID, multi_date = TRUE,
@@ -59,6 +66,7 @@ test_that("cores/distance/min_listings flags are correctly handled", {
                           listing_type = listing_type,
                           private_room = "Private room", cores = 1))
 })
+
 
 test_that("handling of sf/sp classes is correct", {
   # No sf or sp
@@ -161,4 +169,24 @@ test_that("EH_check works correctly", {
       filter(host_ID == "EH_check FALSE", date == "2018-02-01") %>%
       pull(EH_check) %>% length()
     }, 0)
+})
+
+test_that("Non-default field names are passed through", {
+  # Renamed property_ID shows up in output
+  expect_equal({
+    points %>% rename(PID = property_ID) %>%
+      strr_ghost(property_ID = PID) %>%
+      dplyr::slice(1) %>%
+      dplyr::pull(data) %>%
+      `[[`(1) %>%
+      names() %>%
+      `[`(1)
+    }, "PID")
+  # Renamed host_ID shows up in output
+  expect_equal({
+    points %>% rename(HID = host_ID) %>%
+      strr_ghost(host_ID = HID) %>%
+      names() %>%
+      `[`(3)
+    }, "HID")
 })
