@@ -19,6 +19,7 @@ Imports:
     data.table (>= 1.12.2),
     dplyr (>= 0.8),
     furrr (>= 0.1.0),
+    future (>= 1.15.1),
     lubridate (>= 1.7.4),
     methods (>= 3.5.2),
     polyCub (>= 0.7.1),

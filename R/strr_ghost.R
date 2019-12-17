@@ -352,7 +352,12 @@ strr_ghost <- function(
         ghost_cluster(distance, min_listings) %>%
         ghost_intersect(distance, min_listings) %>%
         ghost_intersect_leftovers(distance, min_listings)
-    }, .progress = !quiet) %>%
+      },
+      # Suppress progress bar if quiet == FALSE or the plan is remote
+      .progress = tryCatch(
+        !("remote" %in% class(future::plan())),
+        error = function(e) TRUE) * !quiet
+      ) %>%
     do.call(rbind, .)
 
 
