@@ -17,13 +17,16 @@
 #' latitude values of points.
 #' @return An sf table with the longitude and latitude fields converted to a
 #' geometry field and all other fields returned unaltered.
-#' @importFrom sf st_as_sf
+#' @importFrom dplyr %>%
+#' @importFrom sf st_as_sf st_set_agr st_transform
 #' @export
 
 strr_as_sf <- function(.data, CRS = 4326, longitude = "longitude",
                        latitude = "latitude") {
 
-  st_transform(st_as_sf(.data, coords = c(longitude, latitude), crs = 4326),
-               CRS)
+  .data %>%
+    st_as_sf(coords = c(longitude, latitude), crs = 4326) %>%
+    st_transform(CRS) %>%
+    st_set_agr("constant")
 
 }
