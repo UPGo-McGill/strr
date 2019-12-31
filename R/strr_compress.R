@@ -142,8 +142,8 @@ strr_compress <- function(.data, cores = 1, chunks = TRUE, quiet = FALSE) {
 
   if (length(error_vector) > 0) {.data <- .data[-error_vector,]}
 
-  if (!quiet) {message("Initial import errors identified (",
-                       substr(Sys.time(), 12, 19), ").")}
+  if (!quiet) {message("Initial import errors identified. (",
+                       substr(Sys.time(), 12, 19), ")")}
 
   ## Find rows with missing property_ID, date or status
 
