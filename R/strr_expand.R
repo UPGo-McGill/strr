@@ -39,6 +39,11 @@ strr_expand <- function(.data, start = NULL, end = NULL, chunk_size = 1000,
 
   ## ERROR CHECKING AND ARGUMENT INITIALIZATION
 
+  # Remove future global export limit
+
+  options(future.globals.maxSize = +Inf)
+  on.exit(.Options$future.globals.maxSize <- NULL)
+
   # Check that dates are coercible to date class, then coerce them
 
   if (!missing(start)) {
