@@ -53,6 +53,23 @@ strr_expand <- function(.data, start = NULL, end = NULL, chunk_size = 1000,
                   '") is not coercible to a date.'))
     })}
 
+  ## STORE EXTRA FIELDS AND TRIM .DATA
+
+  if (length(.data) == 15) {
+    join_fields <-
+      .data %>%
+      group_by(.data$property_ID) %>%
+      filter(.data$start_date == max(.data$start_date)) %>%
+      ungroup() %>%
+      select(.data$property_ID, .data$host_ID, .data$listing_type,
+             .data$created, .data$scraped, .data$housing, .data$country,
+             .data$region, .data$city)
+
+    .data <-
+      .data %>%
+      select(.data$property_ID, .data$start_date, .data$end_date, .data$status,
+             .data$booked_date, .data$price, .data$res_ID)
+    }
 
   ## PREPARE DATE FIELD
 
@@ -67,6 +84,9 @@ strr_expand <- function(.data, start = NULL, end = NULL, chunk_size = 1000,
     daily_list <-
       split(.data, 1:chunk_size)
     )
+
+
+  ## EXPAND TABLE
 
   if (!quiet) {message("Beginning expansion. (",
                        substr(Sys.time(), 12, 19), ")")}
@@ -83,11 +103,15 @@ strr_expand <- function(.data, start = NULL, end = NULL, chunk_size = 1000,
       ) %>%
       bind_rows()
 
-  ## ARRANGE COLUMNS
+  ## REJOIN TO ADDITIONAL FIELDS, THEN ARRANGE COLUMNS
 
-  if (length(.data) == 16) {
+  if (!quiet) {message("Joining additional fields to table. (",
+                       substr(Sys.time(), 12, 19), ")")}
+
+  if (length(.data) == 8) {
     .data <-
       .data %>%
+      left_join(join_fields, by = "property_ID") %>%
       select(.data$property_ID, .data$date, everything(), -.data$start_date,
              -.data$end_date)
   } else {
