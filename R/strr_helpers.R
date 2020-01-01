@@ -39,6 +39,3 @@ helper_plan <- function() {
   paste0(workers_number, " ", workers_noun, " in a ", cluster_type, " cluster")
 
 }
-
-
-helper_plan()
