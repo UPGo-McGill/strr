@@ -4,8 +4,9 @@
 #' expands it to a one-row-per-date format.
 #'
 #' A function for expanding compressed daily activity tables from AirDNA or the
-#' ML summary tables UPGo produces. The function will also optionally truncate
-#' the table by a supplied date range.
+#' ML summary tables UPGo produces, optionally truncating the table by a
+#' supplied date range. The function can take advantage of multiprocess and/or
+#' remote computation options if a plan is set with the \code{future} package.
 #'
 #' @param .data A table in compressed UPGo DB format (e.g. created by running
 #' \code{\link{strr_compress}}). Currently daily activity files and ML daily
@@ -16,36 +17,27 @@
 #' @param end A character string of format YYYY-MM-DD indicating the
 #'   last date to be provided in the output table. If NULL (default), the
 #'   latest date present in the data will be used.
-#' @param cores A positive integer scalar. How many processing cores should be
-#'   used to perform the computationally intensive numeric integration step?
 #' @param chunk_size A positive integer scalar. How large should each element be
 #' when the table is split for multicore processing? Larger elements should lead
-#' to faster processing times but higher memory usage, so low values are
-#' recommended for RAM-constrained computers. If cores == 1, this argument is
-#' ignored.
+#' to slightly faster processing times but higher memory usage, so low values
+#' are recommended for RAM-constrained computers.
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return A table with one row per date and all other fields returned
 #' unaltered.
 #' @importFrom dplyr %>% bind_rows filter mutate select
+#' @importFrom furrr future_map
 #' @importFrom purrr map2
 #' @importFrom rlang .data
 #' @importFrom tidyr unnest
 #' @export
 
-strr_expand <- function(.data, start = NULL, end = NULL, cores = 1,
-                        chunk_size = 1000, quiet = FALSE) {
+strr_expand <- function(.data, start = NULL, end = NULL, chunk_size = 1000,
+                        quiet = FALSE) {
 
   time_1 <- Sys.time()
 
   ## ERROR CHECKING AND ARGUMENT INITIALIZATION
-
-  # Check that cores is an integer > 0
-
-  cores <- floor(cores)
-  if (cores <= 0) {
-    stop("The argument `cores` must be a positive integer.")
-  }
 
   # Check that dates are coercible to date class, then coerce them
 
@@ -71,40 +63,25 @@ strr_expand <- function(.data, start = NULL, end = NULL, cores = 1,
     .data %>%
     mutate(date = map2(.data$start_date, .data$end_date, ~{.x:.y}))
 
-
-  ## SINGLE-CORE VERSION
-
-  if (cores == 1) {
-
-    if (!quiet) {message("Beginning expansion. (",
-                         substr(Sys.time(), 12, 19), ")")}
-
-    .data <-
-      .data %>%
-      unnest(cols = c(date)) %>%
-      mutate(date = as.Date(.data$date, origin = "1970-01-01"))
-
-  ## MULTI-CORE VERSION
-
-  } else {
-
-    if (!quiet) {message("Splitting table for multi-core processing. (",
-                         substr(Sys.time(), 12, 19), ")")}
-
+  suppressWarnings(
     daily_list <-
       split(.data, 1:chunk_size)
+    )
 
-    if (!quiet) {message("Beginning expansion. (",
-                         substr(Sys.time(), 12, 19), ")")}
+  if (!quiet) {message("Beginning expansion. (",
+                       substr(Sys.time(), 12, 19), ")")}
 
-        .data <-
-      pbapply::pblapply(daily_list, function(x) {
-        x %>%
-          unnest(cols = c(date)) %>%
-          mutate(date = as.Date(.data$date, origin = "1970-01-01"))
-      }, cl = cores) %>%
+  .data <-
+    daily_list %>%
+    furrr::future_map(~{
+      .x %>%
+        unnest(cols = c(date)) %>%
+        mutate(date = as.Date(.data$date, origin = "1970-01-01"))
+      },
+      # Suppress progress bar if quiet == FALSE or the plan is remote
+      .progress = helper_progress(quiet)
+      ) %>%
       bind_rows()
-  }
 
   ## ARRANGE COLUMNS
 
