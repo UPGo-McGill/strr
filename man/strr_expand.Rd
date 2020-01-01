@@ -4,14 +4,7 @@
 \alias{strr_expand}
 \title{Function to expand compressed STR tables}
 \usage{
-strr_expand(
-  .data,
-  start = NULL,
-  end = NULL,
-  cores = 1,
-  chunk_size = 1000,
-  quiet = FALSE
-)
+strr_expand(.data, start = NULL, end = NULL, chunk_size = 1000, quiet = FALSE)
 }
 \arguments{
 \item{.data}{A table in compressed UPGo DB format (e.g. created by running
@@ -26,14 +19,10 @@ earliest date present in the data will be used.}
 last date to be provided in the output table. If NULL (default), the
 latest date present in the data will be used.}
 
-\item{cores}{A positive integer scalar. How many processing cores should be
-used to perform the computationally intensive numeric integration step?}
-
 \item{chunk_size}{A positive integer scalar. How large should each element be
 when the table is split for multicore processing? Larger elements should lead
-to faster processing times but higher memory usage, so low values are
-recommended for RAM-constrained computers. If cores == 1, this argument is
-ignored.}
+to slightly faster processing times but higher memory usage, so low values
+are recommended for RAM-constrained computers.}
 
 \item{quiet}{A logical scalar. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}
@@ -48,6 +37,7 @@ expands it to a one-row-per-date format.
 }
 \details{
 A function for expanding compressed daily activity tables from AirDNA or the
-ML summary tables UPGo produces. The function will also optionally truncate
-the table by a supplied date range.
+ML summary tables UPGo produces, optionally truncating the table by a
+supplied date range. The function can take advantage of multiprocess and/or
+remote computation options if a plan is set with the \code{future} package.
 }
