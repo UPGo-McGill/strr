@@ -88,7 +88,7 @@ strr_expand <- function(.data, start = NULL, end = NULL, chunk_size = 1000,
 
   ## EXPAND TABLE
 
-  if (!quiet) {message("Beginning expansion. (",
+  if (!quiet) {message("Beginning expansion, using ", helper_plan(), ". (",
                        substr(Sys.time(), 12, 19), ")")}
 
   .data <-

@@ -342,7 +342,7 @@ strr_ghost <- function(
       split(1:n_chunks)
   })
 
-  if (!quiet) message("Identifying ghost hostels. (",
+  if (!quiet) message("Identifying ghost hostels, using ", helper_plan(), ". (",
                       substr(Sys.time(), 12, 19), ")")
 
   points <-

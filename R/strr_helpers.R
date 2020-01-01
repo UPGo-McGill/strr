@@ -16,3 +16,29 @@ helper_progress <- function(quiet) {
     !("remote" %in% class(future::plan())),
     error = function(e) TRUE) * !quiet
 }
+
+
+#' Helper function to characterize future plan
+#'
+#' \code{helper_plan} parses the current \code{future::plan} for display in
+#' progress messages.
+#' @return A character string reporting the current plan.
+#' @importFrom future nbrOfWorkers plan
+
+helper_plan <- function() {
+
+  workers_number <-
+    future::nbrOfWorkers()
+
+  workers_noun <-
+    if_else(workers_number == 1, "process", "processes")
+
+  cluster_type <-
+    if_else("remote" %in% class(future::plan()), "remote", "local")
+
+  paste0(workers_number, " ", workers_noun, " in a ", cluster_type, " cluster")
+
+}
+
+
+helper_plan()
