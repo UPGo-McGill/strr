@@ -10,7 +10,7 @@
 #' monthly AirDNA files, the function also produces error files which identify
 #' possible corrupt or missing lines in the input file.
 #'
-#' @param .data An unprocessed daily table in either the raw AirDNA format or
+#' @param data An unprocessed daily table in either the raw AirDNA format or
 #' the UPGo ML summary table format.
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
@@ -48,15 +48,15 @@ strr_compress <- function(data, quiet = FALSE) {
 
     date_flag = FALSE
 
-   if (lubridate::month(min(.data$date)) != lubridate::month(max(.data$date))) {
+   if (lubridate::month(min(data$date)) != lubridate::month(max(data$date))) {
 
       if (!quiet) {message("Splitting table by year and month. (",
                            substr(Sys.time(), 12, 19), ")")}
 
-      .data <-
-        .data %>%
-        mutate(month = lubridate::month(.data$date),
-               year = lubridate::year(.data$date))
+      data <-
+        data %>%
+        mutate(month = lubridate::month(data$date),
+               year = lubridate::year(data$date))
 
       date_flag = TRUE
     }
@@ -66,9 +66,8 @@ strr_compress <- function(data, quiet = FALSE) {
                            substr(Sys.time(), 12, 19), ")")}
 
       daily_list <-
-        .data %>%
-        group_by(.data$host_ID) %>%
-        group_split()
+        data %>%
+        group_split(.data$host_ID)
 
       # if (length(daily_list) > 10000 & chunks == TRUE) {
       #
@@ -150,9 +149,20 @@ strr_compress <- function(data, quiet = FALSE) {
 
   compressed <-
     daily_list %>%
-    future_map_dfr(strr_compress_helper) %>%
+    future_map_dfr(strr_compress_helper,
+                   # Suppress progress bar if !quiet or the plan is remote
+                   .progress = helper_progress(quiet)) %>%
     left_join(join_fields, by = "property_ID")
 
+
+  ## Arrange output
+
+  if (!quiet) {message("Arranging output table. (",
+                       substr(Sys.time(), 12, 19), ")")}
+
+  compressed <-
+    compressed %>%
+    arrange(.data$property_ID, .data$start_date)
 
   ## Return output
 
@@ -176,7 +186,7 @@ strr_compress <- function(data, quiet = FALSE) {
 #'
 #' A helper function for compressing the processed monthly `daily` table.
 #'
-#' @param .data The processed daily table generated through the strr_compress
+#' @param data The processed daily table generated through the strr_compress
 #' function.
 #' @return The output will be a compressed daily table.
 #' @importFrom dplyr %>% arrange bind_rows filter group_by group_by_at mutate
@@ -246,7 +256,7 @@ strr_compress_helper <- function(data) {
 #'
 #' A helper function for compressing the processed ML summary table.
 #'
-#' @param .data The processed ML table generated through the strr_compress
+#' @param data The processed ML table generated through the strr_compress
 #' function.
 #' @return The output will be a compressed ML table.
 #' @importFrom dplyr %>% arrange bind_rows filter group_by group_by_at mutate
@@ -256,17 +266,17 @@ strr_compress_helper <- function(data) {
 #' @importFrom tidyr unnest
 #' @importFrom tibble tibble
 
-strr_compress_helper_ML <- function(.data) {
+strr_compress_helper_ML <- function(data) {
 
   # Group .data by all columns except date
-  .data <-
-    .data %>%
+  data <-
+    data %>%
     group_by_at(vars(-.data$date)) %>%
     summarize(dates = list(.data$date)) %>%
     ungroup()
 
   single_date <-
-    .data %>%
+    data %>%
     filter(map(.data$dates, length) == 1) %>%
     mutate(start_date = as.Date(map_dbl(.data$dates, ~{.x}),
                                 origin = "1970-01-01"),
@@ -276,7 +286,7 @@ strr_compress_helper_ML <- function(.data) {
            .data$housing, .data$active, .data$count)
 
   one_length <-
-    .data %>%
+    data %>%
     filter(map(.data$dates, length) != 1,
            map(.data$dates, ~{length(.x) - length(min(.x):max(.x))}) == 0) %>%
     mutate(start_date = as.Date(map_dbl(.data$dates, min),
@@ -286,13 +296,13 @@ strr_compress_helper_ML <- function(.data) {
     select(.data$host_ID, .data$start_date, .data$end_date, .data$listing_type,
            .data$housing, .data$active, .data$count)
 
-  if ({.data %>%
+  if ({data %>%
       filter(map(.data$dates, length) != 1,
              map(.data$dates, ~{length(.x) - length(min(.x):max(.x))}) != 0) %>%
       nrow} > 0) {
 
     remainder <-
-      .data %>%
+      data %>%
       filter(map(.data$dates, length) != 1,
              map(.data$dates, ~{length(.x) - length(min(.x):max(.x))}) != 0) %>%
       mutate(date_range = map(.data$dates, ~{

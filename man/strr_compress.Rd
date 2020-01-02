@@ -7,11 +7,11 @@
 strr_compress(data, quiet = FALSE)
 }
 \arguments{
+\item{data}{An unprocessed daily table in either the raw AirDNA format or
+the UPGo ML summary table format.}
+
 \item{quiet}{A logical scalar. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}
-
-\item{.data}{An unprocessed daily table in either the raw AirDNA format or
-the UPGo ML summary table format.}
 }
 \value{
 The output will depend on the input. In the case where the input is
