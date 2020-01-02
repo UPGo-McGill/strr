@@ -59,7 +59,9 @@ strr_process_multi <- function(daily, quiet = FALSE) {
         count(.data$host_ID, .data$date, .data$listing_type, .data$housing) %>%
         ungroup() %>%
         rename(count = n)
-    })
+    },
+    # Suppress progress bar if quiet == TRUE or the plan is remote
+    .progress = helper_progress(quiet))
 
 
   ## Return output
