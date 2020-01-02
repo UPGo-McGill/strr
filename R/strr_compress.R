@@ -30,7 +30,7 @@
 #' @importFrom tibble as_tibble
 #' @export
 
-strr_compress <- function(data, quiet = FALSE) {
+strr_compress <- function(data, chunks = FALSE, quiet = FALSE) {
 
   time_1 <- Sys.time()
 
@@ -81,24 +81,22 @@ strr_compress <- function(data, quiet = FALSE) {
     data %>%
     group_split(.data$property_ID)
 
-    # if (length(data_list) > 10000 & chunks) {
-    #
-    #
-    #   data_list <- purrr::map(1:10000, function(i) {
-    #     bind_rows(
-    #       data_list[(floor(as.numeric(length(data_list)) * (i - 1) / 10000) +
-    #                     1):floor(as.numeric(length(data_list)) * i / 10000)])
-    #   })}
+    if (length(data_list) > 10000 & chunks) {
+
+      data_list <- purrr::map(1:10000, function(i) {
+        bind_rows(
+          data_list[(floor(as.numeric(length(data_list)) * (i - 1) / 10000) +
+                        1):floor(as.numeric(length(data_list)) * i / 10000)])
+      })}
 
   if (!quiet) {message("Beginning compression, using ", helper_plan(), ". (",
                        substr(Sys.time(), 12, 19), ")")}
 
   compressed <-
     data_list %>%
-    future_map(strr_compress_helper,
+    future_map_dfr(strr_compress_helper,
                # Suppress progress bar if !quiet or the plan is remote
                .progress = helper_progress(quiet)) %>%
-    bind_rows() %>%
     left_join(join_fields, by = "property_ID")
 
 
