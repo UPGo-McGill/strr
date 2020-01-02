@@ -181,6 +181,12 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
                        substr(Sys.time(), 12, 19), ")")}
 
 
+  ## Set classes of outputs
+
+  class(daily) <- c(class(daily), "strr_daily")
+  class(daily_inactive) <- c(class(daily_inactive), "strr_daily")
+
+
   ## Return output
 
   total_time <- Sys.time() - time_1
