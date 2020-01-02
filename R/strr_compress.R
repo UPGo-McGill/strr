@@ -41,7 +41,7 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ## Perform simple compression if the input is an ML table
 
-  if (names(.data)[1] == "host_ID") {
+  if (names(data)[1] == "host_ID") {
 
     if (!quiet) {message("ML table identified. (",
                          substr(Sys.time(), 12, 19), ")")}
@@ -99,16 +99,6 @@ strr_compress <- function(data, quiet = FALSE) {
 
     return(compressed)
   }
-
-
-  ## Subset data table and rename fields
-
-  .data <-
-    .data %>%
-    select(.data$`Property ID`, .data$Date, .data$Status, .data$`Booked Date`,
-           .data$`Price (USD)`, .data$`Reservation ID`) %>%
-    rlang::set_names(c("property_ID", "date", "status", "booked_date", "price",
-                "res_ID"))
 
 
   ## Produce month and year columns if data spans multiple months
