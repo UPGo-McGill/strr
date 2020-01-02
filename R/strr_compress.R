@@ -81,12 +81,12 @@ strr_compress <- function(data, chunks = FALSE, quiet = FALSE) {
     data %>%
     group_split(.data$property_ID)
 
-    if (length(data_list) > 10000 & chunks) {
+    if (length(data_list) > 100 & chunks) {
 
-      data_list <- purrr::map(1:10000, function(i) {
+      data_list <- purrr::map(1:100, function(i) {
         bind_rows(
-          data_list[(floor(as.numeric(length(data_list)) * (i - 1) / 10000) +
-                        1):floor(as.numeric(length(data_list)) * i / 10000)])
+          data_list[(floor(as.numeric(length(data_list)) * (i - 1) / 100) +
+                        1):floor(as.numeric(length(data_list)) * i / 100)])
       })}
 
   if (!quiet) {message("Beginning compression, using ", helper_plan(), ". (",
