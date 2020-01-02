@@ -38,71 +38,29 @@ strr_compress <- function(data, quiet = FALSE) {
 
   .datatable.aware = TRUE
 
+  # Remove future global export limit
 
-  ## Perform simple compression if the input is an ML table
-
-  if (names(data)[1] == "host_ID") {
-
-    if (!quiet) {message("ML table identified. (",
-                         substr(Sys.time(), 12, 19), ")")}
-
-    date_flag = FALSE
-
-   if (lubridate::month(min(data$date)) != lubridate::month(max(data$date))) {
-
-      if (!quiet) {message("Splitting table by year and month. (",
-                           substr(Sys.time(), 12, 19), ")")}
-
-      data <-
-        data %>%
-        mutate(month = lubridate::month(data$date),
-               year = lubridate::year(data$date))
-
-      date_flag = TRUE
-    }
+  options(future.globals.maxSize = +Inf)
+  on.exit(.Options$future.globals.maxSize <- NULL)
 
 
-      if (!quiet) {message("Splitting table for multicore processing. (",
-                           substr(Sys.time(), 12, 19), ")")}
+  ## Store invariant fields for later
 
-      daily_list <-
-        data %>%
-        group_split(.data$host_ID)
+  join_fields <-
+    data %>%
+    group_by(.data$property_ID) %>%
+    filter(.data$date == max(.data$date)) %>%
+    ungroup() %>%
+    select(.data$property_ID, .data$host_ID, .data$listing_type, .data$housing,
+           .data$country, .data$region, .data$city)
 
-      # if (length(daily_list) > 10000 & chunks == TRUE) {
-      #
-      #   if (!quiet) {message("Reassembling table pieces for compression. (",
-      #                        substr(Sys.time(), 12, 19), ")")}
-      #
-      #   daily_list <- purrr::map(1:10000, function(i) {
-      #     bind_rows(
-      #       daily_list[(floor(as.numeric(length(daily_list)) *
-      #                           (i - 1) / 10000) +
-      #                     1):floor(as.numeric(length(daily_list)) * i / 10000)])
-      #   })}
-
-      compressed <-
-        daily_list %>%
-        pbapply::pblapply(strr_compress_helper_ML) %>%
-        bind_rows()
-
-
-    total_time <- Sys.time() - time_1
-
-    if (!quiet) {message("Compression complete. (",
-                         substr(Sys.time(), 12, 19), ")")}
-
-    if (!quiet) {message("Total time: ",
-                         substr(total_time, 1, 5), " ",
-                         attr(total_time, "units"), ".")}
-
-    return(compressed)
-  }
+  data <-
+    data %>%
+    select(-.data$host_ID, -.data$listing_type, -.data$housing, -.data$country,
+           -.data$region, -.data$city)
 
 
   ## Produce month and year columns if data spans multiple months
-
-  date_flag = FALSE
 
   if (lubridate::month(min(data$date)) != lubridate::month(max(data$date))) {
 
@@ -114,44 +72,33 @@ strr_compress <- function(data, quiet = FALSE) {
       mutate(month = lubridate::month(data$date),
              year = lubridate::year(data$date))
 
-    date_flag = TRUE
   }
 
-  ## Remove invariant fields
 
-  join_fields <-
+   ## Compress processed data file
+
+  data_list <-
     data %>%
-    select(.data$property_ID, .data$host_ID, .data$listing_type, .data$housing,
-           .data$country, .data$region, .data$city)
+    group_split(.data$property_ID)
 
-  data <-
-    data %>%
-    select(-.data$host_ID, -.data$listing_type, -.data$housing, -.data$country,
-           -.data$region, -.data$city)
-
-  ## Compress processed data file
-
-  daily_list <-
-    data %>%
-    group_split(data$property_ID)
-
-    # if (length(daily_list) > 10000 & chunks == TRUE) {
+    # if (length(data_list) > 10000 & chunks) {
     #
     #
-    #   daily_list <- purrr::map(1:10000, function(i) {
+    #   data_list <- purrr::map(1:10000, function(i) {
     #     bind_rows(
-    #       daily_list[(floor(as.numeric(length(daily_list)) * (i - 1) / 10000) +
-    #                     1):floor(as.numeric(length(daily_list)) * i / 10000)])
+    #       data_list[(floor(as.numeric(length(data_list)) * (i - 1) / 10000) +
+    #                     1):floor(as.numeric(length(data_list)) * i / 10000)])
     #   })}
 
   if (!quiet) {message("Beginning compression, using ", helper_plan(), ". (",
                        substr(Sys.time(), 12, 19), ")")}
 
   compressed <-
-    daily_list %>%
-    future_map_dfr(strr_compress_helper,
-                   # Suppress progress bar if !quiet or the plan is remote
-                   .progress = helper_progress(quiet)) %>%
+    data_list %>%
+    future_map(strr_compress_helper,
+               # Suppress progress bar if !quiet or the plan is remote
+               .progress = helper_progress(quiet)) %>%
+    bind_rows() %>%
     left_join(join_fields, by = "property_ID")
 
 
@@ -160,9 +107,9 @@ strr_compress <- function(data, quiet = FALSE) {
   if (!quiet) {message("Arranging output table. (",
                        substr(Sys.time(), 12, 19), ")")}
 
-  compressed <-
-    compressed %>%
-    arrange(.data$property_ID, .data$start_date)
+  # compressed <-
+  #   compressed %>%
+  #   arrange(.data$property_ID, .data$start_date)
 
   ## Return output
 
