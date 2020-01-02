@@ -30,7 +30,7 @@
 #' @importFrom tibble as_tibble
 #' @export
 
-strr_compress <- function(data, chunks = FALSE, quiet = FALSE) {
+strr_compress <- function(data, quiet = FALSE) {
 
   time_1 <- Sys.time()
 
@@ -81,7 +81,7 @@ strr_compress <- function(data, chunks = FALSE, quiet = FALSE) {
     data %>%
     group_split(.data$property_ID)
 
-    if (length(data_list) > 100 & chunks) {
+    if (length(data_list) > 100) {
 
       data_list <- purrr::map(1:100, function(i) {
         bind_rows(
@@ -105,9 +105,9 @@ strr_compress <- function(data, chunks = FALSE, quiet = FALSE) {
   if (!quiet) {message("Arranging output table. (",
                        substr(Sys.time(), 12, 19), ")")}
 
-  # compressed <-
-  #   compressed %>%
-  #   arrange(.data$property_ID, .data$start_date)
+  compressed <-
+    compressed %>%
+    arrange(.data$property_ID, .data$start_date)
 
   ## Return output
 
