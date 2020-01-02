@@ -4,27 +4,23 @@
 #' AirDNA or ML summary tables produced by UPGo) and compresses them into the
 #' UPGo database storage format.
 #'
-#' A function for compressing daily activity tables (either raw daily tables
-#' supplied each month from AirDNA or ML summary tables produced by UPGo) into a
-#' more storage-efficient one-activity-block-per-row format. In the case of the
-#' monthly AirDNA files, the function also produces error files which identify
-#' possible corrupt or missing lines in the input file.
+#' A function for compressing daily activity tables. It takes either AirDNA
+#' daily tables or UPGo multilisting summary tables which have been processed
+#' using \code{\link{strr_process_daily}} or \code{\link{strr_process_multi}},
+#' and converts them into a more storage-efficient one-activity-block-per-row
+#' format.
 #'
-#' @param data An unprocessed daily table in either the raw AirDNA format or
-#' the UPGo ML summary table format.
+#' The output can subsequently be restored to a non-compressed format using
+#' \code{\link{strr_expand}}.
+#'
+#' @param data A daily table in either the processed UPGo daily format or the
+#' processed UPGo multilisting format.
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
-#' @return The output will depend on the input. In the case where the input is
-#' a raw AirDNA daily table, the output will be a list with three elements: 1)
-#' the compressed daily table, ready for upload to a remote database; 2) an
-#' error table identifying corrupt or otherwise invalid row entries; 3) a
-#' missing_rows table identifying property_IDs with missing dates in between
-#' their first and last date entries, and therefore potentially missing data. In
-#' the case where the input is an UPGo ML summary table, the output will be the
-#' compressed ML table, ready for upload to a remote database.
+#' @return A compressed daily table, ready for upload to a remote database.
 #' @importFrom data.table setDT
-#' @importFrom dplyr %>% bind_rows filter group_by group_split mutate pull
-#' @importFrom dplyr select
+#' @importFrom dplyr %>% arrange bind_rows filter group_by group_split mutate
+#' @importFrom dplyr pull select
 #' @importFrom furrr future_map_dfr
 #' @importFrom rlang .data
 #' @importFrom tibble as_tibble
@@ -43,21 +39,42 @@ strr_compress <- function(data, quiet = FALSE) {
   options(future.globals.maxSize = +Inf)
   on.exit(.Options$future.globals.maxSize <- NULL)
 
+  # Check if table is daily or ML
+
+  if ("strr_daily" %in% class(data) | names(data)[1] == "property_ID") {
+
+    if (!quiet) {message("Daily table identified. (",
+                         substr(Sys.time(), 12, 19), ")")}
+
+    daily <- TRUE
+
+  } else if ("strr_multi" %in% class(data) | names(data)[1] == "host_ID") {
+
+    if (!quiet) {message("Multilisting table identified. (",
+                         substr(Sys.time(), 12, 19), ")")}
+
+    daily <- FALSE
+
+  } else stop("Input table must be of class `strr_daily` or `strr_multi`.")
+
 
   ## Store invariant fields for later
 
-  join_fields <-
-    data %>%
-    group_by(.data$property_ID) %>%
-    filter(.data$date == max(.data$date)) %>%
-    ungroup() %>%
-    select(.data$property_ID, .data$host_ID, .data$listing_type, .data$housing,
-           .data$country, .data$region, .data$city)
+  if (daily) {
 
-  data <-
-    data %>%
-    select(-.data$host_ID, -.data$listing_type, -.data$housing, -.data$country,
-           -.data$region, -.data$city)
+    join_fields <-
+      data %>%
+      group_by(.data$property_ID) %>%
+      filter(.data$date == max(.data$date)) %>%
+      ungroup() %>%
+      select(.data$property_ID, .data$host_ID, .data$listing_type, .data$housing,
+             .data$country, .data$region, .data$city)
+
+    data <-
+      data %>%
+      select(-.data$host_ID, -.data$listing_type, -.data$housing, -.data$country,
+             -.data$region, -.data$city)
+  }
 
 
   ## Produce month and year columns if data spans multiple months
@@ -92,22 +109,39 @@ strr_compress <- function(data, quiet = FALSE) {
   if (!quiet) {message("Beginning compression, using ", helper_plan(), ". (",
                        substr(Sys.time(), 12, 19), ")")}
 
-  compressed <-
-    data_list %>%
-    future_map_dfr(strr_compress_helper,
-               # Suppress progress bar if !quiet or the plan is remote
-               .progress = helper_progress(quiet)) %>%
-    left_join(join_fields, by = "property_ID")
+  if (daily) {
+
+    compressed <-
+      data_list %>%
+      future_map_dfr(strr_compress_helper,
+                     # Suppress progress bar if !quiet or the plan is remote
+                     .progress = helper_progress(quiet)) %>%
+      left_join(join_fields, by = "property_ID")
+
+  } else {
+
+    compressed <-
+      data_list %>%
+      future_map_dfr(strr_compress_helper_ML,
+                     # Suppress progress bar if !quiet or the plan is remote
+                     .progress = helper_progress(quiet))
+
+  }
 
 
-  ## Arrange output
+  ## Arrange output and set class
 
   if (!quiet) {message("Arranging output table. (",
                        substr(Sys.time(), 12, 19), ")")}
 
-  compressed <-
-    compressed %>%
-    arrange(.data$property_ID, .data$start_date)
+  if (daily) {
+    compressed <- arrange(compressed, .data$property_ID, .data$start_date)
+    class(compressed) <- c(class(compressed), "strr_daily")
+    } else {
+      compressed <- arrange(compressed, .data$host_ID, .data$start_date)
+      class(compressed) <- c(class(compressed), "strr_multi")
+      }
+
 
   ## Return output
 
@@ -145,10 +179,10 @@ strr_compress_helper <- function(data) {
 
   # Group data by all columns except date
   data <-
-      data %>%
-      group_by_at(vars(-.data$date)) %>%
-      summarize(dates = list(.data$date)) %>%
-      ungroup()
+    data %>%
+    group_by_at(vars(-.data$date)) %>%
+    summarize(dates = list(.data$date)) %>%
+    ungroup()
 
   single_date <-
     data %>%
