@@ -27,15 +27,20 @@ helper_progress <- function(quiet) {
 
 helper_plan <- function() {
 
-  workers_number <-
-    future::nbrOfWorkers()
+  tryCatch({
+    workers_number <-
+      future::nbrOfWorkers()
 
-  workers_noun <-
-    if_else(workers_number == 1, "process", "processes")
+    workers_noun <-
+      if_else(workers_number == 1, "process", "processes")
 
-  cluster_type <-
-    if_else("remote" %in% class(future::plan()), "remote", "local")
+    cluster_type <-
+      if_else("remote" %in% class(future::plan()), "remote", "local")
 
-  paste0(workers_number, " ", workers_noun, " in a ", cluster_type, " cluster")
+    paste0(workers_number, " ", cluster_type, " ", workers_noun)
+    },
+    error = function(e) "1 local process"
+  )
+
 
 }

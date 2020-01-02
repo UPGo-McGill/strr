@@ -371,7 +371,7 @@ strr_compress_helper_ML <- function(.data) {
            end_date = as.Date(map_dbl(.data$dates, ~{.x}),
                               origin = "1970-01-01")) %>%
     select(.data$host_ID, .data$start_date, .data$end_date, .data$listing_type,
-           .data$housing, .data$date_status, .data$count)
+           .data$housing, .data$active, .data$count)
 
   one_length <-
     .data %>%
@@ -382,7 +382,7 @@ strr_compress_helper_ML <- function(.data) {
            end_date = as.Date(map_dbl(.data$dates, max),
                               origin = "1970-01-01")) %>%
     select(.data$host_ID, .data$start_date, .data$end_date, .data$listing_type,
-           .data$housing, .data$date_status, .data$count)
+           .data$housing, .data$active, .data$count)
 
   if ({.data %>%
       filter(map(.data$dates, length) != 1,
@@ -399,7 +399,7 @@ strr_compress_helper_ML <- function(.data) {
       })) %>%
       unnest(.data$date_range) %>%
       select(.data$host_ID, .data$start_date, .data$end_date, .data$listing_type,
-             .data$housing, .data$date_status, .data$count)
+             .data$housing, .data$active, .data$count)
 
   } else remainder <- single_date[0,]
 
