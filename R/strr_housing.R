@@ -120,7 +120,8 @@ strr_housing <- function(property, property_type = property_type) {
       housing = if_else({{ property_type }} %in% housing_types, TRUE, FALSE),
       # Add extra logic to catch non-housing option with non-ASCII character
       housing = if_else(stringr::str_detect({{ property_type }}, "ara/s"),
-                        FALSE, .data$housing))
+                        FALSE, .data$housing),
+      housing = if_else(is.na(.data$housing), TRUE, .data$housing))
 }
 
 

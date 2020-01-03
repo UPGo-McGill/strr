@@ -67,13 +67,13 @@ strr_compress <- function(data, quiet = FALSE) {
       group_by(.data$property_ID) %>%
       filter(.data$date == max(.data$date)) %>%
       ungroup() %>%
-      select(.data$property_ID, .data$host_ID, .data$listing_type, .data$housing,
-             .data$country, .data$region, .data$city)
+      select(.data$property_ID, .data$host_ID, .data$listing_type,
+             .data$housing, .data$country, .data$region, .data$city)
 
     data <-
       data %>%
-      select(-.data$host_ID, -.data$listing_type, -.data$housing, -.data$country,
-             -.data$region, -.data$city)
+      select(-.data$host_ID, -.data$listing_type, -.data$housing,
+             -.data$country, -.data$region, -.data$city)
   }
 
 
