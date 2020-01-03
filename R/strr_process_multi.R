@@ -9,8 +9,6 @@
 #'
 #' @param daily An unprocessed daily table in the raw AirDNA format, with either
 #' ten or six fields.
-#' @param multiplier An integer scalar. What multiple of the number of available
-#' processes should the data be combined into?
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return A processed multilisting table, ready for compression with
@@ -21,7 +19,7 @@
 #' @importFrom tibble as_tibble
 #' @export
 
-strr_process_multi <- function(daily, multiplier = 2, quiet = FALSE) {
+strr_process_multi <- function(daily, quiet = FALSE) {
 
   time_1 <- Sys.time()
 
@@ -42,7 +40,7 @@ strr_process_multi <- function(daily, multiplier = 2, quiet = FALSE) {
   data_list <-
     daily %>%
     group_split(.data$host_ID) %>%
-    helper_table_split(multiplier)
+    helper_table_split()
 
 
   ## Produce multilisting table

@@ -82,7 +82,7 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
     }
 
 
-  ## PREPARE DATE FIELD
+  ## PREPARE DATE FIELD AND SPLIT DATA
 
   if (!quiet) {message("Preparing new date field. (",
                        substr(Sys.time(), 12, 19), ")")}
@@ -91,10 +91,10 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
     data %>%
     mutate(date = map2(.data$start_date, .data$end_date, ~{.x:.y}))
 
-  suppressWarnings(
-    daily_list <-
-      split(data, 1:min(chunk_size, nrow(data)))
-    )
+
+  data_list <-
+    split(data, 1:nrow(data)) %>%
+    helper_table_split()
 
 
   ## EXPAND TABLE
@@ -103,7 +103,7 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
                        substr(Sys.time(), 12, 19), ")")}
 
   data <-
-    daily_list %>%
+    data_list %>%
     future_map_dfr(~{
       .x %>%
         unnest(cols = c(date)) %>%

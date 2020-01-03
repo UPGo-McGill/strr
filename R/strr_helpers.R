@@ -56,7 +56,7 @@ helper_plan <- function() {
 #' @importFrom dplyr bind_rows
 #' @importFrom future nbrOfWorkers
 
-helper_table_split <- function(data_list, multiplier) {
+helper_table_split <- function(data_list, multiplier = 4) {
 
   if (length(data_list) > multiplier * future::nbrOfWorkers()) {
 
