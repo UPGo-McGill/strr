@@ -104,12 +104,14 @@ strr_compress <- function(data, quiet = FALSE) {
       group_split(.data$host_ID)
   }
 
-  if (length(data_list) > 100) {
+  if (length(data_list) > 2 * future::nbrOfWorkers()) {
 
-    data_list <- purrr::map(1:100, function(i) {
+    data_list <- purrr::map(1:(2 * future::nbrOfWorkers()), function(i) {
       bind_rows(
-        data_list[(floor(as.numeric(length(data_list)) * (i - 1) / 100) +
-                     1):floor(as.numeric(length(data_list)) * i / 100)])
+        data_list[(floor(as.numeric(length(data_list)) * (i - 1) /
+                           (2 * future::nbrOfWorkers())) +
+                     1):floor(as.numeric(length(data_list)) * i /
+                                (2 * future::nbrOfWorkers()))])
       })}
 
   if (!quiet) {message("Beginning compression, using ", helper_plan(), ". (",
