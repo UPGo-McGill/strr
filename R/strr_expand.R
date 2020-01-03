@@ -29,6 +29,7 @@
 #' @importFrom furrr future_map_dfr
 #' @importFrom purrr map2
 #' @importFrom rlang .data
+#' @importFrom stringr str_detect
 #' @importFrom tidyr unnest
 #' @export
 
@@ -58,23 +59,28 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
                   '") is not coercible to a date.'))
     })}
 
+  # Remove strr class as workaround to unnest failing
+
+  class(data) <- class(data)[!str_detect(class(data), "strr")]
+
+
   ## STORE EXTRA FIELDS AND TRIM .DATA
 
-  if (length(data) == 15) {
+  if (length(data) == 13) {
     join_fields <-
       data %>%
       group_by(.data$property_ID) %>%
       filter(.data$start_date == max(.data$start_date)) %>%
       ungroup() %>%
       select(.data$property_ID, .data$host_ID, .data$listing_type,
-             .data$created, .data$scraped, .data$housing, .data$country,
-             .data$region, .data$city)
+             .data$housing, .data$country, .data$region, .data$city)
 
     data <-
       data %>%
       select(.data$property_ID, .data$start_date, .data$end_date, .data$status,
              .data$booked_date, .data$price, .data$res_ID)
     }
+
 
   ## PREPARE DATE FIELD
 
@@ -87,7 +93,7 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
 
   suppressWarnings(
     daily_list <-
-      split(data, 1:chunk_size)
+      split(data, 1:min(chunk_size, nrow(data)))
     )
 
 
@@ -103,7 +109,7 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
         unnest(cols = c(date)) %>%
         mutate(date = as.Date(.data$date, origin = "1970-01-01"))
       },
-      # Suppress progress bar if quiet == FALSE or the plan is remote
+      # Suppress progress bar if quiet == TRUE or the plan is remote
       .progress = helper_progress(quiet)
       )
 
