@@ -78,6 +78,11 @@ helper_table_split <- function(data_list, multiplier = 4) {
       } else multiplier <- multiplier - 1
   }
 
+  # Order from largest to smallest
+  data_list <-
+    data_list[order(purrr::map_int(data_list, nrow), decreasing = TRUE)]
+
+
   data_list
 }
 
