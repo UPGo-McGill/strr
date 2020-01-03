@@ -94,16 +94,22 @@ strr_compress <- function(data, quiet = FALSE) {
 
    ## Compress processed data file
 
-  data_list <-
-    data %>%
-    group_split(.data$property_ID)
+  if (daily) {
+    data_list <-
+      data %>%
+      group_split(.data$property_ID)
+  } else {
+    data_list <-
+      data %>%
+      group_split(.data$host_ID)
+  }
 
-    if (length(data_list) > 100) {
+  if (length(data_list) > 100) {
 
-      data_list <- purrr::map(1:100, function(i) {
-        bind_rows(
-          data_list[(floor(as.numeric(length(data_list)) * (i - 1) / 100) +
-                        1):floor(as.numeric(length(data_list)) * i / 100)])
+    data_list <- purrr::map(1:100, function(i) {
+      bind_rows(
+        data_list[(floor(as.numeric(length(data_list)) * (i - 1) / 100) +
+                     1):floor(as.numeric(length(data_list)) * i / 100)])
       })}
 
   if (!quiet) {message("Beginning compression, using ", helper_plan(), ". (",
@@ -262,7 +268,7 @@ strr_compress_helper_ML <- function(data) {
            end_date = as.Date(map_dbl(.data$dates, ~{.x}),
                               origin = "1970-01-01")) %>%
     select(.data$host_ID, .data$start_date, .data$end_date, .data$listing_type,
-           .data$housing, .data$active, .data$count)
+           .data$housing, .data$count)
 
   one_length <-
     data %>%
@@ -273,7 +279,7 @@ strr_compress_helper_ML <- function(data) {
            end_date = as.Date(map_dbl(.data$dates, max),
                               origin = "1970-01-01")) %>%
     select(.data$host_ID, .data$start_date, .data$end_date, .data$listing_type,
-           .data$housing, .data$active, .data$count)
+           .data$housing, .data$count)
 
   if ({data %>%
       filter(map(.data$dates, length) != 1,
@@ -289,8 +295,8 @@ strr_compress_helper_ML <- function(data) {
                end_date = .x[which(diff(c(.x, 30000)) > 1)])
       })) %>%
       unnest(.data$date_range) %>%
-      select(.data$host_ID, .data$start_date, .data$end_date, .data$listing_type,
-             .data$housing, .data$active, .data$count)
+      select(.data$host_ID, .data$start_date, .data$end_date,
+             .data$listing_type, .data$housing, .data$count)
 
   } else remainder <- single_date[0,]
 

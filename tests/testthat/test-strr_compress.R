@@ -28,10 +28,29 @@ daily <-
          region = NA,
          city = NA)
 
+multi <-
+  tibble(host_ID = c(rep("ab-1", 20), rep("ab-2", 10)),
+         date = as.Date(c(
+           "2018-04-01", "2018-04-02", "2018-04-03", "2018-04-04",
+           "2018-04-05", "2018-04-06", "2018-04-07", "2018-04-08",
+           "2018-04-09", "2018-04-10", "2018-04-11", "2018-04-12",
+           "2018-04-13", "2018-04-14", "2018-04-15", "2018-04-16",
+           "2018-04-17", "2018-04-18", "2018-04-19", "2018-04-20",
+           "2018-04-01", "2018-04-02", "2018-04-03", "2018-04-04",
+           "2018-04-05", "2018-04-06", "2018-04-07", "2018-04-08",
+           "2018-04-09", "2018-04-10")),
+         listing_type = c(
+           rep("A", 5), rep("R", 2), rep("A", 13),
+           rep("A", 4), rep("B", 3), rep("R", 3)),
+         housing = NA,
+         count = c(rep(1, 10), rep(3, 20)))
+
 
 ### Tests ######################################################################
 
-test_that("table pieces are correctly assembled", {
-  # Basic test
+test_that("function completes with no errors", {
+  # Daily file
   expect_equal(nrow(strr_compress(daily)), 6)
+  # ML file
+  expect_equal(nrow(strr_compress(multi)), 7)
 })

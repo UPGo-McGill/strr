@@ -25,6 +25,9 @@ strr_process_multi <- function(daily, quiet = FALSE) {
 
   ## Error checking and initialization
 
+  if (!quiet) {message("Trimming daily table to valid entries. (",
+                       substr(Sys.time(), 12, 19), ")")}
+
   ## Trim daily table
 
   daily <-
