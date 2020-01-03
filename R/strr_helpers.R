@@ -58,15 +58,25 @@ helper_plan <- function() {
 
 helper_table_split <- function(data_list, multiplier = 4) {
 
-  if (length(data_list) > multiplier * future::nbrOfWorkers()) {
+  while (multiplier >= 1) {
 
-    data_list <- purrr::map(1:(multiplier * future::nbrOfWorkers()), ~{
-      bind_rows(
-        data_list[(floor(as.numeric(length(data_list)) * (.x - 1) /
-                           (multiplier * future::nbrOfWorkers())) + 1):
-                    floor(as.numeric(length(data_list)) * .x /
-                            (multiplier * future::nbrOfWorkers()))])
-    })}
+    # Try to combine data using initial multiplier value
+    if (length(data_list) > multiplier * future::nbrOfWorkers()) {
+
+      data_list <- purrr::map(1:(multiplier * future::nbrOfWorkers()), ~{
+        bind_rows(
+          data_list[(floor(as.numeric(length(data_list)) * (.x - 1) /
+                             (multiplier * future::nbrOfWorkers())) + 1):
+                      floor(as.numeric(length(data_list)) * .x /
+                              (multiplier * future::nbrOfWorkers()))])
+      })
+
+      # Set multiplier to 0 to exit the while-loop
+      multiplier <- 0
+
+      # Set multiplier lower and try again
+      } else multiplier <- multiplier - 1
+  }
 
   data_list
 }
