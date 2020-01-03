@@ -44,3 +44,30 @@ helper_plan <- function() {
 
 
 }
+
+#' Helper function to split data for parallel processing
+#'
+#' \code{helper_table_split} takes a split table and combines it into an
+#' optimal number of elements for parallel processing.
+#' @param data_list A list of data elements to be resized
+#' @param multiplier An integer scalar. What multiple of the number of available
+#' processes should the data be combined into?
+#' @return A list of data elements.
+#' @importFrom dplyr bind_rows
+#' @importFrom future nbrOfWorkers
+
+helper_table_split <- function(data_list, multiplier) {
+
+  if (length(data_list) > multiplier * future::nbrOfWorkers()) {
+
+    data_list <- purrr::map(1:(multiplier * future::nbrOfWorkers()), ~{
+      bind_rows(
+        data_list[(floor(as.numeric(length(data_list)) * (.x - 1) /
+                           (multiplier * future::nbrOfWorkers())) + 1):
+                    floor(as.numeric(length(data_list)) * .x /
+                            (multiplier * future::nbrOfWorkers()))])
+    })}
+
+  data_list
+}
+

@@ -4,11 +4,14 @@
 \alias{strr_compress}
 \title{Function to compress daily STR tables into UPGo DB format}
 \usage{
-strr_compress(data, quiet = FALSE)
+strr_compress(data, multiplier = 2, quiet = FALSE)
 }
 \arguments{
 \item{data}{A daily table in either the processed UPGo daily format or the
 processed UPGo multilisting format.}
+
+\item{multiplier}{An integer scalar. What multiple of the number of available
+processes should the data be combined into?}
 
 \item{quiet}{A logical scalar. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}

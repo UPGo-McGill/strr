@@ -15,6 +15,8 @@
 #'
 #' @param data A daily table in either the processed UPGo daily format or the
 #' processed UPGo multilisting format.
+#' @param multiplier An integer scalar. What multiple of the number of available
+#' processes should the data be combined into?
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return A compressed daily table, ready for upload to a remote database.
@@ -26,7 +28,7 @@
 #' @importFrom tibble as_tibble
 #' @export
 
-strr_compress <- function(data, quiet = FALSE) {
+strr_compress <- function(data, multiplier = 2, quiet = FALSE) {
 
   time_1 <- Sys.time()
 
@@ -104,15 +106,9 @@ strr_compress <- function(data, quiet = FALSE) {
       group_split(.data$host_ID)
   }
 
-  if (length(data_list) > 2 * future::nbrOfWorkers()) {
-
-    data_list <- purrr::map(1:(2 * future::nbrOfWorkers()), function(i) {
-      bind_rows(
-        data_list[(floor(as.numeric(length(data_list)) * (i - 1) /
-                           (2 * future::nbrOfWorkers())) +
-                     1):floor(as.numeric(length(data_list)) * i /
-                                (2 * future::nbrOfWorkers()))])
-      })}
+  data_list <-
+    data_list %>%
+    helper_table_split(multiplier)
 
   if (!quiet) {message("Beginning compression, using ", helper_plan(), ". (",
                        substr(Sys.time(), 12, 19), ")")}
