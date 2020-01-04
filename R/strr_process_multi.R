@@ -25,6 +25,12 @@ strr_process_multi <- function(daily, quiet = FALSE) {
 
   ## Error checking and initialization
 
+  # Remove future global export limit
+
+  options(future.globals.maxSize = +Inf)
+  on.exit(.Options$future.globals.maxSize <- NULL)
+
+
   if (!quiet) {message("Trimming daily table to valid entries. (",
                        substr(Sys.time(), 12, 19), ")")}
 
