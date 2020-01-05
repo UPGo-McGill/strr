@@ -33,7 +33,6 @@ strr_process_multi <- function(.daily, .quiet = FALSE, ...) {
   ## Error checking and initialization
 
   # Remove future global export limit
-
   options(future.globals.maxSize = +Inf)
   on.exit(.Options$future.globals.maxSize <- NULL)
 
@@ -45,7 +44,9 @@ strr_process_multi <- function(.daily, .quiet = FALSE, ...) {
 
   .daily <-
     .daily %>%
-    filter(.data$status != "U", !is.na(.data$host_ID))
+    filter(.data$status != "U", !is.na(.data$host_ID)) %>%
+    # Remove unnecessary fields to reduce memory usage
+    select(.data$host_ID, .data$date, .data$listing_type, .data$housing)
 
 
   ## Produce list for processing
