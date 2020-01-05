@@ -35,7 +35,6 @@ strr_compress <- function(data, quiet = FALSE) {
   .datatable.aware = TRUE
 
   # Remove future global export limit
-
   options(future.globals.maxSize = +Inf)
   on.exit(.Options$future.globals.maxSize <- NULL)
 

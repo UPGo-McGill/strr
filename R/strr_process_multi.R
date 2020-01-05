@@ -48,6 +48,9 @@ strr_process_multi <- function(.daily, .quiet = FALSE, ...) {
     # Remove unnecessary fields to reduce memory usage
     select(.data$host_ID, .data$date, .data$listing_type, .data$housing)
 
+  # Save nrow for final validity check
+  daily_check <- nrow(.daily)
+
 
   ## Produce list for processing
 
@@ -72,6 +75,14 @@ strr_process_multi <- function(.daily, .quiet = FALSE, ...) {
     },
     # Suppress progress bar if .quiet == TRUE or the plan is remote
     .progress = helper_progress(.quiet))
+
+
+  ## Check validity of output
+
+  if (daily_check != sum(multi$count)) {
+    stop("The function did not return the correct number of entries. ",
+         "This might be because a parallel worker failed complete its job.")
+  }
 
 
   ## Return output
