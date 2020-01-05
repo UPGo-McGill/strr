@@ -4,14 +4,22 @@
 \alias{strr_process_multi}
 \title{Function to create daily multilisting tables}
 \usage{
-strr_process_multi(daily, quiet = FALSE)
+strr_process_multi(.daily, .quiet = FALSE, ...)
 }
 \arguments{
-\item{daily}{An unprocessed daily table in the raw AirDNA format, with either
-ten or six fields.}
+\item{.daily}{An unprocessed daily table in the raw AirDNA format, with
+either ten or six fields.}
 
-\item{quiet}{A logical scalar. Should the function execute quietly, or should
-it return status updates throughout the function (default)?}
+\item{.quiet}{A logical scalar. Should the function execute quietly, or
+should it return status updates throughout the function (default)?}
+
+\item{...}{Additional arguments to pass to component functions. Arguments
+must be named. Currently the only valid argument is `multiplier`, to control
+the number of list elements that will be prepared for parallel processing.
+The default value is 4, which means the input file will be divided into
+\code{(4 * #' workers)} number of elements, where `workers` is set in
+\code{future::plan}. Higher values mean more elements, which will slow down
+processing time but reduce RAM usage. Lower values will mean the inverse.}
 }
 \value{
 A processed multilisting table, ready for compression with

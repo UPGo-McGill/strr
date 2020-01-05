@@ -7,10 +7,17 @@
 #' them for compression into the UPGo format. The function also produces error
 #' files which identify possible corrupt or missing lines in the input file.
 #'
-#' @param daily An unprocessed daily table in the raw AirDNA format, with either
-#' ten or six fields.
-#' @param quiet A logical scalar. Should the function execute quietly, or should
-#' it return status updates throughout the function (default)?
+#' @param .daily An unprocessed daily table in the raw AirDNA format, with
+#' either ten or six fields.
+#' @param .quiet A logical scalar. Should the function execute quietly, or
+#' should it return status updates throughout the function (default)?
+#' @param ... Additional arguments to pass to component functions. Arguments
+#' must be named. Currently the only valid argument is `multiplier`, to control
+#' the number of list elements that will be prepared for parallel processing.
+#' The default value is 4, which means the input file will be divided into
+#' \code{(4 * #' workers)} number of elements, where `workers` is set in
+#' \code{future::plan}. Higher values mean more elements, which will slow down
+#' processing time but reduce RAM usage. Lower values will mean the inverse.
 #' @return A processed multilisting table, ready for compression with
 #' \code{\link{strr_compress}}.
 #' @importFrom dplyr %>% anti_join bind_rows filter inner_join mutate pull
@@ -19,7 +26,7 @@
 #' @importFrom tibble as_tibble
 #' @export
 
-strr_process_multi <- function(daily, quiet = FALSE) {
+strr_process_multi <- function(.daily, .quiet = FALSE, ...) {
 
   time_1 <- Sys.time()
 
@@ -31,27 +38,27 @@ strr_process_multi <- function(daily, quiet = FALSE) {
   on.exit(.Options$future.globals.maxSize <- NULL)
 
 
-  if (!quiet) {message("Trimming daily table to valid entries. (",
+  if (!.quiet) {message("Trimming daily table to valid entries. (",
                        substr(Sys.time(), 12, 19), ")")}
 
   ## Trim daily table
 
-  daily <-
-    daily %>%
+  .daily <-
+    .daily %>%
     filter(.data$status != "U", !is.na(.data$host_ID))
 
 
   ## Produce list for processing
 
   data_list <-
-    daily %>%
+    .daily %>%
     group_split(.data$host_ID) %>%
-    helper_table_split()
+    helper_table_split(...)
 
 
   ## Produce multilisting table
 
-  if (!quiet) {message("Beginning processing, using ", helper_plan(), ". (",
+  if (!.quiet) {message("Beginning processing, using ", helper_plan(), ". (",
                        substr(Sys.time(), 12, 19), ")")}
 
   multi <-
@@ -62,8 +69,8 @@ strr_process_multi <- function(daily, quiet = FALSE) {
         ungroup() %>%
         rename(count = n)
     },
-    # Suppress progress bar if quiet == TRUE or the plan is remote
-    .progress = helper_progress(quiet))
+    # Suppress progress bar if .quiet == TRUE or the plan is remote
+    .progress = helper_progress(.quiet))
 
 
   ## Return output
@@ -72,10 +79,10 @@ strr_process_multi <- function(daily, quiet = FALSE) {
 
   total_time <- Sys.time() - time_1
 
-  if (!quiet) {message("Processing complete. (",
+  if (!.quiet) {message("Processing complete. (",
                        substr(Sys.time(), 12, 19), ")")}
 
-  if (!quiet) {message("Total time: ",
+  if (!.quiet) {message("Total time: ",
                        substr(total_time, 1, 5), " ",
                        attr(total_time, "units"), ".")}
 
