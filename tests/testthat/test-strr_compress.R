@@ -54,3 +54,7 @@ test_that("function completes with no errors", {
   # ML file
   expect_equal(nrow(strr_compress(multi)), 7)
 })
+
+test_that("The quiet flag suppresses all messages", {
+  expect_message(strr_compress(daily, quiet = TRUE), regexp = NA)
+})

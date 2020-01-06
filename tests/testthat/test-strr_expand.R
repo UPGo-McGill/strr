@@ -36,3 +36,7 @@ test_that("function succeeds with no errors", {
   # Basic test
   expect_equal(nrow(strr_expand(daily)), 30)
 })
+
+test_that("The quiet flag suppresses all messages", {
+  expect_message(strr_expand(daily, quiet = TRUE), regexp = NA)
+})

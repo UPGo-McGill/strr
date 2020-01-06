@@ -42,15 +42,14 @@ strr_compress <- function(data, quiet = FALSE) {
 
   if ("strr_daily" %in% class(data) | names(data)[1] == "property_ID") {
 
-    if (!quiet) {message("Daily table identified. (",
-                         substr(Sys.time(), 12, 19), ")")}
+    helper_progress_message("Daily table identified.", .quiet = quiet)
 
     daily <- TRUE
 
   } else if ("strr_multi" %in% class(data) | names(data)[1] == "host_ID") {
 
-    if (!quiet) {message("Multilisting table identified. (",
-                         substr(Sys.time(), 12, 19), ")")}
+    helper_progress_message("Multilisting table identified.",
+                            .quiet = quiet)
 
     daily <- FALSE
 
@@ -80,8 +79,8 @@ strr_compress <- function(data, quiet = FALSE) {
 
   if (lubridate::month(min(data$date)) != lubridate::month(max(data$date))) {
 
-    if (!quiet) {message("Splitting table by year and month. (",
-                         substr(Sys.time(), 12, 19), ")")}
+    helper_progress_message("Splitting table by year and month.",
+                            .quiet = quiet)
 
     data <-
       data %>%
@@ -107,8 +106,8 @@ strr_compress <- function(data, quiet = FALSE) {
     data_list %>%
     helper_table_split()
 
-  if (!quiet) {message("Beginning compression, using ", helper_plan(), ". (",
-                       substr(Sys.time(), 12, 19), ")")}
+  helper_progress_message("Beginning compression, using {helper_plan()}.",
+                          .quiet = quiet)
 
   if (daily) {
 
@@ -132,8 +131,7 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ## Arrange output and set class
 
-  if (!quiet) {message("Arranging output table. (",
-                       substr(Sys.time(), 12, 19), ")")}
+  helper_progress_message("Arranging output table.", .quiet = quiet)
 
   if (daily) {
     compressed <- arrange(compressed, .data$property_ID, .data$start_date)
@@ -146,14 +144,10 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ## Return output
 
-  total_time <- Sys.time() - time_1
+  helper_progress_message("Compression complete.", .quiet = quiet)
 
-  if (!quiet) {message("Compression complete. (",
-                       substr(Sys.time(), 12, 19), ")")}
-
-  if (!quiet) {message("Total time: ",
-                       substr(total_time, 1, 5), " ",
-                       attr(total_time, "units"), ".")}
+  helper_total_time(time_1) %>%
+    helper_progress_message(.quiet = quiet, .final = TRUE)
 
   return(compressed)
 }

@@ -65,8 +65,7 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
 
   ## Find rows with readr errors and add to error file
 
-  if (!quiet) {message("Beginning error check. (",
-                       substr(Sys.time(), 12, 19), ")")}
+  helper_progress_message("Beginning error check.", .quiet = quiet)
 
   error_vector <-
     readr::problems(daily) %>%
@@ -94,9 +93,9 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
     daily %>%
     filter(!is.na(.data$property_ID), !is.na(.data$date), !is.na(.data$status))
 
-  if (!quiet) {
-    message("Rows with missing property_ID, date or status identified. (",
-            substr(Sys.time(), 12, 19), ")")}
+  helper_progress_message(
+    "Rows with missing property_ID, date or status identified.",
+    .quiet = quiet)
 
 
   ## Check status
@@ -129,8 +128,8 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
                by = "property_ID")
 
 
-  if (!quiet) {message("Rows missing from property file identified. (",
-                       substr(Sys.time(), 12, 19), ")")}
+  helper_progress_message("Rows missing from property file identified.",
+                          .quiet = quiet)
 
 
   ## Remove duplicate listing entries by price, but don't add to error file
@@ -139,8 +138,7 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
     daily %>%
     filter(!is.na(.data$price))
 
-  if (!quiet) {message("Duplicate rows removed. (",
-                       substr(Sys.time(), 12, 19), ")")}
+  helper_progress_message("Duplicate rows removed.", .quiet = quiet)
 
 
   ## Find missing rows
@@ -159,8 +157,7 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
     mutate(dif = .data$full_count - .data$count) %>%
     filter(.data$dif != 0)
 
-  if (!quiet) {message("Missing rows identified. (",
-                       substr(Sys.time(), 12, 19), ")")}
+  helper_progress_message("Missing rows identified.", .quiet = quiet)
 
   daily <- as_tibble(daily)
 
@@ -177,26 +174,22 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
     filter(.data$date >= .data$created, .data$date <= .data$scraped) %>%
     select(-.data$created, -.data$scraped)
 
-  if (!quiet) {message("Rows outside active listing period identified. (",
-                       substr(Sys.time(), 12, 19), ")")}
+  helper_progress_message("Rows outside active listing period identified.",
+                          .quiet = quiet)
 
 
   ## Set classes of outputs
 
-  class(daily) <- c(class(daily), "strr_daily")
-  class(daily_inactive) <- c(class(daily_inactive), "strr_daily")
+  class(daily) <- append(class(daily), "strr_daily")
+  class(daily_inactive) <- append(class(daily_inactive), "strr_daily")
 
 
   ## Return output
 
-  total_time <- Sys.time() - time_1
+  helper_progress_message("Processing complete.", .quiet = quiet)
 
-  if (!quiet) {message("Processing complete. (",
-                       substr(Sys.time(), 12, 19), ")")}
-
-  if (!quiet) {message("Total time: ",
-                       substr(total_time, 1, 5), " ",
-                       attr(total_time, "units"), ".")}
+  helper_total_time(time_1) %>%
+    helper_progress_message(.quiet = quiet, .final = TRUE)
 
   return(list(daily, daily_inactive, error, missing_rows))
 }

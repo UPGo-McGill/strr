@@ -4,39 +4,33 @@
 #' which met a given standard of availability and activity over a specified
 #' time period.
 #'
-#' A function for identifying clusters of possible "ghost hostels"--clusters of
-#' private-room STR listings operating in a single building. The function works
-#' by intersecting the possible locations of listings operated by a single host
-#' with each other, to find areas which could the common location of the
-#' listings, and thus be one or more housing units subdivided into private rooms
-#' rather than a set of geographically disparate listings. The function can
-#' optionally run its analysis separately for each date within a time period,
-#' and can also check for possible duplication with entire-home listings
-#' operated by the same host.
+#' TKTK
 #'
-#' @param .daily A data frame of daily STR activity in standard UPGo format.
+#' @param daily A data frame of daily STR activity in standard UPGo format.
 #' @param start_date A character string of format YYYY-MM-DD indicating the
 #'   first date for which to return output. If NULL (default), all dates will
-#'   be used. This argument is ignored if `multi_date` is FALSE.
+#'   be used.
 #' @param end_date A character string of format YYYY-MM-DD indicating the last
-#'   date for which to run the analysis. If NULL (default), all dates will be
-#'   used. This argument is ignored if `multi_date` is FALSE.
-#' @param property_ID The name of a character or numeric variable in the points
-#'   object which uniquely identifies STR listings.
-#' @param date TKTK
-#' @param status TKTK
-#' @param status_types TKTK
-#' @param listing_type The name of a character variable in the `.daily``
-#'   object which identifies entire-home listings. Set this argument to FALSE
-#'   to use all listings in the `.daily` table.
+#'   date for which to run the analysis.
+#' @param property_ID The name of a character or numeric variable in the `daily`
+#'   table which uniquely identifies STR listings.
+#' @param date The name of a date variable in the `daily` table.
+#' @param status The name of a character variable in the `daily` table which
+#' identifies the activity status of a listing on a give date.
+#' @param status_types A two-length character vector which identifies the
+#' values in the `status` variable indicating "reserved" and "available" status
+#' respectively. The default value is \code{c("R", "A")}.
+#' @param listing_type The name of a character variable in the `daily`
+#'   table which identifies entire-home listings. Set this argument to FALSE
+#'   to use all listings in the `daily` table.
 #' @param entire_home A character string which identifies the value of the
 #'   `listing_type` variable to be used to find entire-home listings. This field
 #'   is ignored if `listing_type` is FALSE.
-#' @param n_days TKTK
+#' @param n_days An integer scalar which determines how many days should be used
+#' to evaluate each listing's activity status. The default is 365 days (one
+#' year).
 #' @param r_cut TKTK
 #' @param ar_cut TKTK
-#' @param cores A positive integer scalar. How many processing cores should be
-#'   used to perform the computationally intensive steps?
 #' @param quiet A logical vector. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return The output will be a tidy data frame of identified FREH listings,
@@ -48,27 +42,34 @@
 #'   days specified by `n_days`.
 #' @importFrom data.table rbindlist
 #' @importFrom dplyr %>% as_tibble filter rename
+#' @importFrom furrr future_map_dfr
 #' @importFrom rlang .data
+#' @importFrom sf st_drop_geometry
 #' @export
 
-strr_FREH <- function(.daily, start_date, end_date, property_ID = property_ID,
+strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
                       date = date, status = status, status_types = c("R", "A"),
                       listing_type = listing_type,
                       entire_home = "Entire home/apt", n_days = 365, r_cut = 90,
-                      ar_cut = 183, cores = 1, quiet = FALSE) {
+                      ar_cut = 183, quiet = FALSE) {
 
   time_1 <- Sys.time()
 
-  if (!quiet) message("Preparing table for analysis. (",
-                      substr(Sys.time(), 12, 19), ")")
+  helper_progress_message("Preparing table for analysis.",
+                          .quiet = quiet)
 
 
-  ## Set data.table flag and define local variables to avoid R CMD check notes
+  ## Initialization
 
   .datatable.aware = TRUE
 
+  # Define local variables to avoid R CMD check notes
   R <- NULL
   AR <- NULL
+
+  # Remove future global export limit
+  options(future.globals.maxSize = +Inf)
+  on.exit(.Options$future.globals.maxSize <- NULL)
 
 
   ## Check n_days, r_cut, ar_cut, and cores arguments
@@ -101,26 +102,30 @@ strr_FREH <- function(.daily, start_date, end_date, property_ID = property_ID,
 
   ## Check status_types
 
+  # TKTK
 
-  ## Check that .daily fields exist
+  ## Check that daily fields exist
+
+  # helper_test_property_ID(daily)
 
   tryCatch(
-    pull(.daily, {{ property_ID }}),
+    pull(daily, {{ property_ID }}),
     error = function(e) {
       stop("The value of `property_ID` is not a valid field in the input table."
       )})
 
   tryCatch(
-    pull(.daily, {{ date }}),
+    pull(daily, {{ date }}),
     error = function(e) {
       stop("The value of `date` is not a valid field in the input table."
       )})
 
   tryCatch(
-    pull(.daily, {{ status }}),
+    pull(daily, {{ status }}),
     error = function(e) {
       stop("The value of `status` is not a valid field in the input table."
       )})
+
 
   ## Check that status_types arguments are plausible
 
@@ -128,13 +133,13 @@ strr_FREH <- function(.daily, start_date, end_date, property_ID = property_ID,
     stop("The `status_type` argument must be a vector of length 2.")
   }
 
-  if (.daily %>% filter({{ status }} == status_types[1]) %>% nrow() == 0) {
+  if (daily %>% filter({{ status }} == status_types[1]) %>% nrow() == 0) {
     warning(paste0("The first supplied argument to `status_types` returns no ",
                    "matches in the input table. Are you sure the argument ",
                    "is correct?"))
   }
 
-  if (.daily %>% filter({{ status }} == status_types[2]) %>% nrow() == 0) {
+  if (daily %>% filter({{ status }} == status_types[2]) %>% nrow() == 0) {
     warning(paste0("The first supplied argument to `status_types` returns no ",
                    "matches in the input table. Are you sure the argument ",
                    "is correct?"))
@@ -147,7 +152,7 @@ strr_FREH <- function(.daily, start_date, end_date, property_ID = property_ID,
     tryCatch(
       {
         # If listing_type is a field in points, set lt_flag = TRUE
-        pull(.daily, {{ listing_type }})
+        pull(daily, {{ listing_type }})
         TRUE
       },
       error = function(e) {
@@ -165,11 +170,12 @@ strr_FREH <- function(.daily, start_date, end_date, property_ID = property_ID,
       }
     )
 
+
   ## Check entire_home arguments
 
   if (lt_flag) {
 
-    if (.daily %>% filter({{ listing_type }} == entire_home) %>% nrow() == 0) {
+    if (daily %>% filter({{ listing_type }} == entire_home) %>% nrow() == 0) {
       warning(paste0("The supplied argument to `entire_home` returns no ",
                      "matches in the input table. Are you sure the argument ",
                      "is correct?"))
@@ -177,11 +183,18 @@ strr_FREH <- function(.daily, start_date, end_date, property_ID = property_ID,
   }
 
 
+  ## Drop geometry if table is sf
+
+  if (inherits(daily, "sf")) {
+    daily <- st_drop_geometry(daily)
+  }
+
+
   ## Wrangle dates
 
   if (missing(start_date)) {
     start_date <-
-      .daily %>%
+      daily %>%
       pull({{ date }}) %>%
       min(na.rm = TRUE)
   } else {
@@ -192,7 +205,7 @@ strr_FREH <- function(.daily, start_date, end_date, property_ID = property_ID,
 
   if (missing(end_date)) {
     end_date <-
-      .daily %>%
+      daily %>%
       pull({{ date }}) %>%
       max(na.rm = TRUE)
   } else {
@@ -204,63 +217,61 @@ strr_FREH <- function(.daily, start_date, end_date, property_ID = property_ID,
 
   ## Filter daily file
 
-  if (lt_flag) .daily <- .daily %>% filter({{ listing_type }} == entire_home)
+  if (lt_flag) daily <- daily %>% filter({{ listing_type }} == entire_home)
 
-  .daily <-
-    .daily %>%
+  daily <-
+    daily %>%
     filter({{ status }} %in% c("A", "R"), {{ date }} >= start_date - 364,
            {{ date }} <= end_date)
 
   ## Rename fields to make data.table functions work
 
-  .daily <-
-    .daily %>%
+  daily <-
+    daily %>%
     rename(property_ID = {{ property_ID }},
            date = {{ date }},
-           status = {{ status }},
-           listing_type = {{ listing_type }})
+           status = {{ status }}) %>%
+    # Only select needed fields, to reduce object size for remote transfer
+    select(.data$property_ID, .data$date, .data$status)
 
 
   ## Perform calculations
 
-  setDT(.daily)
+  setDT(daily)
 
-  if (!quiet) message("Identifying FREH listings. (",
-                      substr(Sys.time(), 12, 19), ")")
+  helper_progress_message("Beginning processing, using {helper_plan()}.",
+                          .quiet = quiet)
 
-  .daily <-
-    pbapply::pblapply(start_date:end_date, function(date_check) {
-      .daily <- .daily[date >= date_check - 364 & date <= date_check]
-      .daily[, AR := .N, by = property_ID]
-      .daily[, R := sum(status == "R"), by = property_ID]
-      .daily[, list(date = as.Date(date_check, origin = "1970-01-01"),
+  daily <-
+    future_map_dfr(start_date:end_date, function(date_check) {
+      daily <- daily[date >= date_check - 364 & date <= date_check]
+      daily[, AR := .N, by = property_ID]
+      daily[, R := sum(status == "R"), by = property_ID]
+      daily[, list(date = as.Date(date_check, origin = "1970-01-01"),
                     FREH = as.logical((mean(AR) >= ar_cut) *
                                         (mean(R) >= r_cut))),
              by = property_ID]
-    }, cl = cores) %>%
-    rbindlist() %>%
+    },
+    # Suppress progress bar if !quiet or the plan is remote
+    .progress = helper_progress(quiet)) %>%
     as_tibble()
 
 
   ## Rename fields to match input fields
 
-  .daily <-
-    .daily %>%
+  daily <-
+    daily %>%
     rename({{ property_ID }} := .data$property_ID,
            {{ date }} := .data$date)
 
 
   ## Return output
 
-  total_time <- Sys.time() - time_1
+  helper_progress_message("Analysis complete.", .quiet = quiet)
 
-  if (!quiet) {message("Analysis complete. (",
-                       substr(Sys.time(), 12, 19), ")")}
+  helper_total_time(time_1) %>%
+    helper_progress_message(.quiet = quiet, .final = TRUE)
 
-  if (!quiet) {message("Total time: ",
-                       substr(total_time, 1, 5), " ",
-                       attr(total_time, "units"), ".")}
-
-  return(.daily)
+  return(daily)
 
 }

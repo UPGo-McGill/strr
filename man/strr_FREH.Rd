@@ -5,7 +5,7 @@
 \title{Function to identify frequently rented entire-home (FREH) listings}
 \usage{
 strr_FREH(
-  .daily,
+  daily,
   start_date,
   end_date,
   property_ID = property_ID,
@@ -17,46 +17,46 @@ strr_FREH(
   n_days = 365,
   r_cut = 90,
   ar_cut = 183,
-  cores = 1,
   quiet = FALSE
 )
 }
 \arguments{
-\item{.daily}{A data frame of daily STR activity in standard UPGo format.}
+\item{daily}{A data frame of daily STR activity in standard UPGo format.}
 
 \item{start_date}{A character string of format YYYY-MM-DD indicating the
 first date for which to return output. If NULL (default), all dates will
-be used. This argument is ignored if `multi_date` is FALSE.}
+be used.}
 
 \item{end_date}{A character string of format YYYY-MM-DD indicating the last
-date for which to run the analysis. If NULL (default), all dates will be
-used. This argument is ignored if `multi_date` is FALSE.}
+date for which to run the analysis.}
 
-\item{property_ID}{The name of a character or numeric variable in the points
-object which uniquely identifies STR listings.}
+\item{property_ID}{The name of a character or numeric variable in the `daily`
+table which uniquely identifies STR listings.}
 
-\item{date}{TKTK}
+\item{date}{The name of a date variable in the `daily` table.}
 
-\item{status}{TKTK}
+\item{status}{The name of a character variable in the `daily` table which
+identifies the activity status of a listing on a give date.}
 
-\item{status_types}{TKTK}
+\item{status_types}{A two-length character vector which identifies the
+values in the `status` variable indicating "reserved" and "available" status
+respectively. The default value is \code{c("R", "A")}.}
 
-\item{listing_type}{The name of a character variable in the `.daily``
-object which identifies entire-home listings. Set this argument to FALSE
-to use all listings in the `.daily` table.}
+\item{listing_type}{The name of a character variable in the `daily`
+table which identifies entire-home listings. Set this argument to FALSE
+to use all listings in the `daily` table.}
 
 \item{entire_home}{A character string which identifies the value of the
 `listing_type` variable to be used to find entire-home listings. This field
 is ignored if `listing_type` is FALSE.}
 
-\item{n_days}{TKTK}
+\item{n_days}{An integer scalar which determines how many days should be used
+to evaluate each listing's activity status. The default is 365 days (one
+year).}
 
 \item{r_cut}{TKTK}
 
 \item{ar_cut}{TKTK}
-
-\item{cores}{A positive integer scalar. How many processing cores should be
-used to perform the computationally intensive steps?}
 
 \item{quiet}{A logical vector. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}
@@ -76,13 +76,5 @@ which met a given standard of availability and activity over a specified
 time period.
 }
 \details{
-A function for identifying clusters of possible "ghost hostels"--clusters of
-private-room STR listings operating in a single building. The function works
-by intersecting the possible locations of listings operated by a single host
-with each other, to find areas which could the common location of the
-listings, and thus be one or more housing units subdivided into private rooms
-rather than a set of geographically disparate listings. The function can
-optionally run its analysis separately for each date within a time period,
-and can also check for possible duplication with entire-home listings
-operated by the same host.
+TKTK
 }

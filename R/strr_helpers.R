@@ -86,3 +86,85 @@ helper_table_split <- function(data_list, multiplier = 4) {
   data_list
 }
 
+
+#' Helper function to display a progress message
+#'
+#' \code{helper_progress_message} produces a formatted progress message,
+#' optionally with the current time.
+#' @param ... Character strings to be displayed. The strings can include
+#' code for evaluation via \code{glue::glue} inside `{}`.
+#' @param .quiet A logical scalar. Should the function execute quietly, or
+#' should it return status updates throughout the function (default)?
+#' @param .final A logical scalar. Is this the final progress message, to be
+#' formatted in cyan and bold with no time displayed?
+#' @return A status message.
+
+helper_progress_message <- function(..., .quiet, .final = FALSE) {
+
+  ellipsis::check_dots_unnamed()
+
+  if (!.quiet) {
+
+    if (!.final) {
+
+      args <- purrr::map(list(...), ~{
+        glue::glue(crayon::silver(.x))
+      })
+
+      output_time <- crayon::cyan(glue::glue(" ({substr(Sys.time(), 12, 19)})"))
+
+      message(args, output_time)
+
+    } else {
+
+      args <- purrr::map(list(...), ~{
+        glue::glue(crayon::bold(crayon::cyan(.x)))
+      })
+
+      message(args)
+      }
+  }
+}
+
+
+#' Helper function to calculate the total function time
+#'
+#' \code{helper_total_time} produces a character string with the total function
+#' time.
+#' @param time_1 The time when the function began.
+#' @return A character string with the total function time.
+
+helper_total_time <- function(time_1) {
+
+  total_time <- Sys.time() - time_1
+  time_final_1 <- substr(total_time, 1, 5)
+  time_final_2 <- attr(total_time, 'units')
+  glue::glue("Total time: {time_final_1} {time_final_2}.")
+
+}
+
+
+#' Helper function to test for a field
+#'
+#' \code{helper_test_field} tests for the presence of a given field in the input
+#' table.
+#' @param data The table to be checked.
+#' @param field The field to be checked.
+#' @param arg_name A character string supplying the underlying argument name for
+#' the field being checked.
+#' @return An error if the table is not present.
+#' @importFrom rlang as_string ensym
+
+helper_test_field <- function(data, field, arg_name) {
+
+  tryCatch(
+    pull(data, {{ field }}),
+    error = function(e) {
+      stop(glue::glue(
+        "The value (`{as_string(ensym(field))}`) supplied to the ",
+        "`{arg_name}` argument is not a valid field in the ",
+        "input table.")
+      )})
+}
+
+

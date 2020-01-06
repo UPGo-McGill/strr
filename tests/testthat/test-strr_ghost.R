@@ -131,27 +131,27 @@ test_that("private_room and entire_home warnings are issued", {
 test_that("multi_date produces the expected outputs", {
   # 4 to 3 with early date
   expect_equal({
-    strr_ghost(points, quiet = TRUE) %>%
+    strr_ghost(points) %>%
       filter(date == "2016-01-01", host_ID == "4 to 3") %>%
       nrow()}, 0)
   # 4 to 3 with mid date
   expect_equal({
-    strr_ghost(points, quiet = TRUE) %>%
+    strr_ghost(points) %>%
       filter(date == "2018-01-01", host_ID == "4 to 3") %>%
       pull(listing_count)}, 4)
   # 4 to 3 with late date
   expect_equal({
-    strr_ghost(points, quiet = TRUE) %>%
+    strr_ghost(points) %>%
       filter(date == "2019-03-01", host_ID == "4 to 3") %>%
       pull(listing_count)}, 3)
   # 4 to 3 with final date
   expect_equal({
-    strr_ghost(points, quiet = TRUE) %>%
+    strr_ghost(points) %>%
       filter(date == "2019-04-01", host_ID == "4 to 3") %>%
       nrow()}, 0)
   # 4 to 3 with multi_date = FALSE
   expect_equal({
-    strr_ghost(points, multi_date = FALSE, quiet = TRUE) %>%
+    strr_ghost(points, multi_date = FALSE) %>%
       filter(host_ID == "4 to 3") %>%
       pull(listing_count)}, 4)
 })
@@ -189,4 +189,8 @@ test_that("Non-default field names are passed through", {
       names() %>%
       `[`(3)
     }, "HID")
+})
+
+test_that("The quiet flag suppresses all messages", {
+  expect_message(strr_ghost(points, quiet = TRUE), regexp = NA)
 })

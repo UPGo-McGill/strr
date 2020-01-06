@@ -37,8 +37,8 @@ strr_process_multi <- function(.daily, .quiet = FALSE, ...) {
   on.exit(.Options$future.globals.maxSize <- NULL)
 
 
-  if (!.quiet) {message("Trimming daily table to valid entries. (",
-                       substr(Sys.time(), 12, 19), ")")}
+  helper_progress_message("Trimming daily table to valid entries.",
+                          .quiet = .quiet)
 
   ## Trim daily table
 
@@ -62,8 +62,8 @@ strr_process_multi <- function(.daily, .quiet = FALSE, ...) {
 
   ## Produce multilisting table
 
-  if (!.quiet) {message("Beginning processing, using ", helper_plan(), ". (",
-                       substr(Sys.time(), 12, 19), ")")}
+  helper_progress_message("Beginning processing, using {helper_plan()}.",
+                          .quiet = .quiet)
 
   multi <-
     data_list %>%
@@ -87,16 +87,12 @@ strr_process_multi <- function(.daily, .quiet = FALSE, ...) {
 
   ## Return output
 
-  class(multi) <- c(class(multi), "strr_multi")
+  class(multi) <- append(class(multi), "strr_multi")
 
-  total_time <- Sys.time() - time_1
+  helper_progress_message("Processing complete.", .quiet = .quiet)
 
-  if (!.quiet) {message("Processing complete. (",
-                       substr(Sys.time(), 12, 19), ")")}
-
-  if (!.quiet) {message("Total time: ",
-                       substr(total_time, 1, 5), " ",
-                       attr(total_time, "units"), ".")}
+  helper_total_time(time_1) %>%
+    helper_progress_message(.quiet = .quiet, .final = TRUE)
 
   return(multi)
 }
