@@ -53,13 +53,10 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
                       entire_home = "Entire home/apt", n_days = 365, r_cut = 90,
                       ar_cut = 183, quiet = FALSE) {
 
+
+  ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
+
   time_1 <- Sys.time()
-
-  helper_progress_message("Preparing table for analysis.",
-                          .quiet = quiet)
-
-
-  ## Initialization
 
   .datatable.aware = TRUE
 
@@ -103,6 +100,7 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
   ## Check status_types
 
   # TKTK
+
 
   ## Check that daily fields exist
 
@@ -183,6 +181,11 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
   }
 
 
+  ### PREPARE TABLE FOR ANALYSIS ###############################################
+
+  helper_progress_message("Preparing table for analysis.")
+
+
   ## Drop geometry if table is sf
 
   if (inherits(daily, "sf")) {
@@ -235,12 +238,11 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
     select(.data$property_ID, .data$date, .data$status)
 
 
-  ## Perform calculations
+  ### PERFORM CALCULATIONS #####################################################
 
   setDT(daily)
 
-  helper_progress_message("Beginning processing, using {helper_plan()}.",
-                          .quiet = quiet)
+  helper_progress_message("Beginning processing, using {helper_plan()}.")
 
   daily <-
     future_map_dfr(start_date:end_date, function(date_check) {
@@ -265,12 +267,9 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
            {{ date }} := .data$date)
 
 
-  ## Return output
+  ### RETURN OUTPUT ############################################################
 
-  helper_progress_message("Analysis complete.", .quiet = quiet)
-
-  helper_total_time(time_1) %>%
-    helper_progress_message(.quiet = quiet, .final = TRUE)
+  helper_progress_message("Analysis complete.", .final = TRUE)
 
   return(daily)
 

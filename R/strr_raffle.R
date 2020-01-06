@@ -27,6 +27,8 @@
 #'   associated probabilities be appended to the function output?
 #' @param cores A positive integer scalar. How many processing cores should be
 #'   used to perform the computationally intensive numeric integration step?
+#' @param quiet A logical scalar. Should the function execute quietly, or should
+#' it return status updates throughout the function (default)?
 #' @return The output will be the input points object with a new `winner` field
 #'   appended. The `winner` field specifies which polygon from the polys object
 #'   was probabilistically assigned to the listing, using the field identified
@@ -45,7 +47,9 @@
 
 strr_raffle <- function(
   points, polys, poly_ID, units, distance = 200, diagnostic = FALSE,
-  cores = 1) {
+  cores = 1, quiet = FALSE) {
+
+  time_1 <- Sys.time()
 
   # Check that cores is an integer > 0
   cores <- floor(cores)
@@ -83,10 +87,6 @@ strr_raffle <- function(
     polys <- st_transform(polys, st_crs(points))
   }
 
-  # Quote variables
-  poly_ID  <- enquo(poly_ID)
-  units    <- enquo(units)
-
   # Initialize helper fields
   points <-
     points %>%
@@ -100,7 +100,7 @@ strr_raffle <- function(
     filter(!! units > 0) %>%
     st_set_agr("constant") %>% # Prevent warnings from the st operations
     mutate(
-      !! poly_ID := as.character(!! poly_ID), # Make sure poly_ID is not factor
+      {{ poly_ID }} := as.character({{ poly_ID }}), # Make sure poly_ID isn't factor; TKTK move to error checking
       poly_area = st_area(.) # Calculate polygon areas
     ) %>%
     st_set_agr("constant")
@@ -116,7 +116,7 @@ strr_raffle <- function(
   intersects <-
     intersects %>%
     mutate(
-      int_units = as.numeric(!! units * st_area(.) / .data$poly_area)) %>%
+      int_units = as.numeric({{ units }} * st_area(.) / .data$poly_area)) %>%
     st_set_agr("constant")
 
   # Transform intersects relative to point coordinates
@@ -167,7 +167,7 @@ strr_raffle <- function(
       results %>%
       summarize(
         winner = as.character(
-          base::sample(!! poly_ID, 1, prob = .data$probability))
+          base::sample({{ poly_ID }}, 1, prob = .data$probability))
       )
   }
 
@@ -175,6 +175,8 @@ strr_raffle <- function(
   points <-
     left_join(points, results, by = ".point_ID") %>%
     select(-.data$.point_ID, -.data$.point_x, -.data$.point_y)
+
+  helper_progress_message("Analysis complete.", .final = TRUE)
   points
 }
 

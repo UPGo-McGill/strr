@@ -38,7 +38,7 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
 
   time_1 <- Sys.time()
 
-  ## ERROR CHECKING AND ARGUMENT INITIALIZATION
+  ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
   # Remove future global export limit
 
@@ -64,7 +64,7 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
   class(data) <- class(data)[!str_detect(class(data), "strr")]
 
 
-  ## STORE EXTRA FIELDS AND TRIM .DATA
+  ### STORE EXTRA FIELDS AND TRIM .DATA ########################################
 
   if (length(data) == 13) {
     join_fields <-
@@ -82,10 +82,9 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
     }
 
 
-  ## PREPARE DATE FIELD AND SPLIT DATA
+  ### PREPARE DATE FIELD AND SPLIT DATA ########################################
 
-  if (!quiet) {message("Preparing new date field. (",
-                       substr(Sys.time(), 12, 19), ")")}
+  helper_progress_message("Preparing new date field.")
 
   data <-
     data %>%
@@ -97,10 +96,9 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
     helper_table_split()
 
 
-  ## EXPAND TABLE
+  ### EXPAND TABLE #############################################################
 
-  if (!quiet) {message("Beginning expansion, using ", helper_plan(), ". (",
-                       substr(Sys.time(), 12, 19), ")")}
+  helper_progress_message("Beginning expansion, using {helper_plan()}.")
 
   data <-
     data_list %>%
@@ -113,10 +111,10 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
       .progress = helper_progress(quiet)
       )
 
-  ## REJOIN TO ADDITIONAL FIELDS, THEN ARRANGE COLUMNS
 
-  if (!quiet) {message("Joining additional fields to table. (",
-                       substr(Sys.time(), 12, 19), ")")}
+  ### REJOIN TO ADDITIONAL FIELDS, THEN ARRANGE COLUMNS ########################
+
+  helper_progress_message("Joining additional fields to table.")
 
   if (length(data) == 8) {
     data <-
@@ -131,7 +129,7 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
              -.data$end_date)
   }
 
-  ## OPTIONALLY TRIM BASED ON START/END DATE
+  ### OPTIONALLY TRIM BASED ON START/END DATE ##################################
 
   if (!missing(start)) {
     data <- filter(data, .data$date >= start)
@@ -142,25 +140,18 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
   }
 
 
-  ## SET CLASS OF OUTPUT
+  ### SET CLASS OF OUTPUT ######################################################
 
   if (names(data)[1] == "property_ID") {
-    class(data) <- c(class(data), "strr_daily")
+    class(data) <- append(class(data), "strr_daily")
   } else {
-    class(data) <- c(class(data), "strr_multi")
+    class(data) <- append(class(data), "strr_multi")
   }
 
 
-  ## OUTPUT DATA FRAME
+  ### OUTPUT DATA FRAME ########################################################
 
-  total_time <- Sys.time() - time_1
-
-  if (!quiet) {message("Expansion complete. (",
-                       substr(Sys.time(), 12, 19), ")")}
-
-  if (!quiet) {message("Total time: ",
-                      substr(total_time, 1, 5), " ",
-                      attr(total_time, "units"), ".")}
+  helper_progress_message("Expansion complete.", .final = TRUE)
 
   return(data)
 }

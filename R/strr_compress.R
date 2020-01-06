@@ -42,14 +42,13 @@ strr_compress <- function(data, quiet = FALSE) {
 
   if ("strr_daily" %in% class(data) | names(data)[1] == "property_ID") {
 
-    helper_progress_message("Daily table identified.", .quiet = quiet)
+    helper_progress_message("Daily table identified.")
 
     daily <- TRUE
 
   } else if ("strr_multi" %in% class(data) | names(data)[1] == "host_ID") {
 
-    helper_progress_message("Multilisting table identified.",
-                            .quiet = quiet)
+    helper_progress_message("Multilisting table identified.")
 
     daily <- FALSE
 
@@ -79,8 +78,7 @@ strr_compress <- function(data, quiet = FALSE) {
 
   if (lubridate::month(min(data$date)) != lubridate::month(max(data$date))) {
 
-    helper_progress_message("Splitting table by year and month.",
-                            .quiet = quiet)
+    helper_progress_message("Splitting table by year and month.")
 
     data <-
       data %>%
@@ -106,8 +104,7 @@ strr_compress <- function(data, quiet = FALSE) {
     data_list %>%
     helper_table_split()
 
-  helper_progress_message("Beginning compression, using {helper_plan()}.",
-                          .quiet = quiet)
+  helper_progress_message("Beginning compression, using {helper_plan()}.")
 
   if (daily) {
 
@@ -131,7 +128,7 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ## Arrange output and set class
 
-  helper_progress_message("Arranging output table.", .quiet = quiet)
+  helper_progress_message("Arranging output table.")
 
   if (daily) {
     compressed <- arrange(compressed, .data$property_ID, .data$start_date)
@@ -144,10 +141,7 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ## Return output
 
-  helper_progress_message("Compression complete.", .quiet = quiet)
-
-  helper_total_time(time_1) %>%
-    helper_progress_message(.quiet = quiet, .final = TRUE)
+  helper_progress_message("Compression complete.", .final = TRUE)
 
   return(compressed)
 }

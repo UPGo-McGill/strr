@@ -37,10 +37,9 @@ strr_process_multi <- function(.daily, .quiet = FALSE, ...) {
   on.exit(.Options$future.globals.maxSize <- NULL)
 
 
-  helper_progress_message("Trimming daily table to valid entries.",
-                          .quiet = .quiet)
-
   ## Trim daily table
+
+  helper_progress_message("Trimming daily table to valid entries.")
 
   .daily <-
     .daily %>%
@@ -62,8 +61,7 @@ strr_process_multi <- function(.daily, .quiet = FALSE, ...) {
 
   ## Produce multilisting table
 
-  helper_progress_message("Beginning processing, using {helper_plan()}.",
-                          .quiet = .quiet)
+  helper_progress_message("Beginning processing, using {helper_plan()}.")
 
   multi <-
     data_list %>%
@@ -81,7 +79,7 @@ strr_process_multi <- function(.daily, .quiet = FALSE, ...) {
 
   if (daily_check != sum(multi$count)) {
     stop("The function did not return the correct number of entries. ",
-         "This might be because a parallel worker failed complete its job.")
+         "This might be because a parallel worker failed to complete its job.")
   }
 
 
@@ -89,10 +87,7 @@ strr_process_multi <- function(.daily, .quiet = FALSE, ...) {
 
   class(multi) <- append(class(multi), "strr_multi")
 
-  helper_progress_message("Processing complete.", .quiet = .quiet)
-
-  helper_total_time(time_1) %>%
-    helper_progress_message(.quiet = .quiet, .final = TRUE)
+  helper_progress_message("Processing complete.", .final = TRUE)
 
   return(multi)
 }

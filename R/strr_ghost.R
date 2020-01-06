@@ -243,8 +243,7 @@ strr_ghost <- function(
 
   ### POINTS SETUP #############################################################
 
-  helper_progress_message("Filtering listings to ghost hostel candidates.",
-                          .quiet = quiet)
+  helper_progress_message("Filtering listings to ghost hostel candidates.")
 
   # Rename fields for easier processing with future package
   points <-
@@ -285,8 +284,7 @@ strr_ghost <- function(
   if (multi_date) {
 
     helper_progress_message(
-      "Identifying possible ghost hostel clusters by date.",
-      .quiet = quiet)
+      "Identifying possible ghost hostel clusters by date.")
 
     points <-
       points %>%
@@ -314,8 +312,7 @@ strr_ghost <- function(
     if (nrow(points) == 0) return(ghost_empty(points, crs_points))
 
     # Create a nested tibble for each possible cluster
-    helper_progress_message("Preparing possible clusters for analysis.",
-                            .quiet = quiet)
+    helper_progress_message("Preparing possible clusters for analysis.")
 
     points <-
       points %>%
@@ -344,8 +341,7 @@ strr_ghost <- function(
       split(1:n_chunks)
   })
 
-  helper_progress_message("Identifying ghost hostels, using {helper_plan()}.",
-                          .quiet = quiet)
+  helper_progress_message("Identifying ghost hostels, using {helper_plan()}.")
 
   points <-
     points_list %>%
@@ -367,8 +363,7 @@ strr_ghost <- function(
 
   ### GHOST TABLE CREATION #####################################################
 
-  helper_progress_message("Combining ghost hostels into output table.",
-                          .quiet = quiet)
+  helper_progress_message("Combining ghost hostels into output table.")
 
   points <-
     points %>%
@@ -403,8 +398,7 @@ strr_ghost <- function(
   # Calculate dates if multi_date == TRUE
   if (multi_date) {
 
-    helper_progress_message("Identifying active date ranges for ghost hostels.",
-                            .quiet = quiet)
+    helper_progress_message("Identifying active date ranges for ghost hostels.")
 
     # Calculate date ranges
     points <-
@@ -436,8 +430,7 @@ strr_ghost <- function(
 
   if (EH_check) {
 
-    helper_progress_message("Checking for possible entire-home duplicates.",
-                            .quiet = quiet)
+    helper_progress_message("Checking for possible entire-home duplicates.")
     EH_buffers <-
       st_buffer(EH_points, distance) %>%
       st_transform(crs_points) %>%
@@ -477,7 +470,7 @@ strr_ghost <- function(
 
   if (multi_date) {
 
-    helper_progress_message("Producing final output table.", .quiet = quiet)
+    helper_progress_message("Producing final output table.")
 
     points <-
       points[c("ghost_ID", "start", "end")] %>%
@@ -505,10 +498,7 @@ strr_ghost <- function(
 
   ### RETURN OUTPUT ############################################################
 
-  helper_progress_message("Analysis complete.", .quiet = quiet)
-
-  helper_total_time(time_1) %>%
-    helper_progress_message(.quiet = quiet, .final = TRUE)
+  helper_progress_message("Analysis complete.", .final = TRUE)
 
   return(points)
 }

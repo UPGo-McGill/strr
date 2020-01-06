@@ -93,35 +93,44 @@ helper_table_split <- function(data_list, multiplier = 4) {
 #' optionally with the current time.
 #' @param ... Character strings to be displayed. The strings can include
 #' code for evaluation via \code{glue::glue} inside `{}`.
-#' @param .quiet A logical scalar. Should the function execute quietly, or
-#' should it return status updates throughout the function (default)?
+#' @param .quiet The name of the argument in the calling function specifying
+#' whether messages should be displayed.
 #' @param .final A logical scalar. Is this the final progress message, to be
-#' formatted in cyan and bold with no time displayed?
+#' formatted in cyan and bold and display the total time?
 #' @return A status message.
 
-helper_progress_message <- function(..., .quiet, .final = FALSE) {
+helper_progress_message <- function(..., .quiet = quiet, .final = FALSE) {
 
   ellipsis::check_dots_unnamed()
 
+  if (missing(.quiet)) {
+    .quiet <-
+      get("quiet", envir = parent.frame(n = 1))
+  }
+
   if (!.quiet) {
 
+    args <- purrr::map(list(...), ~{glue::glue(crayon::silver(.x))})
+
+    output_time <- crayon::cyan(glue::glue(" ({substr(Sys.time(), 12, 19)})"))
+
     if (!.final) {
-
-      args <- purrr::map(list(...), ~{
-        glue::glue(crayon::silver(.x))
-      })
-
-      output_time <- crayon::cyan(glue::glue(" ({substr(Sys.time(), 12, 19)})"))
 
       message(args, output_time)
 
     } else {
 
-      args <- purrr::map(list(...), ~{
-        glue::glue(crayon::bold(crayon::cyan(.x)))
-      })
+      time_1 <- get("time_1", envir = parent.frame(n = 1))
+      total_time <- Sys.time() - time_1
+      time_final_1 <- substr(total_time, 1, 5)
+      time_final_2 <- attr(total_time, 'units')
 
-      message(args)
+      message(
+        args,
+        output_time,
+        "\n",
+        crayon::bold(crayon::cyan(glue::glue(
+          "Total time: {time_final_1} {time_final_2}."))))
       }
   }
 }
@@ -166,5 +175,4 @@ helper_test_field <- function(data, field, arg_name) {
         "input table.")
       )})
 }
-
 

@@ -94,8 +94,7 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
     filter(!is.na(.data$property_ID), !is.na(.data$date), !is.na(.data$status))
 
   helper_progress_message(
-    "Rows with missing property_ID, date or status identified.",
-    .quiet = quiet)
+    "Rows with missing property_ID, date or status identified.")
 
 
   ## Check status
@@ -109,8 +108,7 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
     daily %>%
     filter(.data$status %in% c("A", "U", "B", "R"))
 
-  if (!quiet) {message("Rows with invalid status identified. (",
-                       substr(Sys.time(), 12, 19), ")")}
+  helper_progress_message("Rows with invalid status identified.")
 
 
   ## Check for listings missing from property file
@@ -128,8 +126,7 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
                by = "property_ID")
 
 
-  helper_progress_message("Rows missing from property file identified.",
-                          .quiet = quiet)
+  helper_progress_message("Rows missing from property file identified.")
 
 
   ## Remove duplicate listing entries by price, but don't add to error file
@@ -138,7 +135,7 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
     daily %>%
     filter(!is.na(.data$price))
 
-  helper_progress_message("Duplicate rows removed.", .quiet = quiet)
+  helper_progress_message("Duplicate rows removed.")
 
 
   ## Find missing rows
@@ -157,7 +154,7 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
     mutate(dif = .data$full_count - .data$count) %>%
     filter(.data$dif != 0)
 
-  helper_progress_message("Missing rows identified.", .quiet = quiet)
+  helper_progress_message("Missing rows identified.")
 
   daily <- as_tibble(daily)
 
@@ -174,8 +171,7 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
     filter(.data$date >= .data$created, .data$date <= .data$scraped) %>%
     select(-.data$created, -.data$scraped)
 
-  helper_progress_message("Rows outside active listing period identified.",
-                          .quiet = quiet)
+  helper_progress_message("Rows outside active listing period identified.")
 
 
   ## Set classes of outputs
@@ -186,10 +182,7 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
 
   ## Return output
 
-  helper_progress_message("Processing complete.", .quiet = quiet)
-
-  helper_total_time(time_1) %>%
-    helper_progress_message(.quiet = quiet, .final = TRUE)
+  helper_progress_message("Processing complete.", .final = TRUE)
 
   return(list(daily, daily_inactive, error, missing_rows))
 }
