@@ -136,23 +136,6 @@ helper_progress_message <- function(..., .quiet = NULL, .final = FALSE) {
 }
 
 
-#' Helper function to calculate the total function time
-#'
-#' \code{helper_total_time} produces a character string with the total function
-#' time.
-#' @param time_1 The time when the function began.
-#' @return A character string with the total function time.
-
-helper_total_time <- function(time_1) {
-
-  total_time <- Sys.time() - time_1
-  time_final_1 <- substr(total_time, 1, 5)
-  time_final_2 <- attr(total_time, 'units')
-  glue::glue("Total time: {time_final_1} {time_final_2}.")
-
-}
-
-
 #' Helper function to test for a field
 #'
 #' \code{helper_test_field} tests for the presence of a given field in the input
