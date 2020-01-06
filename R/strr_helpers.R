@@ -99,7 +99,7 @@ helper_table_split <- function(data_list, multiplier = 4) {
 #' formatted in cyan and bold and display the total time?
 #' @return A status message.
 
-helper_progress_message <- function(..., .quiet = quiet, .final = FALSE) {
+helper_progress_message <- function(..., .quiet = NULL, .final = FALSE) {
 
   ellipsis::check_dots_unnamed()
 

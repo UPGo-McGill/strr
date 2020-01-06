@@ -4,17 +4,17 @@
 \alias{helper_progress_message}
 \title{Helper function to display a progress message}
 \usage{
-helper_progress_message(..., .quiet, .final = FALSE)
+helper_progress_message(..., .quiet = NULL, .final = FALSE)
 }
 \arguments{
 \item{...}{Character strings to be displayed. The strings can include
 code for evaluation via \code{glue::glue} inside `{}`.}
 
-\item{.quiet}{A logical scalar. Should the function execute quietly, or
-should it return status updates throughout the function (default)?}
+\item{.quiet}{The name of the argument in the calling function specifying
+whether messages should be displayed.}
 
 \item{.final}{A logical scalar. Is this the final progress message, to be
-formatted in cyan and bold with no time displayed?}
+formatted in cyan and bold and display the total time?}
 }
 \value{
 A status message.

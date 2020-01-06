@@ -11,7 +11,8 @@ strr_raffle(
   units,
   distance = 200,
   diagnostic = FALSE,
-  cores = 1
+  cores = 1,
+  quiet = FALSE
 )
 }
 \arguments{
@@ -37,6 +38,9 @@ associated probabilities be appended to the function output?}
 
 \item{cores}{A positive integer scalar. How many processing cores should be
 used to perform the computationally intensive numeric integration step?}
+
+\item{quiet}{A logical scalar. Should the function execute quietly, or should
+it return status updates throughout the function (default)?}
 }
 \value{
 The output will be the input points object with a new `winner` field
