@@ -112,6 +112,8 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
     mutate(date = map2(.data$start_date, .data$end_date, ~{.x:.y}))
 
 
+  helper_progress_message("Splitting data for processing.")
+
   data_list <-
     split(data, 1:nrow(data)) %>%
     helper_table_split()
