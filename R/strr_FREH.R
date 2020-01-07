@@ -42,7 +42,7 @@
 #'   days specified by `n_days`.
 #' @importFrom data.table rbindlist
 #' @importFrom dplyr %>% as_tibble filter rename
-#' @importFrom furrr future_map_dfr
+#' @importFrom furrr future_map_dfr future_options
 #' @importFrom rlang .data
 #' @importFrom sf st_drop_geometry
 #' @export
@@ -221,6 +221,7 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
     filter({{ status }} %in% c("A", "R"), {{ date }} >= start_date - 364,
            {{ date }} <= end_date)
 
+
   ## Rename fields to make data.table functions work
 
   daily <-
@@ -239,17 +240,20 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
   helper_progress_message("Beginning processing, using {helper_plan()}.")
 
   daily <-
-    future_map_dfr(start_date:end_date, function(date_check) {
-      daily <- daily[date >= date_check - 364 & date <= date_check]
+    future_map_dfr(start_date:end_date, ~{
+      daily <- daily[date >= .x - 364 & date <= .x]
       daily[, AR := .N, by = property_ID]
       daily[, R := sum(status == "R"), by = property_ID]
-      daily[, list(date = as.Date(date_check, origin = "1970-01-01"),
+      daily[, list(date = as.Date(.x, origin = "1970-01-01"),
                     FREH = as.logical((mean(AR) >= ar_cut) *
                                         (mean(R) >= r_cut))),
              by = property_ID]
     },
     # Suppress progress bar if !quiet or the plan is remote
-    .progress = helper_progress(quiet)) %>%
+    .progress = helper_progress(quiet),
+    .options = future_options(globals = c("start_date", "end_date", "daily",
+                                          "ar_cut", "r_cut"))
+    ) %>%
     as_tibble()
 
 
