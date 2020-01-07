@@ -82,6 +82,27 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
     }
 
 
+  ### VERSION FOR OLD DAILY FILE FORMAT ########################################
+
+  ## TKTK Remove this once daily DB update is complete
+
+  if (length(data) == 15) {
+    join_fields <-
+      data %>%
+      group_by(.data$property_ID) %>%
+      filter(.data$start_date == max(.data$start_date)) %>%
+      ungroup() %>%
+      select(.data$property_ID, .data$host_ID, .data$listing_type,
+             .data$created, .data$scraped, .data$housing, .data$country,
+             .data$region, .data$city)
+
+    data <-
+      data %>%
+      select(.data$property_ID, .data$start_date, .data$end_date, .data$status,
+             .data$booked_date, .data$price, .data$res_ID)
+  }
+
+
   ### PREPARE DATE FIELD AND SPLIT DATA ########################################
 
   helper_progress_message("Preparing new date field.")
