@@ -69,7 +69,7 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
   on.exit(.Options$future.globals.maxSize <- NULL)
 
 
-  ## Check n_days, r_cut, ar_cut, and cores arguments
+  ## Check n_days, r_cut and ar_cut arguments
 
   # Check that n_days is an integer > 0
   n_days <- floor(n_days)
@@ -88,12 +88,6 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
   if (ar_cut <= 0 | ar_cut > n_days | ar_cut < r_cut) {
     stop(paste0("The argument `ar_cut` must be a positive integer less than ",
                 "`n_days` and greater than `r_cut`."))
-  }
-
-  # Check that cores is an integer > 0
-  cores <- floor(cores)
-  if (cores <= 0) {
-    stop("The argument `cores` must be a positive integer.")
   }
 
 
