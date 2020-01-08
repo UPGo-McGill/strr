@@ -40,6 +40,8 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
+  .datatable.aware = TRUE
+
   # Remove future global export limit
 
   options(future.globals.maxSize = +Inf)
@@ -126,9 +128,14 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
   data <-
     data_list %>%
     future_map_dfr(~{
-      .x %>%
-        unnest(cols = c(date)) %>%
-        mutate(date = as.Date(.data$date, origin = "1970-01-01"))
+
+      data.table::setDT(.x)
+
+      .x[, lapply(.SD, unlist), by = 1:nrow(.x)] %>%
+        tibble::as_tibble() %>%
+        mutate(date = as.Date(.data$date, origin = "1970-01-01")) %>%
+        select(-.data$nrow)
+
       },
       # Suppress progress bar if quiet == TRUE or the plan is remote
       .progress = helper_progress(quiet)
