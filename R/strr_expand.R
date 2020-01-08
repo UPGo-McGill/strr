@@ -25,7 +25,7 @@
 #' it return status updates throughout the function (default)?
 #' @return A table with one row per date and all other fields returned
 #' unaltered.
-#' @importFrom dplyr %>% bind_rows filter mutate select
+#' @importFrom dplyr %>% bind_rows filter group_split mutate pull select
 #' @importFrom furrr future_map_dfr
 #' @importFrom purrr map2
 #' @importFrom rlang .data
@@ -113,11 +113,11 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
     data %>%
     mutate(date = map2(.data$start_date, .data$end_date, ~{.x:.y}))
 
-
   helper_progress_message("Splitting data for processing.")
 
   data_list <-
-    split(data, 1:nrow(data)) %>%
+    data %>%
+    group_split(pull(.[1]), keep = FALSE) %>%
     helper_table_split()
 
 
