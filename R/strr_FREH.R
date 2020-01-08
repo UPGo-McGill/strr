@@ -257,12 +257,16 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
     as_tibble()
 
 
-  ## Rename fields to match input fields
+  ## Arrange table then rename fields to match input fields
+
+  helper_progress_message("Arranging output.")
 
   daily <-
     daily %>%
+    arrange(property_ID, date) %>%
     rename({{ property_ID }} := .data$property_ID,
            {{ date }} := .data$date)
+
 
 
   ### RETURN OUTPUT ############################################################
