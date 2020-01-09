@@ -68,40 +68,27 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
 
   ### STORE EXTRA FIELDS AND TRIM .DATA ########################################
 
-  if (length(data) == 13) {
+  ## TKTK Remove 15 once daily DB update is complete
+  if (length(data) %in% c(13, 15)) {
+
+    # These fields are per-property
     join_fields <-
       data %>%
       group_by(.data$property_ID) %>%
       filter(.data$start_date == max(.data$start_date)) %>%
       ungroup() %>%
-      select(.data$property_ID, .data$host_ID, .data$listing_type,
-             .data$housing, .data$country, .data$region, .data$city)
+      select(.data$property_ID, .data$host_ID:.data$city)
+
+    # These fields are per-property, per-date
+    add_fields <-
+      data %>%
+      select(.data$property_ID, date = .data$start_date,
+             .data$status:.data$res_ID)
 
     data <-
       data %>%
-      select(.data$property_ID, .data$start_date, .data$end_date, .data$status,
-             .data$booked_date, .data$price, .data$res_ID)
-    }
+      select(.data$property_ID, .data$start_date, .data$end_date)
 
-
-  ### VERSION FOR OLD DAILY FILE FORMAT ########################################
-
-  ## TKTK Remove this once daily DB update is complete
-
-  if (length(data) == 15) {
-    join_fields <-
-      data %>%
-      group_by(.data$property_ID) %>%
-      filter(.data$start_date == max(.data$start_date)) %>%
-      ungroup() %>%
-      select(.data$property_ID, .data$host_ID, .data$listing_type,
-             .data$created, .data$scraped, .data$housing, .data$country,
-             .data$region, .data$city)
-
-    data <-
-      data %>%
-      select(.data$property_ID, .data$start_date, .data$end_date, .data$status,
-             .data$booked_date, .data$price, .data$res_ID)
   }
 
 
@@ -146,17 +133,27 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
 
   helper_progress_message("Joining additional fields to table.")
 
-  if (length(data) == 8) {
+  if (length(data) == 4) {
+
     data <-
       data %>%
+      arrange(.data$property_ID, .data$date) %>%
+      # Join fields which need to be duplicated for specific date ranges
+      left_join(add_fields, by = c("property_ID", "date")) %>%
+      tidyr::fill(.data$status:.data$res_ID) %>%
+      # Join fields which need to be duplicated for specific properties
       left_join(join_fields, by = "property_ID") %>%
       select(.data$property_ID, .data$date, everything(), -.data$start_date,
              -.data$end_date)
+
   } else {
+
     data <-
       data %>%
       select(.data$host_ID, .data$date, everything(), -.data$start_date,
-             -.data$end_date)
+             -.data$end_date) %>%
+      arrange(.data$host_ID, .data$date)
+
   }
 
   ### OPTIONALLY TRIM BASED ON START/END DATE ##################################
