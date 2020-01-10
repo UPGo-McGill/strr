@@ -13,9 +13,14 @@ load("strr_raffle_data.Rdata")
 
 ### Tests ######################################################################
 
-test_that("function successfully completes", {
-  # cores
+test_that("The function successfully completes", {
   expect_equal(nrow(strr_raffle(points, polys, GeoUID, dwellings)), 31)
+})
+
+test_that("The geometry column is last", {
+  expect_equal(
+    dplyr::last(names(strr_raffle(points, polys, GeoUID, dwellings))),
+    "geometry")
 })
 
 test_that("The quiet flag suppresses all messages", {

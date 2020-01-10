@@ -37,9 +37,8 @@
 #'   identified in the `poly_ID` argument. If diagnostic == TRUE, a `candidates`
 #'   field will also be appended, which lists the possible polygons for each
 #'   point, along with their probabilities.
-#' @importFrom dplyr %>% as_tibble enquo filter group_by left_join mutate
-#' @importFrom dplyr select summarize
-#' @importFrom methods is
+#' @importFrom dplyr %>% as_tibble enquo everything filter group_by left_join
+#' @importFrom dplyr mutate select summarize
 #' @importFrom rlang := .data
 #' @importFrom sf st_area st_as_sf st_buffer st_coordinates st_crs
 #' @importFrom sf st_drop_geometry st_intersection st_set_agr st_sfc
@@ -225,11 +224,12 @@ strr_raffle <- function(
           ncol = 2)))
     }
 
-  # Join winners to point file
+  # Join winners to point file and arrange output
   points <-
     points %>%
     left_join(results, by = ".point_ID") %>%
-    select(-.data$.point_ID, -.data$.point_x, -.data$.point_y)
+    select(-.data$.point_ID, -.data$.point_x, -.data$.point_y) %>%
+    select(-.data$geometry, everything(), .data$geometry)
 
   helper_progress_message("Analysis complete.", .final = TRUE)
 
