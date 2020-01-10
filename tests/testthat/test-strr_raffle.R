@@ -1,9 +1,19 @@
-test_that("multiplication works", {
-  expect_equal(2 * 2, 4)
+#### TESTS FOR strr_raffle #####################################################
+
+### Setup ######################################################################
+
+context("strr_raffle tests")
+
+#' @importFrom dplyr %>% arrange
+#' @importFrom tibble tibble
+#' @importFrom sf st_as_sf st_crs st_drop_geometry st_point st_sfc
+
+load("strr_raffle_data.Rdata")
+
+
+### Tests ######################################################################
+
+test_that("function successfully completes", {
+  # cores
+  expect_equal(nrow(strr_raffle(points, polys, GeoUID, dwellings)), 31)
 })
-
-
-# Should have tests for the full strr_raffle function, and for the important
-# sub functions
-
-# Need a toy dataset to do the tests on

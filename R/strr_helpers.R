@@ -64,12 +64,12 @@ helper_table_split <- function(data_list, multiplier = 4) {
     if (length(data_list) > multiplier * future::nbrOfWorkers()) {
 
       data_list <- purrr::map(1:(multiplier * future::nbrOfWorkers()), ~{
-        bind_rows(
-          data_list[(floor(as.numeric(length(data_list)) * (.x - 1) /
-                             (multiplier * future::nbrOfWorkers())) + 1):
-                      floor(as.numeric(length(data_list)) * .x /
-                              (multiplier * future::nbrOfWorkers()))])
-      })
+        do.call(rbind,
+                data_list[(floor(as.numeric(length(data_list)) * (.x - 1) /
+                                   (multiplier * future::nbrOfWorkers())) + 1):
+                            floor(as.numeric(length(data_list)) * .x /
+                                    (multiplier * future::nbrOfWorkers()))])
+        })
 
       # Set multiplier to 0 to exit the while-loop
       multiplier <- 0

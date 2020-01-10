@@ -25,16 +25,14 @@
 #'   locations.
 #' @param diagnostic A logical scalar. Should a list of polygon candidates and
 #'   associated probabilities be appended to the function output?
-#' @param cores A positive integer scalar. How many processing cores should be
-#'   used to perform the computationally intensive numeric integration step?
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
-#' @return The output will be the input points object with a new `winner` field
+#' @return The output will be the input points object with a new `poly_ID` field
 #'   appended. The `winner` field specifies which polygon from the polys object
-#'   was probabilistically assigned to the listing, using the field identified
-#'   in the `poly_ID` argument. If diagnostic == TRUE, a `candidates` field will
-#'   also be appended, which lists the possible polygons for each point, along
-#'   with their probabilities.
+#'   was probabilistically assigned to the listing, taking the name of the field
+#'   identified in the `poly_ID` argument. If diagnostic == TRUE, a `candidates`
+#'   field will also be appended, which lists the possible polygons for each
+#'   point, along with their probabilities.
 #' @importFrom dplyr %>% as_tibble enquo filter group_by left_join mutate
 #' @importFrom dplyr select summarize
 #' @importFrom methods is
@@ -47,15 +45,19 @@
 
 strr_raffle <- function(
   points, polys, poly_ID, units, distance = 200, diagnostic = FALSE,
-  cores = 1, quiet = FALSE) {
+  quiet = FALSE) {
 
   time_1 <- Sys.time()
 
-  # Check that cores is an integer > 0
-  cores <- floor(cores)
-  if (cores <= 0) {
-    stop("The argument `cores` must be a positive integer.")
-  }
+
+  ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
+
+  ## Remove future global export limit
+
+  options(future.globals.maxSize = +Inf)
+  on.exit(.Options$future.globals.maxSize <- NULL)
+
+  ## Check arguments
 
   # Check that distance > 0
   if (distance <= 0) {
@@ -78,14 +80,8 @@ strr_raffle <- function(
     stop("The object `polys` must be of class sf or sp.")
   }
 
-  # Convert points and polys to tibble
-  points <- as_tibble(points) %>% st_as_sf()
-  polys  <- as_tibble(polys)  %>% st_as_sf()
-
   # Transform polys CRS to match points
-  if (st_crs(points) != st_crs(polys)) {
-    polys <- st_transform(polys, st_crs(points))
-  }
+  polys <- st_transform(polys, st_crs(points))
 
   # Initialize helper fields
   points <-
@@ -97,7 +93,7 @@ strr_raffle <- function(
   # Clean up polys and initialize poly_area field
   polys <-
     polys %>%
-    filter(!! units > 0) %>%
+    filter({{ units }} > 0) %>%
     st_set_agr("constant") %>% # Prevent warnings from the st operations
     mutate(
       {{ poly_ID }} := as.character({{ poly_ID }}), # Make sure poly_ID isn't factor; TKTK move to error checking
@@ -129,21 +125,23 @@ strr_raffle <- function(
         st_sfc())
 
   # Multi-threaded version of integration
-  if (cores >= 2) {
 
-    clusters <- pbapply::splitpb(nrow(intersects), cores, nout = 100)
-    intersects_list <- lapply(clusters, function(x) intersects[x,])
-    cl <- parallel::makeForkCluster(cores)
+  helper_progress_message("Splitting data for processing.")
 
-    intersects <-
-      intersects_list %>%
-      pbapply::pblapply(raffle_integrate, cl = cl) %>%
-      do.call(rbind, .)
+  data_list <-
+    intersects %>%
+    group_split(.data$.point_ID) %>%
+    helper_table_split()
 
-    # Single-threaded version of integration
-    } else {
-      intersects <- raffle_integrate(intersects)
-    }
+  helper_progress_message("Beginning analysis, using {helper_plan()}.")
+
+  intersects <-
+    data_list %>%
+    future_map(raffle_integrate,
+               # Suppress progress bar if quiet == TRUE or the plan is remote
+               .progress = helper_progress(quiet)
+               ) %>%
+    do.call(rbind, .)
 
   # Initialize results object
   results <-
@@ -156,17 +154,17 @@ strr_raffle <- function(
     results <-
       results %>%
       summarize(
-        winner = as.character(
-          base::sample(!! poly_ID, 1, prob = .data$probability)),
+        {{ poly_ID }} := as.character(
+          base::sample({{ poly_ID }}, 1, prob = .data$probability)),
         candidates = list(matrix(
-          c(!! poly_ID, (.data$probability) / sum(.data$probability)),
+          c({{ poly_ID }}, (.data$probability) / sum(.data$probability)),
           ncol = 2))
       )
   } else {
     results <-
       results %>%
       summarize(
-        winner = as.character(
+        {{ poly_ID }} := as.character(
           base::sample({{ poly_ID }}, 1, prob = .data$probability))
       )
   }

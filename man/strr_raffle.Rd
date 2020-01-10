@@ -11,7 +11,6 @@ strr_raffle(
   units,
   distance = 200,
   diagnostic = FALSE,
-  cores = 1,
   quiet = FALSE
 )
 }
@@ -36,19 +35,16 @@ locations.}
 \item{diagnostic}{A logical scalar. Should a list of polygon candidates and
 associated probabilities be appended to the function output?}
 
-\item{cores}{A positive integer scalar. How many processing cores should be
-used to perform the computationally intensive numeric integration step?}
-
 \item{quiet}{A logical scalar. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}
 }
 \value{
-The output will be the input points object with a new `winner` field
+The output will be the input points object with a new `poly_ID` field
   appended. The `winner` field specifies which polygon from the polys object
-  was probabilistically assigned to the listing, using the field identified
-  in the `poly_ID` argument. If diagnostic == TRUE, a `candidates` field will
-  also be appended, which lists the possible polygons for each point, along
-  with their probabilities.
+  was probabilistically assigned to the listing, taking the name of the field
+  identified in the `poly_ID` argument. If diagnostic == TRUE, a `candidates`
+  field will also be appended, which lists the possible polygons for each
+  point, along with their probabilities.
 }
 \description{
 \code{strr_raffle} takes reported STR listing locations and assigns the
