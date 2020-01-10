@@ -16,7 +16,11 @@ strr_raffle(
 }
 \arguments{
 \item{points}{An sf or sp point-geometry object, in a projected coordinate
-system.}
+system. If the data frame does not have spatial attributes, an attempt will
+be made to convert it to sf using \code{\link{strr_as_sf}}. The result will
+be transformed into the Web Mercator projection (EPSG: 3857) for distance
+and area calculations. To use a projection more suitable to the data,
+supply an sf or sp object.}
 
 \item{polys}{An sf or sp polygon-geometry object with administrative
 geographies as polygons. It will be transformed into the CRS of `points`.}

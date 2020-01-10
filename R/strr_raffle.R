@@ -12,7 +12,11 @@
 #' densities.
 #'
 #' @param points An sf or sp point-geometry object, in a projected coordinate
-#'   system.
+#'   system. If the data frame does not have spatial attributes, an attempt will
+#'   be made to convert it to sf using \code{\link{strr_as_sf}}. The result will
+#'   be transformed into the Web Mercator projection (EPSG: 3857) for distance
+#'   and area calculations. To use a projection more suitable to the data,
+#'   supply an sf or sp object.
 #' @param polys An sf or sp polygon-geometry object with administrative
 #'   geographies as polygons. It will be transformed into the CRS of `points`.
 #' @param poly_ID The name of a character or numeric variable in the polys
@@ -57,28 +61,74 @@ strr_raffle <- function(
   options(future.globals.maxSize = +Inf)
   on.exit(.Options$future.globals.maxSize <- NULL)
 
-  ## Check arguments
+
+  ## Check distance, diagnostic and quiet flags
 
   # Check that distance > 0
   if (distance <= 0) {
     stop("The argument `distance` must be a positive number.")
   }
 
+  # Check that diagnostic is a logical
+  if (!is.logical(diagnostic)) {
+    stop("The argument `diagnostic` must be a logical value (TRUE or FALSE).")
+  }
+
+  # Check that quiet is a logical
+  if (!is.logical(quiet)) {
+    stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
+  }
+
+
+  ## Handle spatial attributes
+
   # Convert points and polys from sp
-  if (is(points, "Spatial")) {
+  if (inherits(points, "Spatial")) {
     points <- st_as_sf(points)
   }
-  if (is(polys, "Spatial")) {
+  if (inherits(polys, "Spatial")) {
     polys <- st_as_sf(polys)
   }
 
-  # Check that points and polys are sf
-  if (is(points, "sf") == FALSE) {
-    stop("The object `points` must be of class sf or sp.")
+  # Check that points is sf, and convert to sf if possible
+  if (!inherits(points, "sf")) {
+    tryCatch({
+      points <- strr_as_sf(points, 3857)
+      helper_progress_message("Converting input table to sf.")
+      },
+    error = function(e) {
+      stop(paste0("The object `points` must be of class sf or sp, ",
+                  "or must be convertable to sf using strr_as_sf."))
+    })
   }
-  if (is(polys, "sf") == FALSE) {
+
+  # Check that points and polys are sf
+  if (inherits(points, "sf") == FALSE) {
+    stop(paste0("The object `points` must be of class sf or sp, ",
+                "or must be convertable to sf using strr_as_sf."))
+  }
+  if (inherits(polys, "sf") == FALSE) {
     stop("The object `polys` must be of class sf or sp.")
   }
+
+  ## Check that polys fields exist
+
+  tryCatch(
+    pull(polys, {{ poly_ID }}),
+    error = function(e) stop(
+      "The value of `poly_ID` is not a valid field in the `polys` input table."
+      ))
+
+  tryCatch(
+    pull(polys, {{ units }}),
+    error = function(e) stop(
+      "The value of `units` is not a valid field in the `polys` input table."
+      ))
+
+
+  ### PREPARE POINTS AND POLYS TABLES ##########################################
+
+  helper_progress_message("Preparing tables for analysis.")
 
   # Transform polys CRS to match points
   polys <- st_transform(polys, st_crs(points))
@@ -94,12 +144,15 @@ strr_raffle <- function(
   polys <-
     polys %>%
     filter({{ units }} > 0) %>%
-    st_set_agr("constant") %>% # Prevent warnings from the st operations
+    # Prevent warnings from the st operations
+    st_set_agr("constant") %>%
     mutate(
-      {{ poly_ID }} := as.character({{ poly_ID }}), # Make sure poly_ID isn't factor; TKTK move to error checking
-      poly_area = st_area(.) # Calculate polygon areas
+      # Make sure poly_ID isn't factor
+      {{ poly_ID }} := as.character({{ poly_ID }}),
+      poly_area = st_area(.)
     ) %>%
     st_set_agr("constant")
+
 
   # Generate buffers and intersect with polygons
   intersects <-
@@ -124,7 +177,8 @@ strr_raffle <- function(
         }) %>%
         st_sfc())
 
-  # Multi-threaded version of integration
+
+  ### SPLIT DATA FOR PROCESSING ################################################
 
   helper_progress_message("Splitting data for processing.")
 
@@ -132,6 +186,9 @@ strr_raffle <- function(
     intersects %>%
     group_split(.data$.point_ID) %>%
     helper_table_split()
+
+
+  ### DO INTEGRATION ###########################################################
 
   helper_progress_message("Beginning analysis, using {helper_plan()}.")
 
@@ -143,6 +200,8 @@ strr_raffle <- function(
                ) %>%
     do.call(rbind, .)
 
+  ### PROCESS RESULTS AND RETURN OUTPUT ########################################
+
   # Initialize results object
   results <-
     intersects %>%
@@ -150,32 +209,31 @@ strr_raffle <- function(
     group_by(.data$.point_ID)
 
   # Choose winners
-  if (diagnostic == TRUE) {
+  results <-
+    results %>%
+    summarize(
+      {{ poly_ID }} := as.character(
+        base::sample({{ poly_ID }}, 1, prob = .data$probability)))
+
+  # Add diagnostic field if requested
+  if (diagnostic) {
     results <-
       results %>%
       summarize(
-        {{ poly_ID }} := as.character(
-          base::sample({{ poly_ID }}, 1, prob = .data$probability)),
         candidates = list(matrix(
           c({{ poly_ID }}, (.data$probability) / sum(.data$probability)),
-          ncol = 2))
-      )
-  } else {
-    results <-
-      results %>%
-      summarize(
-        {{ poly_ID }} := as.character(
-          base::sample({{ poly_ID }}, 1, prob = .data$probability))
-      )
-  }
+          ncol = 2)))
+    }
 
   # Join winners to point file
   points <-
-    left_join(points, results, by = ".point_ID") %>%
+    points %>%
+    left_join(results, by = ".point_ID") %>%
     select(-.data$.point_ID, -.data$.point_x, -.data$.point_y)
 
   helper_progress_message("Analysis complete.", .final = TRUE)
-  points
+
+  return(points)
 }
 
 
@@ -212,11 +270,12 @@ raffle_pdf <- function(x) {
 #' @return The output will be the input data frame with a `probability` field
 #' added.
 #' @importFrom dplyr %>% mutate
+#' @importFrom polyCub polyCub.midpoint
 #' @importFrom rlang .data
 
 raffle_integrate <- function(intersects) {
   intersects %>%
     mutate(probability = purrr::map2_dbl(.data$geometry, .data$int_units, ~{
-      polyCub::polyCub.midpoint(as(.x, "Spatial"), raffle_pdf) * .y
-    }))
+      polyCub.midpoint(as(.x, "Spatial"), raffle_pdf) * .y
+      }))
 }

@@ -121,9 +121,8 @@ strr_ghost <- function(
   if (!is(points, "sf")) {
     tryCatch({
       points <- strr_as_sf(points, 3857)
-      if (!quiet) message("Converting input table to sf. (",
-                          substr(Sys.time(), 12, 19), ")")
-    },
+      helper_progress_message("Converting input table to sf.")
+      },
     error = function(e) {
       stop(paste0("The object `points` must be of class sf or sp, ",
                   "or must be convertable to sf using strr_as_sf."))
