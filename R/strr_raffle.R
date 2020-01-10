@@ -274,8 +274,10 @@ raffle_pdf <- function(x) {
 #' @importFrom rlang .data
 
 raffle_integrate <- function(intersects) {
-  intersects %>%
-    mutate(probability = purrr::map2_dbl(.data$geometry, .data$int_units, ~{
-      polyCub.midpoint(as(.x, "Spatial"), raffle_pdf) * .y
+  suppressMessages(
+    intersects %>%
+      mutate(probability = purrr::map2_dbl(.data$geometry, .data$int_units, ~{
+        polyCub.midpoint(as(.x, "Spatial"), raffle_pdf) * .y
       }))
+  )
 }

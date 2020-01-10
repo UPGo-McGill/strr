@@ -17,3 +17,8 @@ test_that("function successfully completes", {
   # cores
   expect_equal(nrow(strr_raffle(points, polys, GeoUID, dwellings)), 31)
 })
+
+test_that("The quiet flag suppresses all messages", {
+  expect_message(strr_raffle(points, polys, GeoUID, dwellings, quiet = TRUE),
+                 regexp = NA)
+})
