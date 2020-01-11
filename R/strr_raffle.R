@@ -211,7 +211,6 @@ strr_raffle <- function(
   results <-
     results %>%
     nest(data = c({{ poly_ID }}, .data$probability)) %>%
-    select(.data$.point_ID, .data$data) %>%
     summarize(
       candidates = list(bind_rows(.data$data)),
       {{ poly_ID}} := as.character(

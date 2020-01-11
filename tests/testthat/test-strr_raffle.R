@@ -34,8 +34,19 @@ test_that("The function completes with diagnostic = TRUE", {
     ), 31)
 })
 
-# test_that("Raffle candidates are correct", {
-#   expect_equal(
-#     strr_raffle(points, polys, GeoUID, dwellings, diagnostic = TRUE)
-#     )
-# })
+test_that("Points outside the polygons return NA", {
+  expect_equal(strr_raffle(points, polys, GeoUID, dwellings) %>%
+                 dplyr::slice(31) %>%
+                 dplyr::pull(GeoUID), NA_character_)
+})
+
+test_that("Raffle candidates are correct", {
+  expect_equal(
+    nrow(strr_raffle(
+      points, polys, GeoUID, dwellings, diagnostic = TRUE)[9,]$candidates[[1]]),
+    3)
+  expect_equal(
+    nrow(strr_raffle(
+      points, polys, GeoUID, dwellings, diagnostic = TRUE)[1,]$candidates[[1]]),
+    1)
+})
