@@ -207,22 +207,26 @@ strr_raffle <- function(
     st_drop_geometry() %>%
     group_by(.data$.point_ID)
 
-  # Choose winners
+  # Choose winners and add diagnostic field
   results <-
     results %>%
+    nest(data = c({{ poly_ID }}, .data$probability)) %>%
+    select(.data$.point_ID, .data$data) %>%
     summarize(
-      {{ poly_ID }} := as.character(
-        base::sample({{ poly_ID }}, 1, prob = .data$probability)))
+      candidates = list(bind_rows(.data$data)),
+      {{ poly_ID}} := as.character(
+        base::sample(map(.data$data, pull, 1), 1,
+                     prob = map(.data$data, pull, 2)))
+      ) %>%
+    mutate(candidates = map(.data$candidates, ~{
+      .x %>% mutate(probability = .data$probability / sum(.data$probability))
+      }))
 
-  # Add diagnostic field if requested
-  if (diagnostic) {
-    results <-
-      results %>%
-      summarize(
-        candidates = list(matrix(
-          c({{ poly_ID }}, (.data$probability) / sum(.data$probability)),
-          ncol = 2)))
-    }
+  # Drop diagnostic field if not requested
+  if (!diagnostic) {
+    results <- results %>%
+      select(-.data$candidates)
+  }
 
   # Join winners to point file and arrange output
   points <-

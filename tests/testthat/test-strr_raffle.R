@@ -27,3 +27,15 @@ test_that("The quiet flag suppresses all messages", {
   expect_message(strr_raffle(points, polys, GeoUID, dwellings, quiet = TRUE),
                  regexp = NA)
 })
+
+test_that("The function completes with diagnostic = TRUE", {
+  expect_equal(nrow(
+    strr_raffle(points, polys, GeoUID, dwellings, diagnostic = TRUE)
+    ), 31)
+})
+
+# test_that("Raffle candidates are correct", {
+#   expect_equal(
+#     strr_raffle(points, polys, GeoUID, dwellings, diagnostic = TRUE)
+#     )
+# })
