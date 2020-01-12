@@ -174,9 +174,8 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
 
   property <-
     property %>%
-    mutate(host_ID = if_else(!is.na(.data$ab_host),
-                             as.character(.data$ab_host),
-                             .data$ha_host))
+    mutate(host_ID = furrr::future_map2_chr(.data$ab_host, .data$ha_host, ~{
+      if_else(!is.na(.x), as.character(.x), .y)}))
 
 
   ### Add housing field ########################################################
