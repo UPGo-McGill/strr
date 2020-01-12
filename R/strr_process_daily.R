@@ -46,6 +46,10 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
 
   .datatable.aware = TRUE
 
+  # Check that quiet is a logical
+  if (!is.logical(quiet)) {
+    stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
+  }
 
   ## Rename fields
 

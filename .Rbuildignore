@@ -2,3 +2,4 @@
 ^\.Rproj\.user$
 ^.*\.icloud$
 ^data-raw$
+^README\.Rmd$
