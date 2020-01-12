@@ -166,16 +166,20 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
 
   property <-
     property %>%
-    mutate(listing_title = str_replace_all(
-      .data$listing_title, c('\n' = "", '\r' = "", '\"' = "", "\'" = "")))
+    mutate(listing_title = furrr::future_map_chr(
+      .data$listing_title,
+      str_replace_all,
+      c('\n' = "", '\r' = "", '\"' = "", "\'" = ""))
+    )
 
 
   ### Add host_ID field ########################################################
 
   property <-
     property %>%
-    mutate(host_ID = furrr::future_map2_chr(.data$ab_host, .data$ha_host, ~{
-      if_else(!is.na(.x), as.character(.x), .y)}))
+    mutate(host_ID = if_else(!is.na(.data$ab_host),
+                             as.character(.data$ab_host),
+                             .data$ha_host))
 
 
   ### Add housing field ########################################################
