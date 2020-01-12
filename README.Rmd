@@ -1,0 +1,85 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# strr
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+Tools for analysis of short-term rental data.
+
+- Clean and process raw AirDNA data files.
+- Compress and expand tables of STR data.
+- Generate reliable statistical estimates of STR listings' actual locations.
+- Identify commercial STR operations.
+- Identify frequently rented entire-home listings.
+- Identify "ghost hostels"--clusters of private-room listings operated out of a single housing unit.
+- Identify STR listings which are located in actual housing units.
+
+## Installation
+
+You can install the released version of strr from [CRAN](https://CRAN.R-project.org) with (This is not currently working, since the package has not yet been submitted to CRAN.):
+
+``` r
+install.packages("strr")
+```
+
+And the development version from [GitHub](https://github.com/) with:
+
+``` r
+# install.packages("devtools")
+devtools::install_github("UPGo-McGill/strr")
+```
+
+## strr_process_*: Cleaning and processing raw AirDNA data files
+
+TKTK
+
+```{r example}
+library(strr)
+## basic example code
+```
+
+
+## strr_compress and strr_expand: Compressing and expanding tables of STR data
+
+TKTK
+
+
+## strr_raffle: Generating reliable estimates of STR listing locations
+
+TKTK
+
+## strr_process_multi: Identifying commercial STR operations
+
+TKTK
+
+## strr_FREH: Identifying frequently rented entire-home STRs
+
+TKTK
+
+## strr_ghost: Identifying clusters of private-room listings operated out of a single housing unit
+
+TKTK
+
+## strr_housing: Identifying STR listings located in actual housing units
+
+TKTK
+
+
+## Data usage
+
+Most of the functions in strr are designed to work with raw data from AirDNA: either the `property` files which contain one entry per listing, or the `daily` files which contain one entry per listing per day. TKTK
+
