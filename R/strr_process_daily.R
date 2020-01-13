@@ -38,21 +38,27 @@
 #' @importFrom tibble as_tibble
 #' @export
 
-strr_process_daily <- function(daily, property, quiet = FALSE) {
+strr_process_daily <- function(daily, property = property, quiet = FALSE) {
 
   time_1 <- Sys.time()
 
-  ## Error checking and initialization
+
+  ### Error checking and initialization ########################################
 
   .datatable.aware = TRUE
 
-  # Check that quiet is a logical
+  ## Check that quiet is a logical
+
   if (!is.logical(quiet)) {
     stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
   }
 
+  ## Check that daily and property are data frames
 
-  ## Rename fields
+  # TKTK
+
+
+  ## Check number of fields and rename
 
   if (length(daily) == 6) {
     daily <-
@@ -67,6 +73,8 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
                   "ha_property"))
   } else stop("The `daily` table must have either six or ten fields.")
 
+
+  ### Produce error table ######################################################
 
   ## Find rows with readr errors and add to error file
 
@@ -125,9 +133,7 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
 
   daily <-
     daily %>%
-    filter(!.data$property_ID %in% error$property_ID) %>%
-    inner_join(select(property, .data$property_ID, .data$created,
-                      .data$scraped), by = "property_ID")
+    filter(!.data$property_ID %in% error$property_ID)
 
   helper_progress_message("Invalid rows removed from daily file.")
 
@@ -140,6 +146,8 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
 
   helper_progress_message("Duplicate rows removed.")
 
+
+  ### Produce missing_rows table ###############################################
 
   ## Find missing rows
 
@@ -162,7 +170,21 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
   daily <- as_tibble(daily)
 
 
-  ## Trim entries from property file
+  ### Produce daily and daily_inactive tables ##################################
+
+  ## Join property file
+
+  daily <-
+    daily %>%
+    inner_join(select(property, .data$property_ID, .data$host_ID,
+                      .data$listing_type, .data$created, .data$scraped,
+                      .data$housing, .data$country, .data$region, .data$city),
+               by = "property_ID")
+
+  helper_progress_message("Listing data joined into daily file.")
+
+
+  ## Produce daily and daily_inactive
 
   daily_inactive <-
     daily %>%
@@ -176,6 +198,8 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
 
   helper_progress_message("Rows outside active listing period identified.")
 
+
+  ### Return output ############################################################
 
   ## Set classes of outputs
 
