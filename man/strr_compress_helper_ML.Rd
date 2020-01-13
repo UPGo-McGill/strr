@@ -2,7 +2,7 @@
 % Please edit documentation in R/strr_compress.R
 \name{strr_compress_helper_ML}
 \alias{strr_compress_helper_ML}
-\title{Helper function to compress daily file}
+\title{Helper function to compress ML file}
 \usage{
 strr_compress_helper_ML(data)
 }

@@ -217,7 +217,7 @@ strr_compress_helper <- function(data) {
 }
 
 
-#' Helper function to compress daily file
+#' Helper function to compress ML file
 #'
 #' \code{strr_compress_helper_ML} takes a processed ML table and generates a
 #' compressed version.

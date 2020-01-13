@@ -32,9 +32,9 @@
 #' identifying property_IDs with missing dates in between their first and last
 #' date entries, and therefore potentially missing data.
 #' @importFrom data.table setDT
-#' @importFrom dplyr %>% anti_join bind_rows filter inner_join mutate pull
-#' @importFrom dplyr select
-#' @importFrom rlang .data
+#' @importFrom dplyr %>% anti_join bind_rows distinct filter inner_join mutate
+#' @importFrom dplyr pull select
+#' @importFrom rlang .data set_names
 #' @importFrom tibble as_tibble
 #' @export
 
@@ -51,19 +51,20 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
     stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
   }
 
+
   ## Rename fields
 
   if (length(daily) == 6) {
     daily <-
       daily %>%
-      rlang::set_names(c("property_ID", "date", "status", "booked_date",
-                         "price", "res_ID"))
+      set_names(c("property_ID", "date", "status", "booked_date",
+                  "price", "res_ID"))
   } else if (length(daily) == 10) {
     daily <-
       daily %>%
-      rlang::set_names(c("property_ID", "date", "status", "booked_date",
-                         "price", "price_native", "currency", "res_ID",
-                         "ab_property", "ha_property"))
+      set_names(c("property_ID", "date", "status", "booked_date", "price",
+                  "price_native", "currency", "res_ID", "ab_property",
+                  "ha_property"))
   } else stop("The `daily` table must have either six or ten fields.")
 
 
@@ -81,8 +82,7 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
 
   if (length(error_vector) > 0) {daily <- daily[-error_vector,]}
 
-  if (!quiet) {message("Initial import errors identified. (",
-                       substr(Sys.time(), 12, 19), ")")}
+  helper_progress_message("Initial import errors identified.")
 
 
   ## Find rows with missing property_ID, date or status
@@ -92,10 +92,6 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
     filter(is.na(.data$property_ID) | is.na(.data$date) |
              is.na(.data$status)) %>%
     bind_rows(error)
-
-  daily <-
-    daily %>%
-    filter(!is.na(.data$property_ID), !is.na(.data$date), !is.na(.data$status))
 
   helper_progress_message(
     "Rows with missing property_ID, date or status identified.")
@@ -108,10 +104,6 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
     filter(!(.data$status %in% c("A", "U", "B", "R"))) %>%
     bind_rows(error)
 
-  daily <-
-    daily %>%
-    filter(.data$status %in% c("A", "U", "B", "R"))
-
   helper_progress_message("Rows with invalid status identified.")
 
 
@@ -122,15 +114,22 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
     anti_join(property, by = "property_ID") %>%
     bind_rows(error)
 
+  helper_progress_message("Rows missing from property file identified.")
+
+
+  ## Trim error file and update daily file with results taken from error file
+
+  error <-
+    error %>%
+    distinct()
+
   daily <-
     daily %>%
-    inner_join(select(property, .data$property_ID, .data$host_ID,
-                      .data$listing_type, .data$created, .data$scraped,
-                      .data$housing, .data$country, .data$region, .data$city),
-               by = "property_ID")
+    filter(!.data$property_ID %in% error$property_ID) %>%
+    inner_join(select(property, .data$property_ID, .data$created,
+                      .data$scraped), by = "property_ID")
 
-
-  helper_progress_message("Rows missing from property file identified.")
+  helper_progress_message("Invalid rows removed from daily file.")
 
 
   ## Remove duplicate listing entries by price, but don't add to error file
@@ -172,7 +171,7 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
 
   daily <-
     daily %>%
-    filter(.data$date >= .data$created, .data$date <= .data$scraped) %>%
+    filter(!.data$property_ID %in% daily_inactive$property_ID) %>%
     select(-.data$created, -.data$scraped)
 
   helper_progress_message("Rows outside active listing period identified.")
