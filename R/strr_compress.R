@@ -30,7 +30,8 @@ strr_compress <- function(data, quiet = FALSE) {
 
   time_1 <- Sys.time()
 
-  ## Error checking and initialization
+
+  ### Error checking and initialization ########################################
 
   .datatable.aware = TRUE
 
@@ -55,6 +56,9 @@ strr_compress <- function(data, quiet = FALSE) {
   } else stop("Input table must be of class `strr_daily` or `strr_multi`.")
 
 
+
+  ### Prepare file for analysis ################################################
+
   ## Store invariant fields for later
 
   if (daily) {
@@ -67,14 +71,14 @@ strr_compress <- function(data, quiet = FALSE) {
       select(.data$property_ID, .data$host_ID, .data$listing_type,
              .data$housing, .data$country, .data$region, .data$city)
 
+    # Keeping host_ID and country fields in order to do group_split
     data <-
       data %>%
-      select(-.data$host_ID, -.data$listing_type, -.data$housing,
-             -.data$country, -.data$region, -.data$city)
+      select(-.data$listing_type, -.data$housing, -.data$region, -.data$city)
   }
 
 
-  ## If data spans multiple months, produce month/year columns and split
+  ## If data spans multiple months, produce month/year columns
 
   if (lubridate::month(min(data$date)) != lubridate::month(max(data$date))) {
 
@@ -82,26 +86,32 @@ strr_compress <- function(data, quiet = FALSE) {
 
     data <-
       data %>%
-      mutate(month = lubridate::month(data$date),
-             year = lubridate::year(data$date))
+      mutate(month = lubridate::month(.data$date),
+             year = lubridate::year(.data$date))
 
+  }
+
+  ## Split by country for daily, with host_ID for multi or as backup
+
+  if (daily) {
     data_list <-
       data %>%
-      group_split(.data$year, .data$month)
+      select(-.data$host_ID) %>%
+      group_split(.data$country, keep = FALSE)
 
-    # Otherwise split by property_ID/host_ID
+    # Use host_ID for multi
   } else {
-
-    if (daily) {
-      data_list <-
-        data %>%
-        group_split(.data$property_ID)
-    } else {
       data_list <-
         data %>%
         group_split(.data$host_ID)
     }
 
+  # If a daily file only has a single country, try splitting by host_ID instead
+  if (length(data_list) == 1) {
+    data_list <-
+      data %>%
+      select(-.data$country) %>%
+      group_split(.data$host_ID, keep = FALSE)
   }
 
   data_list <-

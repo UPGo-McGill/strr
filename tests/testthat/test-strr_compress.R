@@ -21,10 +21,10 @@ daily <-
          booked_date = NA,
          price = rep(100, 30),
          res_ID = NA,
-         host_ID = NA,
+         host_ID = c(rep("host-1", 20), rep("host-2", 10)),
          listing_type = NA,
          housing = NA,
-         country = NA,
+         country = "Canada",
          region = NA,
          city = NA)
 
