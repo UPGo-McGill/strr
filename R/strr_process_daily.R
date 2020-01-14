@@ -38,7 +38,7 @@
 #' @importFrom tibble as_tibble
 #' @export
 
-strr_process_daily <- function(daily, property = property, quiet = FALSE) {
+strr_process_daily <- function(daily, property, quiet = FALSE) {
 
   time_1 <- Sys.time()
 
@@ -127,9 +127,7 @@ strr_process_daily <- function(daily, property = property, quiet = FALSE) {
 
   ## Trim error file and update daily file with results taken from error file
 
-  error <-
-    error %>%
-    distinct()
+  error <- distinct(error)
 
   daily <-
     daily %>%

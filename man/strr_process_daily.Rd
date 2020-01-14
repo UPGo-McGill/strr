@@ -4,7 +4,7 @@
 \alias{strr_process_daily}
 \title{Function to process raw daily STR tables into UPGo format}
 \usage{
-strr_process_daily(daily, property = property, quiet = FALSE)
+strr_process_daily(daily, property, quiet = FALSE)
 }
 \arguments{
 \item{daily}{An unprocessed daily table in the raw AirDNA format, with either
