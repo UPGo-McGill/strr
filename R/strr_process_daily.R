@@ -53,9 +53,23 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
     stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
   }
 
-  ## Check that daily and property are data frames
+  ## Check that daily and property are present and are data frames
 
-  # TKTK
+  if (missing(daily)) {
+    stop("The argument `daily` is missing.")
+  }
+
+  if (missing(property)) {
+    stop("The argument `property` is missing.")
+  }
+
+  if (!inherits(daily, "data.frame")) {
+    stop("The object supplied to the `daily` argument must be a data frame.")
+  }
+
+  if (!inherits(property, "data.frame")) {
+    stop("The object supplied to the `property` argument must be a data frame.")
+  }
 
 
   ## Check number of fields and rename
