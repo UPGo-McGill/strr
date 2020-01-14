@@ -74,7 +74,7 @@ strr_compress <- function(data, quiet = FALSE) {
   }
 
 
-  ## Produce month and year columns if data spans multiple months
+  ## If data spans multiple months, produce month/year columns and split
 
   if (lubridate::month(min(data$date)) != lubridate::month(max(data$date))) {
 
@@ -85,24 +85,31 @@ strr_compress <- function(data, quiet = FALSE) {
       mutate(month = lubridate::month(data$date),
              year = lubridate::year(data$date))
 
-  }
-
-
-   ## Compress processed data file
-
-  if (daily) {
     data_list <-
       data %>%
-      group_split(.data$property_ID)
+      group_split(.data$year, .data$month)
+
+    # Otherwise split by property_ID/host_ID
   } else {
-    data_list <-
-      data %>%
-      group_split(.data$host_ID)
+
+    if (daily) {
+      data_list <-
+        data %>%
+        group_split(.data$property_ID)
+    } else {
+      data_list <-
+        data %>%
+        group_split(.data$host_ID)
+    }
+
   }
 
   data_list <-
     data_list %>%
     helper_table_split()
+
+
+   ## Compress processed data file
 
   helper_progress_message("Beginning compression, using {helper_plan()}.")
 
