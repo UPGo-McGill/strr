@@ -26,12 +26,32 @@ daily <-
 
 class(daily) <- append(class(daily), "strr_daily")
 
+multi <-
+  tibble(
+    host_ID = c("10000029", "10000029", "10000029", "1000008", "1000008",
+                "1000008", "1000014", "1000014", "1000014", "1000014"),
+    start_date = as.Date(c("2014-10-01", "2014-11-01", "2014-12-01",
+                           "2014-10-01", "2014-11-01", "2014-12-01",
+                           "2014-10-01", "2014-10-03", "2014-10-07",
+                           "2014-10-16")),
+    end_date = as.Date(c("2014-10-31", "2014-11-30", "2014-12-31", "2014-10-31",
+                         "2014-11-30", "2014-12-31", "2014-10-01", "2014-10-05",
+                         "2014-10-14", "2014-10-31")),
+    listing_type = "Entire home/apt",
+    housing = TRUE,
+    count = 1
+    )
+
+class(multi) <- append(class(multi), "strr_multi")
+
 
 ### Tests ######################################################################
 
 test_that("function succeeds with no errors", {
-  # Basic test
+  # Daily
   expect_equal(nrow(strr_expand(daily)), 30)
+  # Multi
+  expect_equal(nrow(strr_expand(multi)), 212)
 })
 
 test_that("The quiet flag suppresses all messages", {
