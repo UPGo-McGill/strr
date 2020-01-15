@@ -19,7 +19,7 @@ the number of list elements that will be prepared for parallel processing.
 The default value is 4, which means the input file will be divided into
 \code{(4 * #' workers)} number of elements, where `workers` is set in
 \code{future::plan}. Higher values mean more elements, which will slow down
-processing time but reduce RAM usage. Lower values will mean the inverse.}
+processing time but reduce RAM usage. Lower values mean the inverse.}
 }
 \value{
 A processed multilisting table, ready for compression with

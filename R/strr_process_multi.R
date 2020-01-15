@@ -17,7 +17,7 @@
 #' The default value is 4, which means the input file will be divided into
 #' \code{(4 * #' workers)} number of elements, where `workers` is set in
 #' \code{future::plan}. Higher values mean more elements, which will slow down
-#' processing time but reduce RAM usage. Lower values will mean the inverse.
+#' processing time but reduce RAM usage. Lower values mean the inverse.
 #' @return A processed multilisting table, ready for compression with
 #' \code{\link{strr_compress}}.
 #' @importFrom dplyr %>% anti_join bind_rows filter inner_join mutate pull
