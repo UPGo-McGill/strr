@@ -41,13 +41,13 @@ strr_compress <- function(data, quiet = FALSE) {
 
   # Check if table is daily or ML
 
-  if ("strr_daily" %in% class(data) | names(data)[1] == "property_ID") {
+  if (inherits(data, "strr_daily") | names(data)[1] == "property_ID") {
 
     helper_progress_message("Daily table identified.")
 
     daily <- TRUE
 
-  } else if ("strr_multi" %in% class(data) | names(data)[1] == "host_ID") {
+  } else if (inherits(data, "strr_multi") | names(data)[1] == "host_ID") {
 
     helper_progress_message("Multilisting table identified.")
 
@@ -71,10 +71,10 @@ strr_compress <- function(data, quiet = FALSE) {
       select(.data$property_ID, .data$host_ID, .data$listing_type,
              .data$housing, .data$country, .data$region, .data$city)
 
-    # Keeping host_ID and country fields in order to do group_split
+    # Keeping host_ID and country/region fields in order to do group_split
     data <-
       data %>%
-      select(-.data$listing_type, -.data$housing, -.data$region, -.data$city)
+      select(-.data$listing_type, -.data$housing, -.data$city)
   }
 
 
@@ -91,13 +91,13 @@ strr_compress <- function(data, quiet = FALSE) {
 
   }
 
-  ## Split by country for daily, with host_ID for multi or as backup
+  ## Split by country and region for daily, with host_ID for multi or as backup
 
   if (daily) {
     data_list <-
       data %>%
       select(-.data$host_ID) %>%
-      group_split(.data$country, keep = FALSE)
+      group_split(.data$country, .data$region, keep = FALSE)
 
     # Use host_ID for multi
   } else {
@@ -110,7 +110,7 @@ strr_compress <- function(data, quiet = FALSE) {
   if (length(data_list) == 1) {
     data_list <-
       data %>%
-      select(-.data$country) %>%
+      select(-.data$country, -.data$region) %>%
       group_split(.data$host_ID, keep = FALSE)
   }
 

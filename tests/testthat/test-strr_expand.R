@@ -24,6 +24,8 @@ daily <-
          city = c("Montreal", "Montreal", "Montreal", "Laval", "Laval", "Laval")
          )
 
+class(daily) <- append(class(daily), "strr_daily")
+
 
 ### Tests ######################################################################
 
