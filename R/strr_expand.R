@@ -47,6 +47,22 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
   options(future.globals.maxSize = +Inf)
   on.exit(.Options$future.globals.maxSize <- NULL)
 
+  # Check if table is daily or ML
+
+  if (inherits(data, "strr_daily") | names(data)[1] == "property_ID") {
+
+    helper_progress_message("Daily table identified.")
+
+    daily <- TRUE
+
+  } else if (inherits(data, "strr_multi") | names(data)[1] == "host_ID") {
+
+    helper_progress_message("Multilisting table identified.")
+
+    daily <- FALSE
+
+  } else stop("Input table must be of class `strr_daily` or `strr_multi`.")
+
   # Check that dates are coercible to date class, then coerce them
 
   if (!missing(start)) {
@@ -61,12 +77,8 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
                   '") is not coercible to a date.'))
     })}
 
-  # Remove strr class as workaround to unnest failing
 
-  class(data) <- class(data)[!str_detect(class(data), "strr")]
-
-
-  ### STORE EXTRA FIELDS AND TRIM .DATA ########################################
+  ### STORE EXTRA FIELDS AND TRIM DATA #########################################
 
   ## TKTK Remove 15 once daily DB update is complete
   if (length(data) %in% c(13, 15)) {
@@ -85,9 +97,11 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
       select(.data$property_ID, date = .data$start_date,
              .data$status:.data$res_ID)
 
+    # Keep host_ID, country/region for group_split
     data <-
       data %>%
-      select(.data$property_ID, .data$start_date, .data$end_date)
+      select(.data$property_ID, .data$start_date, .data$end_date,
+             .data$host_ID, .data$country, .data$region)
 
   }
 
@@ -102,9 +116,31 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
 
   helper_progress_message("Splitting data for processing.")
 
+  ## Split by country and region for daily, with host_ID for multi or as backup
+
+  if (daily) {
+    data_list <-
+      data %>%
+      select(-.data$host_ID) %>%
+      group_split(.data$country, .data$region, keep = FALSE)
+
+    # Use host_ID for multi
+  } else {
+    data_list <-
+      data %>%
+      group_split(.data$host_ID)
+  }
+
+  # If a daily file only has a single country, try splitting by host_ID instead
+  if (length(data_list) == 1) {
+    data_list <-
+      data %>%
+      select(-.data$country, -.data$region) %>%
+      group_split(.data$host_ID, keep = FALSE)
+  }
+
   data_list <-
-    data %>%
-    group_split(pull(.[1]), keep = FALSE) %>%
+    data_list %>%
     helper_table_split()
 
 

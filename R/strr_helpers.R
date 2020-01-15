@@ -53,35 +53,60 @@ helper_plan <- function() {
 #' @param multiplier An integer scalar. What multiple of the number of available
 #' processes should the data be combined into?
 #' @return A list of data elements.
-#' @importFrom dplyr bind_rows
+#' @importFrom data.table rbindlist
 #' @importFrom future nbrOfWorkers
+#' @importFrom sf st_as_sf
 
 helper_table_split <- function(data_list, multiplier = 4) {
 
-  while (multiplier >= 1) {
+  sf_flag <- inherits(data_list[[1]], "sf")
 
-    # Try to combine data using initial multiplier value
-    if (length(data_list) > multiplier * future::nbrOfWorkers()) {
+  # Get target number of elements
+  n_elements <- min(length(data_list), multiplier * future::nbrOfWorkers())
 
-      data_list <- purrr::map(1:(multiplier * future::nbrOfWorkers()), ~{
-        do.call(rbind,
-                data_list[(floor(as.numeric(length(data_list)) * (.x - 1) /
-                                   (multiplier * future::nbrOfWorkers())) + 1):
-                            floor(as.numeric(length(data_list)) * .x /
-                                    (multiplier * future::nbrOfWorkers()))])
-        })
-
-      # Set multiplier to 0 to exit the while-loop
-      multiplier <- 0
-
-      # Set multiplier lower and try again
-      } else multiplier <- multiplier - 1
-  }
+  # Initialize list of index positions
+  index_positions <- list()
 
   # Order from largest to smallest
   data_list <-
     data_list[order(purrr::map_int(data_list, nrow), decreasing = TRUE)]
 
+  # Get element nrows
+  nrows <- map_int(data_list, nrow)
+
+  # Set initial target nrow
+  target_nrow <- sum(nrows) / n_elements
+
+  for (i in seq_len(n_elements)) {
+
+    index_positions[[i]] <- i
+
+    # Add shortest list nrow to longest until target nrow is reached
+    while (nrows[i] < target_nrow) {
+
+      nrows[i] <- nrows[i] + nrows[length(nrows)]
+
+      index_positions[[i]] <- c(index_positions[[i]], length(nrows))
+
+      nrows <- nrows[-length(nrows)]
+    }
+
+    # Update the target nrow for remaining list elements
+    target_nrow <- sum(nrows[-(1:i)]) / (n_elements - i)
+
+  }
+
+  # If table is sf, use do.call to rbind, to preserve geometry column
+  if (sf_flag) {
+    data_list <- map(index_positions, ~{
+      do.call(rbind, data_list[.x])
+    })
+    # Otherwise use faster rbindlist
+  } else {
+    data_list <- map(index_positions, ~{
+      as_tibble(rbindlist(data_list[.x]))
+    })
+  }
 
   data_list
 }
