@@ -174,6 +174,7 @@ strr_compress <- function(data, quiet = FALSE) {
 #' @param data The processed daily table generated through the strr_compress
 #' function.
 #' @return The output will be a compressed daily table.
+#' @importFrom data.table setnames
 #' @importFrom dplyr %>% arrange bind_rows filter group_by group_by_at mutate
 #' @importFrom dplyr select summarize ungroup vars
 #' @importFrom purrr map map_dbl
@@ -183,54 +184,52 @@ strr_compress <- function(data, quiet = FALSE) {
 
 strr_compress_helper <- function(data) {
 
-  # Group data by all columns except date
-  data <-
-    data %>%
-    group_by_at(vars(-.data$date)) %>%
-    summarize(dates = list(.data$date)) %>%
-    ungroup()
+  # Silence R CMD check for data.table fields
+  booked_date <- dates <- end_date <- price <- property_ID <- res_ID <-
+    start_date <- status <- NULL
 
-  single_date <-
-    data %>%
-    filter(map(.data$dates, length) == 1) %>%
-    mutate(start_date = as.Date(map_dbl(.data$dates, ~{.x}),
-                                origin = "1970-01-01"),
-           end_date = as.Date(map_dbl(.data$dates, ~{.x}),
-                              origin = "1970-01-01")) %>%
-    select(.data$property_ID, .data$start_date, .data$end_date, .data$status,
-           .data$booked_date, .data$price, .data$res_ID)
+  setDT(data)
+
+  # Group data by all columns except date
+  data <- data[, .(dates = list(date)), by = setdiff(names(data), "date")]
 
   one_length <-
-    data %>%
-    filter(map(.data$dates, length) != 1,
-           map(.data$dates, ~{length(.x) - length(min(.x):max(.x))}) == 0) %>%
-    mutate(start_date = as.Date(map_dbl(.data$dates, min),
-                                origin = "1970-01-01"),
-           end_date = as.Date(map_dbl(.data$dates, max),
-                              origin = "1970-01-01")) %>%
-    select(.data$property_ID, .data$start_date, .data$end_date, .data$status,
-           .data$booked_date, .data$price, .data$res_ID)
+    data[sapply(dates, function(x) {length(x) - length(min(x):max(x))}) == 0,
+         .(property_ID,
+           start_date = as.Date(min(unlist(dates)), origin = "1970-01-01"),
+           end_date   = as.Date(max(unlist(dates)), origin = "1970-01-01"),
+           status, booked_date, price, res_ID)]
 
-  if ({data %>%
-      filter(map(.data$dates, length) != 1,
-             map(.data$dates, ~{length(.x) - length(min(.x):max(.x))}) != 0) %>%
-      nrow} > 0) {
+  if (nrow(data[!one_length, on = c("property_ID", "status", "booked_date",
+                                    "price", "res_ID"),]) > 0) {
 
     remainder <-
-      data %>%
-      filter(map(.data$dates, length) != 1,
-             map(.data$dates, ~{length(.x) - length(min(.x):max(.x))}) != 0) %>%
-      mutate(date_range = map(.data$dates, ~{
-        tibble(start_date = .x[which(diff(c(0, .x)) > 1)],
-               end_date = .x[which(diff(c(.x, 30000)) > 1)])
-      })) %>%
-      unnest(.data$date_range) %>%
-      select(.data$property_ID, .data$start_date, .data$end_date, .data$status,
-             .data$booked_date, .data$price, .data$res_ID)
+      data[!one_length, on = c("property_ID", "status", "booked_date", "price",
+                               "res_ID"),
+           .(property_ID,
+             start_date = sapply(dates,
+                                 function (x) {x[which(diff(c(0, x)) > 1)]}),
+             end_date = sapply(dates,
+                               function (x) {x[which(diff(c(x, 30000)) > 1)]}),
+             status, booked_date, price, res_ID)]
 
-  } else remainder <- single_date[0,]
+    # Force field rename to temporarily deal with DT adding .V1 to fields
+    remainder <-
+      setnames(remainder, c("property_ID", "start_date", "end_date", "status",
+                            "booked_date", "price", "res_ID")
+               )[, .(property_ID,
+                     start_date = as.Date(unlist(start_date),
+                                          origin = "1970-01-01"),
+                     end_date = as.Date(unlist(end_date),
+                                        origin = "1970-01-01"),
+                     status, booked_date, price, res_ID),
+                 by = 1:nrow(remainder)]
 
-  bind_rows(single_date, one_length, remainder)
+    remainder <- select(remainder, -nrow)
+
+  } else remainder <- one_length[0,]
+
+  as_tibble(rbindlist(list(one_length, remainder)))
 }
 
 
