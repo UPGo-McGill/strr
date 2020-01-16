@@ -55,6 +55,10 @@ strr_compress <- function(data, quiet = FALSE) {
 
   } else stop("Input table must be of class `strr_daily` or `strr_multi`.")
 
+  # Check that quiet is a logical
+  if (!is.logical(quiet)) {
+    stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
+  }
 
 
   ### Prepare file for analysis ################################################
@@ -84,14 +88,17 @@ strr_compress <- function(data, quiet = FALSE) {
 
     helper_progress_message("Splitting table by year and month.")
 
-    data <-
-      data %>%
-      mutate(month = lubridate::month(.data$date),
-             year = lubridate::year(.data$date))
+    setDT(data)
+
+    data[, c("month", "year") := list(lubridate::month(date),
+                                      lubridate::year(date))]
 
   }
 
-  ## Split by country and region for daily, with host_ID for multi or as backup
+
+  ### Split table for processing ###############################################
+
+  ## Split by country/region for daily, with host_ID for multi or as backup
 
   if (daily) {
     data_list <-
@@ -119,7 +126,7 @@ strr_compress <- function(data, quiet = FALSE) {
     helper_table_split()
 
 
-   ## Compress processed data file
+  ### Compress processed data file #############################################
 
   helper_progress_message("Beginning compression, using {helper_plan()}.")
 
@@ -200,16 +207,16 @@ strr_compress_helper <- function(data) {
            end_date   = as.Date(max(unlist(dates)), origin = "1970-01-01"),
            status, booked_date, price, res_ID)]
 
-  if (nrow(data[!one_length, on = c("property_ID", "status", "booked_date",
-                                    "price", "res_ID"),]) > 0) {
+  if (nrow(data[sapply(dates, function(x) {
+    length(x) - length(min(x):max(x))
+    }) != 0,]) > 0) {
 
     remainder <-
-      data[!one_length, on = c("property_ID", "status", "booked_date", "price",
-                               "res_ID"),
+      data[sapply(dates, function(x) {length(x) - length(min(x):max(x))}) != 0,
            .(property_ID,
-             start_date = sapply(dates,
+             start_date = lapply(dates,
                                  function (x) {x[which(diff(c(0, x)) > 1)]}),
-             end_date = sapply(dates,
+             end_date = lapply(dates,
                                function (x) {x[which(diff(c(x, 30000)) > 1)]}),
              status, booked_date, price, res_ID)]
 
@@ -243,63 +250,56 @@ strr_compress_helper <- function(data) {
 #' @param data The processed ML table generated through the strr_compress
 #' function.
 #' @return The output will be a compressed ML table.
-#' @importFrom dplyr %>% arrange bind_rows filter group_by group_by_at mutate
-#' @importFrom dplyr  select summarize ungroup vars
-#' @importFrom purrr map map_dbl
+#' @importFrom data.table rbindlist setDT
+#' @importFrom dplyr select
 #' @importFrom rlang .data
-#' @importFrom tidyr unnest
 #' @importFrom tibble tibble
 
 strr_compress_helper_ML <- function(data) {
 
-  # Group .data by all columns except date
-  data <-
-    data %>%
-    group_by_at(vars(-.data$date)) %>%
-    summarize(dates = list(.data$date)) %>%
-    ungroup()
+  # Silence R CMD check for data.table fields
+  host_ID <- listing_type <- housing <- count <- dates <- start_date <-
+    end_date <- NULL
 
-  single_date <-
-    data %>%
-    filter(map(.data$dates, length) == 1) %>%
-    mutate(start_date = as.Date(map_dbl(.data$dates, ~{.x}),
-                                origin = "1970-01-01"),
-           end_date = as.Date(map_dbl(.data$dates, ~{.x}),
-                              origin = "1970-01-01")) %>%
-    select(.data$host_ID, .data$start_date, .data$end_date, .data$listing_type,
-           .data$housing, .data$count)
+  setDT(data)
 
+  # Group data by all columns except date
+  data <- data[, .(dates = list(date)), by = setdiff(names(data), "date")]
+
+  # Simple compression for rows with a continuous date range
   one_length <-
-    data %>%
-    filter(map(.data$dates, length) != 1,
-           map(.data$dates, ~{length(.x) - length(min(.x):max(.x))}) == 0) %>%
-    mutate(start_date = as.Date(map_dbl(.data$dates, min),
-                                origin = "1970-01-01"),
-           end_date = as.Date(map_dbl(.data$dates, max),
-                              origin = "1970-01-01")) %>%
-    select(.data$host_ID, .data$start_date, .data$end_date, .data$listing_type,
-           .data$housing, .data$count)
+    data[sapply(dates, function(x) {length(x) - length(min(x):max(x))}) == 0,
+         .(host_ID,
+           start_date = as.Date(min(unlist(dates)), origin = "1970-01-01"),
+           end_date   = as.Date(max(unlist(dates)), origin = "1970-01-01"),
+           listing_type, housing, count)]
 
-  if ({data %>%
-      filter(map(.data$dates, length) != 1,
-             map(.data$dates, ~{length(.x) - length(min(.x):max(.x))}) != 0) %>%
-      nrow} > 0) {
+  # More complex case where rows have a non-continuous date range
+  if (nrow(data[sapply(dates, function(x) {
+    length(x) - length(min(x):max(x))
+    }) != 0,]) > 0) {
 
     remainder <-
-      data %>%
-      filter(map(.data$dates, length) != 1,
-             map(.data$dates, ~{length(.x) - length(min(.x):max(.x))}) != 0) %>%
-      mutate(date_range = map(.data$dates, ~{
-        tibble(start_date = .x[which(diff(c(0, .x)) > 1)],
-               end_date = .x[which(diff(c(.x, 30000)) > 1)])
-      })) %>%
-      unnest(.data$date_range) %>%
-      select(.data$host_ID, .data$start_date, .data$end_date,
-             .data$listing_type, .data$housing, .data$count)
+      data[sapply(dates, function(x) {length(x) - length(min(x):max(x))}) != 0,
+           .(host_ID,
+             start_date = lapply(dates,
+                                 function (x) {x[which(diff(c(0, x)) > 1)]}),
+             end_date = lapply(dates,
+                               function (x) {x[which(diff(c(x, 30000)) > 1)]}),
+             listing_type, housing, count)]
 
-  } else remainder <- single_date[0,]
+    remainder <-
+      remainder[, .(host_ID,
+                    start_date = as.Date(unlist(start_date),
+                                         origin = "1970-01-01"),
+                    end_date = as.Date(unlist(end_date), origin = "1970-01-01"),
+                    listing_type, housing, count),
+                by = 1:nrow(remainder)]
 
-  bind_rows(single_date, one_length, remainder) %>%
-    arrange(.data$host_ID, .data$start_date)
+    remainder <- select(remainder, -nrow)
+
+  } else remainder <- one_length[0,]
+
+  as_tibble(rbindlist(list(one_length, remainder)))
 }
 
