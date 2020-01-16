@@ -4,22 +4,14 @@
 \alias{strr_process_multi}
 \title{Function to create daily multilisting tables}
 \usage{
-strr_process_multi(.daily, quiet = FALSE, ...)
+strr_process_multi(daily, quiet = FALSE)
 }
 \arguments{
-\item{.daily}{An unprocessed daily table in the raw AirDNA format, with
-either ten or six fields.}
+\item{daily}{An processed daily table in the UPGo format (probably produced
+with \code{\link{strr_process_daily}}), with either ten or six fields.}
 
 \item{quiet}{A logical scalar. Should the function execute quietly, or
 should it return status updates throughout the function (default)?}
-
-\item{...}{Additional arguments to pass to component functions. Arguments
-must be named. Currently the only valid argument is `multiplier`, to control
-the number of list elements that will be prepared for parallel processing.
-The default value is 4, which means the input file will be divided into
-\code{(4 * #' workers)} number of elements, where `workers` is set in
-\code{future::plan}. Higher values mean more elements, which will slow down
-processing time but reduce RAM usage. Lower values mean the inverse.}
 }
 \value{
 A processed multilisting table, ready for compression with
@@ -30,7 +22,9 @@ A processed multilisting table, ready for compression with
 tables listings host activity per day.
 }
 \details{
-A function for cleaning raw daily activity tables from AirDNA and preparing
-them for compression into the UPGo format. The function also produces error
-files which identify possible corrupt or missing lines in the input file.
+A function for aggregating daily activity tables by host, listing type, and
+housing status, in order to determine the extent of multilisting activity
+in a given STR dataset. This function will typically be run on the output of
+\code{\link{strr_process_daily}} in preparation for compression with
+\code{\link{strr_compress}}.
 }
