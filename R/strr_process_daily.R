@@ -21,6 +21,9 @@
 #' @param daily An unprocessed daily table in the raw AirDNA format, with either
 #' ten or six fields.
 #' @param property A property table processed in the UPGo style.
+#' @param keep_cols A logical scalar. If the `daily` table has 10 fields,
+#' should the superfluous 4 fields be kept, or should the table be trimmed to
+#' the 6 fields which UPGo uses (default)?
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return A list with four elements: 1) the processed daily table, ready for
@@ -38,7 +41,8 @@
 #' @importFrom tibble as_tibble
 #' @export
 
-strr_process_daily <- function(daily, property, quiet = FALSE) {
+strr_process_daily <- function(daily, property, keep_cols = FALSE,
+                               quiet = FALSE) {
 
   time_1 <- Sys.time()
 
@@ -85,6 +89,13 @@ strr_process_daily <- function(daily, property, quiet = FALSE) {
       set_names(c("property_ID", "date", "status", "booked_date", "price",
                   "price_native", "currency", "res_ID", "ab_property",
                   "ha_property"))
+
+    if (!keep_cols) {
+      daily <-
+        daily %>%
+        select(.data$property_ID, .data$date, .data$status, .data$booked_date,
+               .data$price)
+      }
   } else stop("The `daily` table must have either six or ten fields.")
 
 

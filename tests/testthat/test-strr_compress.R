@@ -25,7 +25,7 @@ daily <-
          listing_type = NA,
          housing = NA,
          country = "Canada",
-         region = NA,
+         region = c(rep("Ontario", 20), rep("Quebec", 10)),
          city = NA)
 
 multi <-
