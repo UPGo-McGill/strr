@@ -4,13 +4,13 @@
 \alias{strr_process_multi}
 \title{Function to create daily multilisting tables}
 \usage{
-strr_process_multi(.daily, .quiet = FALSE, ...)
+strr_process_multi(.daily, quiet = FALSE, ...)
 }
 \arguments{
 \item{.daily}{An unprocessed daily table in the raw AirDNA format, with
 either ten or six fields.}
 
-\item{.quiet}{A logical scalar. Should the function execute quietly, or
+\item{quiet}{A logical scalar. Should the function execute quietly, or
 should it return status updates throughout the function (default)?}
 
 \item{...}{Additional arguments to pass to component functions. Arguments

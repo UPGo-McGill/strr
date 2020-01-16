@@ -9,7 +9,7 @@
 #'
 #' @param .daily An unprocessed daily table in the raw AirDNA format, with
 #' either ten or six fields.
-#' @param .quiet A logical scalar. Should the function execute quietly, or
+#' @param quiet A logical scalar. Should the function execute quietly, or
 #' should it return status updates throughout the function (default)?
 #' @param ... Additional arguments to pass to component functions. Arguments
 #' must be named. Currently the only valid argument is `multiplier`, to control
@@ -26,7 +26,7 @@
 #' @importFrom tibble as_tibble
 #' @export
 
-strr_process_multi <- function(.daily, .quiet = FALSE, ...) {
+strr_process_multi <- function(.daily, quiet = FALSE, ...) {
 
   time_1 <- Sys.time()
 
@@ -71,8 +71,8 @@ strr_process_multi <- function(.daily, .quiet = FALSE, ...) {
         ungroup() %>%
         rename(count = n)
     },
-    # Suppress progress bar if .quiet == TRUE or the plan is remote
-    .progress = helper_progress(.quiet))
+    # Suppress progress bar if quiet == TRUE or the plan is remote
+    .progress = helper_progress(quiet))
 
 
   ## Check validity of output
