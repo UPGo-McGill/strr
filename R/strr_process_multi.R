@@ -46,7 +46,7 @@ strr_process_multi <- function(daily, quiet = FALSE) {
   }
 
   # Check that table is daily
-  if (!inherits(daily, "strr_multi") | names(daily)[1] != "property_ID") {
+  if (!inherits(daily, "strr_multi") & names(daily)[1] != "property_ID") {
     stop("Input table must be of class `strr_daily`.")
   }
 
