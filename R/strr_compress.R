@@ -33,7 +33,12 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ### Error checking and initialization ########################################
 
+  ## Set data.table variables
+
   .datatable.aware = TRUE
+
+  .SD <- property_ID <- start_date <- NULL
+
 
   # Remove future global export limit
   options(future.globals.maxSize = +Inf)
@@ -63,22 +68,23 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ### Prepare file for analysis ################################################
 
+  ## Convert to data.table
+
+  setDT(data)
+
+
   ## Store invariant fields for later
 
   if (daily) {
 
     join_fields <-
-      data %>%
-      group_by(.data$property_ID) %>%
-      filter(.data$date == max(.data$date)) %>%
-      ungroup() %>%
-      select(.data$property_ID, .data$host_ID, .data$listing_type,
-             .data$housing, .data$country, .data$region, .data$city)
+      data[, .SD[1L], by = property_ID,
+           .SDcols = c("host_ID", "listing_type", "housing", "country",
+                       "region", "city")]
 
-    # Keeping host_ID and country/region fields in order to do group_split
-    data <-
-      data %>%
-      select(-.data$listing_type, -.data$housing, -.data$city)
+    # Keeping country/region fields in order to do group_split
+    data[, c("host_ID", "listing_type", "housing", "city") := NULL]
+
   }
 
 
@@ -87,8 +93,6 @@ strr_compress <- function(data, quiet = FALSE) {
   if (lubridate::month(min(data$date)) != lubridate::month(max(data$date))) {
 
     helper_progress_message("Splitting table by year and month.")
-
-    setDT(data)
 
     data[, c("month", "year") := list(lubridate::month(date),
                                       lubridate::year(date))]
@@ -102,23 +106,21 @@ strr_compress <- function(data, quiet = FALSE) {
 
   if (daily) {
     data_list <-
-      data %>%
-      select(-.data$host_ID) %>%
-      group_split(.data$country, .data$region, keep = FALSE)
+      split(data, by = c("country", "region"), keep.by = FALSE)
 
     # Use host_ID for multi
   } else {
       data_list <-
-        data %>%
-        group_split(.data$host_ID)
+        split(data, by = "host_ID")
     }
 
-  # If a daily file only has a single country, try splitting by host_ID instead
+  # If a daily file only has a single country, split by property_ID instead
   if (length(data_list) == 1) {
+
+    data[, c("country", "region") := NULL]
+
     data_list <-
-      data %>%
-      select(-.data$country, -.data$region) %>%
-      group_split(.data$host_ID, keep = FALSE)
+      split(data, by = "property_ID")
   }
 
   data_list <-
@@ -136,8 +138,10 @@ strr_compress <- function(data, quiet = FALSE) {
       data_list %>%
       future_map_dfr(strr_compress_helper,
                      # Suppress progress bar if !quiet or the plan is remote
-                     .progress = helper_progress(quiet)) %>%
-      left_join(join_fields, by = "property_ID")
+                     .progress = helper_progress(quiet))
+
+    setDT(compressed)
+    compressed <- compressed[join_fields, on = "property_ID"]
 
   } else {
 
@@ -155,11 +159,11 @@ strr_compress <- function(data, quiet = FALSE) {
   helper_progress_message("Arranging output table.")
 
   if (daily) {
-    compressed <- arrange(compressed, .data$property_ID, .data$start_date)
-    class(compressed) <- c(class(compressed), "strr_daily")
+    compressed <- as_tibble(compressed[order(property_ID, start_date)])
+    class(compressed) <- append(class(compressed), "strr_daily")
     } else {
       compressed <- arrange(compressed, .data$host_ID, .data$start_date)
-      class(compressed) <- c(class(compressed), "strr_multi")
+      class(compressed) <- append(class(compressed), "strr_multi")
       }
 
 
@@ -181,12 +185,8 @@ strr_compress <- function(data, quiet = FALSE) {
 #' @param data The processed daily table generated through the strr_compress
 #' function.
 #' @return The output will be a compressed daily table.
-#' @importFrom data.table setnames
-#' @importFrom dplyr %>% arrange bind_rows filter group_by group_by_at mutate
-#' @importFrom dplyr select summarize ungroup vars
-#' @importFrom purrr map map_dbl
+#' @importFrom data.table rbindlist setDT
 #' @importFrom rlang .data
-#' @importFrom tidyr unnest
 #' @importFrom tibble tibble
 
 strr_compress_helper <- function(data) {
@@ -222,17 +222,14 @@ strr_compress_helper <- function(data) {
 
     # Force field rename to temporarily deal with DT adding .V1 to fields
     remainder <-
-      setnames(remainder, c("property_ID", "start_date", "end_date", "status",
-                            "booked_date", "price", "res_ID")
-               )[, .(property_ID,
-                     start_date = as.Date(unlist(start_date),
-                                          origin = "1970-01-01"),
-                     end_date = as.Date(unlist(end_date),
-                                        origin = "1970-01-01"),
-                     status, booked_date, price, res_ID),
-                 by = 1:nrow(remainder)]
+      remainder[, .(property_ID,
+                    start_date = as.Date(unlist(start_date),
+                                         origin = "1970-01-01"),
+                    end_date = as.Date(unlist(end_date), origin = "1970-01-01"),
+                    status, booked_date, price, res_ID),
+                by = 1:nrow(remainder)]
 
-    remainder <- select(remainder, -nrow)
+    remainder[, nrow := NULL]
 
   } else remainder <- one_length[0,]
 
@@ -251,7 +248,6 @@ strr_compress_helper <- function(data) {
 #' function.
 #' @return The output will be a compressed ML table.
 #' @importFrom data.table rbindlist setDT
-#' @importFrom dplyr select
 #' @importFrom rlang .data
 #' @importFrom tibble tibble
 
@@ -296,7 +292,7 @@ strr_compress_helper_ML <- function(data) {
                     listing_type, housing, count),
                 by = 1:nrow(remainder)]
 
-    remainder <- select(remainder, -nrow)
+    remainder[, nrow := NULL]
 
   } else remainder <- one_length[0,]
 
