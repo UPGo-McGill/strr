@@ -18,7 +18,7 @@
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return A compressed daily table, ready for upload to a remote database.
-#' @importFrom data.table setDT
+#' @importFrom data.table month setDT year
 #' @importFrom dplyr %>% arrange bind_rows filter group_by group_split mutate
 #' @importFrom dplyr pull select
 #' @importFrom furrr future_map_dfr
@@ -37,7 +37,7 @@ strr_compress <- function(data, quiet = FALSE) {
 
   .datatable.aware = TRUE
 
-  .SD <- property_ID <- start_date <- NULL
+  property_ID <- start_date <- host_ID <- PID_split <- host_split <- NULL
 
 
   # Remove future global export limit
@@ -77,55 +77,59 @@ strr_compress <- function(data, quiet = FALSE) {
 
   if (daily) {
 
+    join_cols <-
+      c("host_ID", "listing_type", "housing", "country", "region", "city")
+
     join_fields <-
       data[, .SD[1L], by = property_ID,
-           .SDcols = c("host_ID", "listing_type", "housing", "country",
-                       "region", "city")]
+           .SDcols = join_cols]
 
     # Keeping country/region fields in order to do group_split
-    data[, c("host_ID", "listing_type", "housing", "city") := NULL]
+    data[, (join_cols) := NULL]
 
   }
 
 
   ## If data spans multiple months, produce month/year columns
 
-  if (lubridate::month(min(data$date)) != lubridate::month(max(data$date))) {
+  if (year(min(data$date)) != year(max(data$date))) {
 
-    helper_progress_message("Splitting table by year and month.")
+    helper_progress_message("Adding year and month fields.")
 
-    data[, c("month", "year") := list(lubridate::month(date),
-                                      lubridate::year(date))]
+    data[, c("month", "year") := list(month(date), year(date))]
+
+  } else if (month(min(data$date)) != month(max(data$date))) {
+
+    helper_progress_message("Adding month field.")
+
+    data[, month := month(date)]
 
   }
 
 
   ### Split table for processing ###############################################
 
-  ## Split by country/region for daily, with host_ID for multi or as backup
+  ## Split by first three digits of property_ID/host_ID
+
+  helper_progress_message("Splitting table for processing.")
 
   if (daily) {
+
+    data[, PID_split := substr(property_ID, 1, 6)]
+
     data_list <-
-      split(data, by = c("country", "region"), keep.by = FALSE)
+      split(data, by = "PID_split", keep.by = FALSE) %>%
+      helper_table_split()
 
     # Use host_ID for multi
   } else {
-      data_list <-
-        split(data, by = "host_ID")
-    }
 
-  # If a daily file only has a single country, split by property_ID instead
-  if (length(data_list) == 1) {
-
-    data[, c("country", "region") := NULL]
+    data[, host_split := substr(host_ID, 1, 3)]
 
     data_list <-
-      split(data, by = "property_ID")
+      split(data, by = "host_split", keep.by = FALSE) %>%
+      helper_table_split()
   }
-
-  data_list <-
-    data_list %>%
-    helper_table_split()
 
 
   ### Compress processed data file #############################################
@@ -151,6 +155,8 @@ strr_compress <- function(data, quiet = FALSE) {
                      # Suppress progress bar if !quiet or the plan is remote
                      .progress = helper_progress(quiet))
 
+    setDT(compressed)
+
   }
 
 
@@ -162,7 +168,7 @@ strr_compress <- function(data, quiet = FALSE) {
     compressed <- as_tibble(compressed[order(property_ID, start_date)])
     class(compressed) <- append(class(compressed), "strr_daily")
     } else {
-      compressed <- arrange(compressed, .data$host_ID, .data$start_date)
+      compressed <- as_tibble(compressed[order(host_ID, start_date)])
       class(compressed) <- append(class(compressed), "strr_multi")
       }
 
@@ -187,7 +193,6 @@ strr_compress <- function(data, quiet = FALSE) {
 #' @return The output will be a compressed daily table.
 #' @importFrom data.table rbindlist setDT
 #' @importFrom rlang .data
-#' @importFrom tibble tibble
 
 strr_compress_helper <- function(data) {
 
@@ -203,8 +208,8 @@ strr_compress_helper <- function(data) {
   one_length <-
     data[sapply(dates, function(x) {length(x) - length(min(x):max(x))}) == 0,
          .(property_ID,
-           start_date = as.Date(min(unlist(dates)), origin = "1970-01-01"),
-           end_date   = as.Date(max(unlist(dates)), origin = "1970-01-01"),
+           start_date = as.Date(sapply(dates, min), origin = "1970-01-01"),
+           end_date   = as.Date(sapply(dates, max), origin = "1970-01-01"),
            status, booked_date, price, res_ID)]
 
   if (nrow(data[sapply(dates, function(x) {
@@ -220,7 +225,6 @@ strr_compress_helper <- function(data) {
                                function (x) {x[which(diff(c(x, 30000)) > 1)]}),
              status, booked_date, price, res_ID)]
 
-    # Force field rename to temporarily deal with DT adding .V1 to fields
     remainder <-
       remainder[, .(property_ID,
                     start_date = as.Date(unlist(start_date),
@@ -233,7 +237,7 @@ strr_compress_helper <- function(data) {
 
   } else remainder <- one_length[0,]
 
-  as_tibble(rbindlist(list(one_length, remainder)))
+  rbindlist(list(one_length, remainder))
 }
 
 
@@ -249,7 +253,6 @@ strr_compress_helper <- function(data) {
 #' @return The output will be a compressed ML table.
 #' @importFrom data.table rbindlist setDT
 #' @importFrom rlang .data
-#' @importFrom tibble tibble
 
 strr_compress_helper_ML <- function(data) {
 
@@ -266,8 +269,8 @@ strr_compress_helper_ML <- function(data) {
   one_length <-
     data[sapply(dates, function(x) {length(x) - length(min(x):max(x))}) == 0,
          .(host_ID,
-           start_date = as.Date(min(unlist(dates)), origin = "1970-01-01"),
-           end_date   = as.Date(max(unlist(dates)), origin = "1970-01-01"),
+           start_date = as.Date(sapply(dates, min), origin = "1970-01-01"),
+           end_date   = as.Date(sapply(dates, max), origin = "1970-01-01"),
            listing_type, housing, count)]
 
   # More complex case where rows have a non-continuous date range
@@ -296,6 +299,6 @@ strr_compress_helper_ML <- function(data) {
 
   } else remainder <- one_length[0,]
 
-  as_tibble(rbindlist(list(one_length, remainder)))
+  rbindlist(list(one_length, remainder))
 }
 
