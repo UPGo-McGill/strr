@@ -31,7 +31,7 @@ strr_process_multi <- function(daily, quiet = FALSE) {
 
   .datatable.aware = TRUE
 
-  host_ID <- status <- date <- listing_type <- housing <- NULL
+  host_ID <- status <- date <- listing_type <- housing <- host_split <-  NULL
 
 
   ## Error checking
@@ -72,9 +72,12 @@ strr_process_multi <- function(daily, quiet = FALSE) {
 
   ## Produce list for processing
 
+  helper_progress_message("Splitting table for processing.")
+
+  daily[, host_split := substr(host_ID, 1, 3)]
+
   data_list <-
-    daily %>%
-    group_split(.data$host_ID) %>%
+    split(daily, by = "host_split", keep.by = FALSE) %>%
     helper_table_split()
 
 
