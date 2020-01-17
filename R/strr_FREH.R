@@ -250,7 +250,7 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
              by = property_ID]
     },
     # Suppress progress bar if !quiet or the plan is remote
-    .progress = helper_progress(quiet),
+    .progress = helper_progress(),
     .options = future_options(globals = c("start_date", "end_date", "daily",
                                           "ar_cut", "r_cut"))
     ) %>%

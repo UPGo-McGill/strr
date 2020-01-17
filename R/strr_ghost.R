@@ -351,7 +351,7 @@ strr_ghost <- function(
         ghost_intersect_leftovers(distance, min_listings)
       },
       # Suppress progress bar if !quiet or the plan is remote
-      .progress = helper_progress(quiet)
+      .progress = helper_progress()
       ) %>%
     do.call(rbind, .)
 

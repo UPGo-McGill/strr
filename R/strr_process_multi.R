@@ -16,7 +16,7 @@
 #' @return A processed multilisting table, ready for compression with
 #' \code{\link{strr_compress}}.
 #' @importFrom data.table setDT
-#' @importFrom dplyr %>% group_split
+#' @importFrom dplyr %>%
 #' @importFrom rlang .data
 #' @importFrom tibble as_tibble
 #' @export
@@ -93,7 +93,7 @@ strr_process_multi <- function(daily, quiet = FALSE) {
         as_tibble()
     },
     # Suppress progress bar if quiet == TRUE or the plan is remote
-    .progress = helper_progress(quiet))
+    .progress = helper_progress())
 
 
   ## Check validity of output

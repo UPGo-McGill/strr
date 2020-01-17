@@ -161,7 +161,7 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
 
       },
       # Suppress progress bar if quiet == TRUE or the plan is remote
-      .progress = helper_progress(quiet)
+      .progress = helper_progress()
       )
 
 

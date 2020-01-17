@@ -33,6 +33,7 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ### Error checking and initialization ########################################
 
+
   ## Set data.table variables
 
   .datatable.aware = TRUE
@@ -40,9 +41,16 @@ strr_compress <- function(data, quiet = FALSE) {
   property_ID <- start_date <- host_ID <- PID_split <- host_split <- NULL
 
 
-  # Remove future global export limit
+  ## Remove future global export limit
+
   options(future.globals.maxSize = +Inf)
+
   on.exit(.Options$future.globals.maxSize <- NULL)
+
+  # Check that quiet is a logical
+  if (!is.logical(quiet)) {
+    stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
+  }
 
   # Check if table is daily or ML
 
@@ -59,11 +67,6 @@ strr_compress <- function(data, quiet = FALSE) {
     daily <- FALSE
 
   } else stop("Input table must be of class `strr_daily` or `strr_multi`.")
-
-  # Check that quiet is a logical
-  if (!is.logical(quiet)) {
-    stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
-  }
 
 
   ### Prepare file for analysis ################################################
@@ -142,7 +145,7 @@ strr_compress <- function(data, quiet = FALSE) {
       data_list %>%
       future_map_dfr(strr_compress_helper,
                      # Suppress progress bar if !quiet or the plan is remote
-                     .progress = helper_progress(quiet))
+                     .progress = helper_progress())
 
     setDT(compressed)
     compressed <- compressed[join_fields, on = "property_ID"]
@@ -153,7 +156,7 @@ strr_compress <- function(data, quiet = FALSE) {
       data_list %>%
       future_map_dfr(strr_compress_helper_ML,
                      # Suppress progress bar if !quiet or the plan is remote
-                     .progress = helper_progress(quiet))
+                     .progress = helper_progress())
 
     setDT(compressed)
 

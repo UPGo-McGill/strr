@@ -4,11 +4,7 @@
 \alias{helper_progress}
 \title{Helper function to display furrr progress bars}
 \usage{
-helper_progress(quiet)
-}
-\arguments{
-\item{quiet}{A logical scalar. Should the function execute quietly, or should
-it return status updates throughout the function (default)?}
+helper_progress()
 }
 \value{
 A logical scalar. Should the progress bar be displayed or not?
@@ -19,6 +15,6 @@ functions.
 }
 \details{
 A helper function for deciding whether to display a progress bar when a
-function is called from \code{furrr}, based on the supplied `quiet` argument
-and the status of the future plan.
+function is called from \code{furrr}, based on the `quiet` argument supplied
+to the calling function and on the status of the future plan.
 }

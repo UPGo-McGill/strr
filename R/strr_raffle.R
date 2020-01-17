@@ -195,7 +195,7 @@ strr_raffle <- function(
     data_list %>%
     future_map(raffle_integrate,
                # Suppress progress bar if quiet == TRUE or the plan is remote
-               .progress = helper_progress(quiet)
+               .progress = helper_progress()
                ) %>%
     do.call(rbind, .)
 
