@@ -37,7 +37,7 @@
 #' @importFrom data.table setDT setnames
 #' @importFrom dplyr %>% anti_join bind_rows distinct filter inner_join
 #' @importFrom dplyr select semi_join
-#' @importFrom future `%<-%`
+#' @importFrom future `%<-%` `%packages%`
 #' @importFrom rlang .data set_names
 #' @importFrom tibble as_tibble
 #' @export
@@ -131,7 +131,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   if (length(new_error) > 0) {
     daily <-
       daily %>%
-      anti_join(new_error, by = "property_ID")
+      anti_join(new_error, by = c("property_ID", "date", "status", "price"))
 
     error <- bind_rows(error, new_error)
   }
@@ -175,13 +175,12 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   ### Produce missing_rows table ###############################################
 
   missing_rows %<-% {
-    setDT(daily)
     daily[, .(count = .N,
               full_count = as.integer(max(date) - min(date) + 1),
               dif = as.integer(max(date) - min(date) + 1) - .N),
           by = "property_ID"
           ][dif != 0, ]
-  }
+  } %packages% "data.table"
 
   helper_progress_message("Missing rows identified.")
 
@@ -205,11 +204,14 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   setDT(daily)
 
-  daily_inactive <- daily[date < created | date > scraped,]
+  daily_inactive <-
+    daily[date < created | date > scraped,][order(property_ID, date)]
   daily_inactive[, c("created", "scraped") := NULL]
 
   daily[, c("created", "scraped") := NULL]
-  daily <- daily[!daily_inactive, on = c("property_ID", "date")]
+  daily <-
+    daily[!daily_inactive, on = c("property_ID", "date")
+          ][order(property_ID, date)]
 
   helper_progress_message("Rows outside active listing period identified.")
 
