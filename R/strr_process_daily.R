@@ -35,8 +35,8 @@
 #' identifying property_IDs with missing dates in between their first and last
 #' date entries, and therefore potentially missing data.
 #' @importFrom data.table setDT setnames
-#' @importFrom dplyr %>% anti_join bind_rows distinct filter inner_join mutate
-#' @importFrom dplyr pull select semi_join
+#' @importFrom dplyr %>% anti_join bind_rows distinct filter inner_join
+#' @importFrom dplyr select semi_join
 #' @importFrom rlang .data set_names
 #' @importFrom tibble as_tibble
 #' @export
@@ -132,19 +132,29 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
       daily %>%
       anti_join(new_error, by = "property_ID")
 
-    error <- rbindlist(list(error, new_error))
+    error <- distinct(bind_rows(error, new_error))
   }
 
   helper_progress_message(
     "Rows with missing or invalid date or status identified.")
 
 
-  ## Remove duplicate listing entries by price, but don't add to error file
+  ### Remove duplicate listing entries by price, but don't add to error file ###
 
   setDT(daily)
 
+  # Prepare to calculate number of duplicate rows
+  dup_rows <- nrow(daily)
+
   daily <-
     daily[!is.na(price),]
+
+
+  # Save number of duplicate rows for subsequent error checking
+  dup_rows <- dup_rows - nrow(daily)
+
+  # Add as attribute
+  attr(error, "duplicate_rows") <- dup_rows
 
   helper_progress_message("Duplicate rows removed.")
 
