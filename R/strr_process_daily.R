@@ -54,8 +54,6 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   count <- created <- dif <- full_count <- price <- property_ID <- scraped <-
     status <- NULL
 
-  setDT(daily)
-
   ## Check that quiet is a logical
 
   if (!is.logical(quiet)) {
@@ -143,7 +141,6 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   ## Remove duplicate listing entries by price, but don't add to error file
 
-  # Convert to data.table for remainder of operations
   setDT(daily)
 
   daily <-
@@ -156,15 +153,16 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   ## Find missing rows
 
-  missing_rows <-
-    daily[, .(count = .N,
-              full_count = as.integer(max(date) - min(date) + 1)),
-          by = property_ID]
+  count_cols <- c("count", "full_count", "dif")
 
-  missing_rows[, dif := full_count - count]
+  daily[, (count_cols) := list(.N, as.integer(max(date) - min(date) + 1),
+                               as.integer(max(date) - min(date) + 1) - .N),
+        by = property_ID]
 
   missing_rows <-
-    missing_rows[dif != 0,]
+    daily[dif != 0, c("property_ID", count_cols), with = FALSE]
+
+  daily[, (count_cols) := NULL]
 
   helper_progress_message("Missing rows identified.")
 
@@ -178,11 +176,9 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
                                "created", "scraped", "housing", "country",
                                "region", "city"))
 
-  property[, (prop_cols) := NULL]
-
   daily <-
     daily %>%
-    inner_join(property, by = "property_ID")
+    inner_join(select(property, -prop_cols), by = "property_ID")
 
   helper_progress_message("Listing data joined into daily file.")
 
