@@ -37,7 +37,6 @@
 #' @importFrom data.table setDT setnames
 #' @importFrom dplyr %>% anti_join bind_rows distinct filter inner_join
 #' @importFrom dplyr select semi_join
-#' @importFrom future `%<-%` `%packages%`
 #' @importFrom rlang .data set_names
 #' @importFrom tibble as_tibble
 #' @export
@@ -174,13 +173,12 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   ### Produce missing_rows table ###############################################
 
-  missing_rows %<-% {
+  missing_rows <-
     daily[, .(count = .N,
               full_count = as.integer(max(date) - min(date) + 1),
               dif = as.integer(max(date) - min(date) + 1) - .N),
           by = "property_ID"
           ][dif != 0, ]
-  } %packages% "data.table"
 
   helper_progress_message("Missing rows identified.")
 
