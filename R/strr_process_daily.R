@@ -51,6 +51,8 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   .datatable.aware = TRUE
 
+  setDT(daily)
+
   ## Check that quiet is a logical
 
   if (!is.logical(quiet)) {
@@ -79,93 +81,70 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   ## Check number of fields and rename
 
   if (length(daily) == 6) {
-    daily <-
-      daily %>%
-      set_names(c("property_ID", "date", "status", "booked_date",
-                  "price", "res_ID"))
+
+    setnames(daily, c("property_ID", "date", "status", "booked_date", "price",
+                      "res_ID"))
+
   } else if (length(daily) == 10) {
-    daily <-
-      daily %>%
-      set_names(c("property_ID", "date", "status", "booked_date", "price",
-                  "price_native", "currency", "res_ID", "ab_property",
-                  "ha_property"))
+
+    setnames(daily, c("property_ID", "date", "status", "booked_date", "price",
+                      "price_native", "currency", "res_ID", "ab_property",
+                      "ha_property"))
 
     if (!keep_cols) {
-      daily <-
-        daily %>%
-        select(.data$property_ID, .data$date, .data$status, .data$booked_date,
-               .data$price)
+
+      setDT(daily)
+
+      daily[, c("price_native", "currency", "ab_property",
+                "ha_property") := NULL]
+
       }
   } else stop("The `daily` table must have either six or ten fields.")
 
 
   ### Produce error table ######################################################
 
-  ## Find rows with readr errors and add to error file
-
   helper_progress_message("Beginning error check.", .quiet = quiet)
-
-  error_vector <-
-    readr::problems(daily) %>%
-    filter(.data$expected != "10 columns",
-           .data$expected != "no trailing characters") %>%
-    pull(row)
-
-  error <- daily[error_vector,]
-
-  if (length(error_vector) > 0) {daily <- daily[-error_vector,]}
-
-  helper_progress_message("Initial import errors identified.")
-
-
-  ## Find rows with missing property_ID, date or status
-
-  error <-
-    daily %>%
-    filter(is.na(.data$property_ID) | is.na(.data$date) |
-             is.na(.data$status)) %>%
-    bind_rows(error)
-
-  helper_progress_message(
-    "Rows with missing property_ID, date or status identified.")
-
-
-  ## Check status
-
-  error <-
-    daily %>%
-    filter(!(.data$status %in% c("A", "U", "B", "R"))) %>%
-    bind_rows(error)
-
-  helper_progress_message("Rows with invalid status identified.")
 
 
   ## Check for listings missing from property file
 
   error <-
     daily %>%
-    anti_join(property, by = "property_ID") %>%
-    bind_rows(error)
+    anti_join(property, by = "property_ID")
+
+  daily <-
+    daily %>%
+    semi_join(property, by = "property_ID")
 
   helper_progress_message("Rows missing from property file identified.")
 
 
-  ## Trim error file and update daily file with results taken from error file
+  ## Find rows with missing or invalid date or status
 
-  error <- distinct(error)
-
-  daily <-
+  new_error <-
     daily %>%
-    filter(!.data$property_ID %in% error$property_ID)
+    filter(is.na(date) | is.na(status), !status %in% c("A", "U", "B", "R"))
 
-  helper_progress_message("Invalid rows removed from daily file.")
+  if (length(new_error) > 0) {
+    daily <-
+      daily %>%
+      anti_join(new_error, by = "property_ID")
+
+    error <- rbindlist(list(error, new_error))
+  }
+
+  helper_progress_message(
+    "Rows with missing or invalid date or status identified.")
 
 
   ## Remove duplicate listing entries by price, but don't add to error file
 
+  # Convert to data.table for remainder of operations
+  setDT(daily)
+
   daily <-
-    daily %>%
-    filter(!is.na(.data$price))
+    daily[!is.na(price),]
 
   helper_progress_message("Duplicate rows removed.")
 
@@ -174,50 +153,46 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   ## Find missing rows
 
-  .N = property_ID = NULL # due to NSE notes in R CMD check
-
-  setDT(daily)
   missing_rows <-
     daily[, .(count = .N,
               full_count = as.integer(max(date) - min(date) + 1)),
           by = property_ID]
 
+  missing_rows[, dif := full_count - count]
+
   missing_rows <-
-    missing_rows %>%
-    as_tibble() %>%
-    mutate(dif = .data$full_count - .data$count) %>%
-    filter(.data$dif != 0)
+    missing_rows[dif != 0,]
 
   helper_progress_message("Missing rows identified.")
-
-  daily <- as_tibble(daily)
 
 
   ### Produce daily and daily_inactive tables ##################################
 
   ## Join property file
 
+  prop_cols <-
+    setdiff(names(property), c("property_ID", "host_ID", "listing_type",
+                               "created", "scraped", "housing", "country",
+                               "region", "city"))
+
+  property[, (prop_cols) := NULL]
+
   daily <-
     daily %>%
-    inner_join(select(property, .data$property_ID, .data$host_ID,
-                      .data$listing_type, .data$created, .data$scraped,
-                      .data$housing, .data$country, .data$region, .data$city),
-               by = "property_ID")
+    inner_join(property, by = "property_ID")
 
   helper_progress_message("Listing data joined into daily file.")
 
 
   ## Produce daily and daily_inactive
 
-  daily_inactive <-
-    daily %>%
-    filter(.data$date < .data$created | .data$date > .data$scraped) %>%
-    select(-.data$created, -.data$scraped)
+  setDT(daily)
 
-  daily <-
-    daily %>%
-    filter(!.data$property_ID %in% daily_inactive$property_ID) %>%
-    select(-.data$created, -.data$scraped)
+  daily_inactive <- daily[date < created | date > scraped,]
+  daily_inactive[, c("created", "scraped") := NULL]
+
+  daily[, c("created", "scraped") := NULL]
+  daily[!daily_inactive, on = c("property_ID", "date")]
 
   helper_progress_message("Rows outside active listing period identified.")
 
@@ -226,8 +201,14 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   ## Set classes of outputs
 
+  daily <- as_tibble(daily)
   class(daily) <- append(class(daily), "strr_daily")
+
+  daily_inactive <- as_tibble(daily_inactive)
   class(daily_inactive) <- append(class(daily_inactive), "strr_daily")
+
+  error <- as_tibble(error)
+  missing_rows <- as_tibble(missing_rows)
 
 
   ## Return output
