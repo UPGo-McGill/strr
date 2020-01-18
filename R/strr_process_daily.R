@@ -34,9 +34,9 @@
 #' identifying corrupt or otherwise invalid row entries; 4) a missing_rows table
 #' identifying property_IDs with missing dates in between their first and last
 #' date entries, and therefore potentially missing data.
-#' @importFrom data.table setDT
+#' @importFrom data.table setDT setnames
 #' @importFrom dplyr %>% anti_join bind_rows distinct filter inner_join mutate
-#' @importFrom dplyr pull select
+#' @importFrom dplyr pull select semi_join
 #' @importFrom rlang .data set_names
 #' @importFrom tibble as_tibble
 #' @export
@@ -50,6 +50,9 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   ### Error checking and initialization ########################################
 
   .datatable.aware = TRUE
+
+  count <- created <- dif <- full_count <- price <- property_ID <- scraped <-
+    status <- NULL
 
   setDT(daily)
 
