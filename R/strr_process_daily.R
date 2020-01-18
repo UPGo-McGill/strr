@@ -37,6 +37,7 @@
 #' @importFrom data.table setDT setnames
 #' @importFrom dplyr %>% anti_join bind_rows distinct filter inner_join
 #' @importFrom dplyr select semi_join
+#' @importFrom future `%<-%`
 #' @importFrom rlang .data set_names
 #' @importFrom tibble as_tibble
 #' @export
@@ -105,7 +106,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   ### Produce error table ######################################################
 
-  helper_progress_message("Beginning error check.")
+  helper_progress_message("Beginning error check.", .quiet = quiet)
 
 
   ## Check for listings missing from property file
@@ -173,13 +174,13 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   ### Produce missing_rows table ###############################################
 
-  ## Could try making this a future TKTK
-  missing_rows <-
+  missing_rows %<-% {
     daily[, .(count = .N,
               full_count = as.integer(max(date) - min(date) + 1),
-          by = property_ID
-          ][, dif := full_count - count
+              dif = as.integer(max(date) - min(date) + 1) - .N),
+          by = "property_ID"
           ][dif != 0, ]
+  }
 
   helper_progress_message("Missing rows identified.")
 
