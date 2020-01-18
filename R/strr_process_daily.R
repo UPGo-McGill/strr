@@ -175,6 +175,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   ### Produce missing_rows table ###############################################
 
   missing_rows %<-% {
+    setDT(daily)
     daily[, .(count = .N,
               full_count = as.integer(max(date) - min(date) + 1),
               dif = as.integer(max(date) - min(date) + 1) - .N),
