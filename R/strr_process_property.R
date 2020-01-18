@@ -64,7 +64,7 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
 
   ### Trim and rename fields ###################################################
 
-  if (length(property) == 56 & keep_cols) {
+  if (length(property) == 56 && keep_cols) {
     property <-
       property %>%
       set_names(c(
@@ -89,7 +89,7 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
         "ha_listing_url", "ha_image_url"))
   } else {
 
-    if (length(property) == 56 & !keep_cols) {
+    if (length(property) == 56 && !keep_cols) {
 
       helper_progress_message("Dropping extra fields.")
 
