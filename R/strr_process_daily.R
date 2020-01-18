@@ -151,18 +151,12 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   ### Produce missing_rows table ###############################################
 
-  ## Find missing rows
-
-  count_cols <- c("count", "full_count", "dif")
-
-  daily[, (count_cols) := list(.N, as.integer(max(date) - min(date) + 1),
-                               as.integer(max(date) - min(date) + 1) - .N),
-        by = property_ID]
-
   missing_rows <-
-    daily[dif != 0, c("property_ID", count_cols), with = FALSE]
-
-  daily[, (count_cols) := NULL]
+    daily[, .(count = .N,
+              full_count = as.integer(max(date) - min(date) + 1),
+              dif = as.integer(max(date) - min(date) + 1) - .N),
+          by = property_ID
+          ][dif != 0, ]
 
   helper_progress_message("Missing rows identified.")
 
@@ -172,13 +166,12 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   ## Join property file
 
   prop_cols <-
-    setdiff(names(property), c("property_ID", "host_ID", "listing_type",
-                               "created", "scraped", "housing", "country",
-                               "region", "city"))
+    c("property_ID", "host_ID", "listing_type", "created", "scraped", "housing",
+      "country", "region", "city")
 
   daily <-
     daily %>%
-    inner_join(select(property, -prop_cols), by = "property_ID")
+    inner_join(select(property, prop_cols), by = "property_ID")
 
   helper_progress_message("Listing data joined into daily file.")
 
@@ -191,7 +184,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   daily_inactive[, c("created", "scraped") := NULL]
 
   daily[, c("created", "scraped") := NULL]
-  daily[!daily_inactive, on = c("property_ID", "date")]
+  daily <- daily[!daily_inactive, on = c("property_ID", "date")]
 
   helper_progress_message("Rows outside active listing period identified.")
 
