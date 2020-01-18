@@ -132,8 +132,20 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
       daily %>%
       anti_join(new_error, by = "property_ID")
 
-    error <- distinct(bind_rows(error, new_error))
+    error <- bind_rows(error, new_error)
   }
+
+  # Prepare to calculate number of duplicate rows
+  dup_rows <- nrow(error)
+
+  # Discard duplicates
+  error <- distinct(error)
+
+  # Save number of duplicate rows for subsequent error checking
+  dup_rows <- dup_rows - nrow(error)
+
+  # Add as attribute
+  attr(error, "duplicate_rows") <- dup_rows
 
   helper_progress_message(
     "Rows with missing or invalid date or status identified.")
@@ -154,7 +166,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   dup_rows <- dup_rows - nrow(daily)
 
   # Add as attribute
-  attr(error, "duplicate_rows") <- dup_rows
+  attr(error, "duplicate_rows") <- attr(error, "duplicate_rows") + dup_rows
 
   helper_progress_message("Duplicate rows removed.")
 
