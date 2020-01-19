@@ -41,9 +41,8 @@
 #' identifying property_IDs with missing dates in between their first and last
 #' date entries, and therefore potentially missing data.
 #' @importFrom data.table setDT setnames
-#' @importFrom dplyr %>% anti_join bind_rows distinct filter inner_join
-#' @importFrom dplyr select semi_join
-#' @importFrom rlang .data set_names
+#' @importFrom dplyr %>% anti_join distinct filter inner_join select
+#' @importFrom rlang .data
 #' @importFrom tibble as_tibble
 #' @export
 
@@ -134,17 +133,21 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   ## Find rows with missing or invalid date or status
 
+  setDT(daily)
+
   # This combination of filters is the fastest and least memory-intensive
   error_date <- stats::na.omit(daily, cols = c("date"), invert = TRUE)
   error_status <- filter(daily, !status %in% c("A", "U", "B", "R"))
 
-  new_error <- rbindlist(list(error_date, error_status))
+  new_error <- distinct(rbindlist(list(error_date, error_status)))
 
   if (nrow(new_error) > 0) {
     daily <-
       daily %>%
       # Do join by all fields
       anti_join(new_error, by = names(daily))
+
+    setDT(daily)
 
     # Only take the first six rows of new_error to match length of error
     error <- bind_rows(error, select(new_error, 1:6))
@@ -170,8 +173,6 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
 
   ### Remove duplicate entries by price, but don't add to error file ###########
-
-  setDT(daily)
 
   # Prepare to calculate number of duplicate rows
   dup_rows <- nrow(daily)
