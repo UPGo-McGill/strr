@@ -1,6 +1,6 @@
 #' Function to create daily multilisting tables
 #'
-#' \code{strr_process_multi} takes processed daily tables and produces summary
+#' \code{strr_multi} takes processed daily tables and produces summary
 #' tables listings host activity per day.
 #'
 #' A function for aggregating daily activity tables by host, listing type, and
@@ -21,7 +21,7 @@
 #' @importFrom tibble as_tibble
 #' @export
 
-strr_process_multi <- function(daily, quiet = FALSE) {
+strr_multi <- function(daily, quiet = FALSE) {
 
   time_1 <- Sys.time()
 

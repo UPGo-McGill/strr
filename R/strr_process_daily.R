@@ -18,6 +18,12 @@
 #' "scraped". Eventually function arguments may be supplied to allow these
 #' field names to be overruled.
 #'
+#' Because the expectation is that the input files will be very large, the
+#' function uses assignment by reference on the daily input table to change it
+#' to data.table class prior to processing. This saves a considerable amount of
+#' memory by avoiding making an unnecessary copy of the input daily table, but
+#' has the side effect of the initial input file being changed to a data.table.
+#'
 #' @param daily An unprocessed daily table in the raw AirDNA format, with either
 #' ten or six fields.
 #' @param property A property table processed in the UPGo style.
@@ -128,14 +134,13 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   ## Find rows with missing or invalid date or status
 
-  # These filters are faster split apart, and much faster than data.table
-  new_error <-
-    daily %>%
-    filter(is.na(date)) %>%
-    filter(is.na(status)) %>%
-    filter(!status %in% c("A", "U", "B", "R"))
+  # This combination of filters is the fastest and least memory-intensive
+  error_date <- stats::na.omit(daily, cols = c("date"), invert = TRUE)
+  error_status <- filter(daily, !status %in% c("A", "U", "B", "R"))
 
-  if (length(new_error) > 0) {
+  new_error <- rbindlist(list(error_date, error_status))
+
+  if (nrow(new_error) > 0) {
     daily <-
       daily %>%
       # Do join by all fields

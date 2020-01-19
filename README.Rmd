@@ -53,16 +53,17 @@ library(strr)
 ```
 
 
+## strr_multi: Identifying commercial STR operations
+
+TKTK
+
+
 ## strr_compress and strr_expand: Compressing and expanding tables of STR data
 
 TKTK
 
 
 ## strr_raffle: Generating reliable estimates of STR listing locations
-
-TKTK
-
-## strr_process_multi: Identifying commercial STR operations
 
 TKTK
 

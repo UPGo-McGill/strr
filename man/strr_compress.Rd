@@ -24,8 +24,8 @@ UPGo database storage format.
 \details{
 A function for compressing daily activity tables. It takes either AirDNA
 daily tables or UPGo multilisting summary tables which have been processed
-using \code{\link{strr_process_daily}} or \code{\link{strr_process_multi}},
-and converts them into a more storage-efficient one-activity-block-per-row
+using \code{\link{strr_process_daily}} or \code{\link{strr_multi}}, and
+converts them into a more storage-efficient one-activity-block-per-row
 format.
 
 The output can subsequently be restored to a non-compressed format using

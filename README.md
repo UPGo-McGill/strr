@@ -45,15 +45,15 @@ library(strr)
 ## basic example code
 ```
 
+## strr\_multi: Identifying commercial STR operations
+
+TKTK
+
 ## strr\_compress and strr\_expand: Compressing and expanding tables of STR data
 
 TKTK
 
 ## strr\_raffle: Generating reliable estimates of STR listing locations
-
-TKTK
-
-## strr\_process\_multi: Identifying commercial STR operations
 
 TKTK
 
