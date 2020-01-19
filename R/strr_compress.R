@@ -145,10 +145,9 @@ strr_compress <- function(data, quiet = FALSE) {
       data_list %>%
       future_map_dfr(strr_compress_helper,
                      # Suppress progress bar if !quiet or the plan is remote
-                     .progress = helper_progress())
-
-    setDT(compressed)
-    compressed <- compressed[join_fields, on = "property_ID"]
+                     .progress = helper_progress()) %>%
+      # The join is faster and less memory-intensive with dplyr than data.table
+      left_join(join_fields, by = "property_ID")
 
   } else {
 
@@ -157,15 +156,14 @@ strr_compress <- function(data, quiet = FALSE) {
       future_map_dfr(strr_compress_helper_ML,
                      # Suppress progress bar if !quiet or the plan is remote
                      .progress = helper_progress())
-
-    setDT(compressed)
-
   }
 
 
   ## Arrange output and set class
 
   helper_progress_message("Arranging output table.")
+
+  setDT(compressed)
 
   if (daily) {
     compressed <- as_tibble(compressed[order(property_ID, start_date)])
