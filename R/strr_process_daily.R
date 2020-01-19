@@ -51,8 +51,8 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   .datatable.aware = TRUE
 
-  count <- created <- dif <- full_count <- price <- property_ID <- scraped <-
-    status <- NULL
+  count <- created <- dif <- full_count <- high <- low <-  price <-
+    property_ID <- scraped <- status <- NULL
 
   ## Check that quiet is a logical
 
@@ -103,37 +103,50 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   } else stop("The `daily` table must have either six or ten fields.")
 
 
-  ### Produce error table ######################################################
+  ### Join property file to daily file, and begin error table ##################
 
-  helper_progress_message("Beginning error check.", .quiet = quiet)
-
-
-  ## Check for listings missing from property file
+  helper_progress_message("Beginning error check.")
 
   error <-
     daily %>%
     anti_join(property, by = "property_ID")
 
-  daily <-
-    daily %>%
-    semi_join(property, by = "property_ID")
-
   helper_progress_message("Rows missing from property file identified.")
 
+  prop_cols <-
+    c("property_ID", "host_ID", "listing_type", "created", "scraped", "housing",
+      "country", "region", "city")
+
+  daily <-
+    daily %>%
+    inner_join(select(property, prop_cols), by = "property_ID")
+
+  helper_progress_message("Listing data joined into daily file.")
+
+
+  ### Process date, status and duplicates ######################################
 
   ## Find rows with missing or invalid date or status
 
+  # These filters are faster split apart, and much faster than data.table
   new_error <-
     daily %>%
-    filter(is.na(date) | is.na(status), !status %in% c("A", "U", "B", "R"))
+    filter(is.na(date)) %>%
+    filter(is.na(status)) %>%
+    filter(!status %in% c("A", "U", "B", "R"))
 
   if (length(new_error) > 0) {
     daily <-
       daily %>%
-      anti_join(new_error, by = c("property_ID", "date", "status", "price"))
+      # Do join by all fields
+      anti_join(new_error, by = names(daily))
 
-    error <- bind_rows(error, new_error)
+    # Only take the first six rows of new_error to match length of error
+    error <- bind_rows(error, select(new_error, 1:6))
   }
+
+
+  ## Discard duplicates
 
   # Prepare to calculate number of duplicate rows
   dup_rows <- nrow(error)
@@ -151,16 +164,15 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
     "Rows with missing or invalid date or status identified.")
 
 
-  ### Remove duplicate listing entries by price, but don't add to error file ###
+  ### Remove duplicate entries by price, but don't add to error file ###########
 
   setDT(daily)
 
   # Prepare to calculate number of duplicate rows
   dup_rows <- nrow(daily)
 
-  daily <-
-    daily[!is.na(price),]
-
+  # This query is faster in data.table than dplyr
+  daily <- daily[!is.na(price),]
 
   # Save number of duplicate rows for subsequent error checking
   dup_rows <- dup_rows - nrow(daily)
@@ -173,43 +185,26 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   ### Produce missing_rows table ###############################################
 
+  # Faster and less memory-intensive to split up
   missing_rows <-
-    daily[, .(count = .N,
-              full_count = as.integer(max(date) - min(date) + 1),
-              dif = as.integer(max(date) - min(date) + 1) - .N),
-          by = "property_ID"
-          ][dif != 0, ]
+    daily[, .(count = .N, low = min(date), high = max(date)), by = "property_ID"
+          ][, dif := as.integer(high - low) + 1
+            ][dif > 0]
 
   helper_progress_message("Missing rows identified.")
 
 
   ### Produce daily and daily_inactive tables ##################################
 
-  ## Join property file
-
-  prop_cols <-
-    c("property_ID", "host_ID", "listing_type", "created", "scraped", "housing",
-      "country", "region", "city")
-
-  daily <-
-    daily %>%
-    inner_join(select(property, prop_cols), by = "property_ID")
-
-  helper_progress_message("Listing data joined into daily file.")
-
-
-  ## Produce daily and daily_inactive
-
-  setDT(daily)
-
   daily_inactive <-
-    daily[date < created | date > scraped,][order(property_ID, date)]
-  daily_inactive[, c("created", "scraped") := NULL]
+    daily[date < created | date > scraped, verbose = TRUE
+          ][order(property_ID, date)
+            ][, c("created", "scraped") := NULL]
 
-  daily[, c("created", "scraped") := NULL]
   daily <-
-    daily[!daily_inactive, on = c("property_ID", "date")
-          ][order(property_ID, date)]
+    daily[date >= created & date <= scraped
+          ][order(property_ID, date)
+            ][, c("created", "scraped") := NULL]
 
   helper_progress_message("Rows outside active listing period identified.")
 
