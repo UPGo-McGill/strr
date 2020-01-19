@@ -188,7 +188,8 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   # Faster and less memory-intensive to split up
   missing_rows <-
     daily[, .(count = .N, low = min(date), high = max(date)), by = "property_ID"
-          ][, dif := as.integer(high - low) - count + 1
+          ][, c("full_count", "dif") := list(as.integer(high - low) + 1,
+                                             as.integer(high - low) + 1 - count)
             ][, c("low", "high") := NULL
               ][dif > 0]
 
