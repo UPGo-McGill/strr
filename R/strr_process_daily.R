@@ -51,6 +51,8 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   time_1 <- Sys.time()
 
+  helper_progress_message("Beginning processing.")
+
 
   ### Error checking and initialization ########################################
 
@@ -108,15 +110,18 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   } else stop("The `daily` table must have either six or ten fields.")
 
 
-  ### Join property file to daily file, and begin error table ##################
+  ## Get number of rows for error checking
 
-  helper_progress_message("Beginning error check.")
+  daily_rows <- nrow(daily)
+
+
+  ### Join property file to daily file, and begin error table ##################
 
   error <-
     daily %>%
     anti_join(property, by = "property_ID")
 
-  helper_progress_message("Rows missing from property file identified.")
+  helper_progress_message("(1/6) Rows missing from property file identified.")
 
   prop_cols <-
     c("property_ID", "host_ID", "listing_type", "created", "scraped", "housing",
@@ -126,7 +131,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
     daily %>%
     inner_join(select(property, prop_cols), by = "property_ID")
 
-  helper_progress_message("Listing data joined into daily file.")
+  helper_progress_message("(2/6) Listing data joined into daily file.")
 
 
   ### Process date, status and duplicates ######################################
@@ -169,7 +174,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   attr(error, "duplicate_rows") <- dup_rows
 
   helper_progress_message(
-    "Rows with missing or invalid date or status identified.")
+    "(3/6) Rows with missing or invalid date or status identified.")
 
 
   ### Remove duplicate entries by price, but don't add to error file ###########
@@ -186,7 +191,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   # Add as attribute
   attr(error, "duplicate_rows") <- attr(error, "duplicate_rows") + dup_rows
 
-  helper_progress_message("Duplicate rows removed.")
+  helper_progress_message("(4/6) Duplicate rows removed.")
 
 
   ### Produce missing_rows table ###############################################
@@ -199,7 +204,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
             ][, c("low", "high") := NULL
               ][dif > 0]
 
-  helper_progress_message("Missing rows identified.")
+  helper_progress_message("(5/6) Missing rows identified.")
 
 
   ### Produce daily and daily_inactive tables ##################################
@@ -214,7 +219,8 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
           ][order(property_ID, date)
             ][, c("created", "scraped") := NULL]
 
-  helper_progress_message("Rows outside active listing period identified.")
+  helper_progress_message(
+    "(6/6) Rows outside active listing period identified.")
 
 
   ### Return output ############################################################
@@ -229,6 +235,18 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   error <- as_tibble(error)
   missing_rows <- as_tibble(missing_rows)
+
+
+  ## Compare length of input with lengths of outputs
+
+  if (daily_rows != nrow(daily) + nrow(daily_inactive) + nrow(error) +
+      attr(error, "duplicate_rows")) {
+    warning(
+      glue::glue("The number of rows of the input daily table ({daily_rows}) "),
+      glue::glue("does not equal the combined rows of the output tables "),
+      glue::glue("({nrow(daily) + nrow(daily_inactive)}) plus the number of "),
+      glue::glue("duplicated rows ({attr(error, 'duplicate_rows')})."))
+  }
 
 
   ## Return output

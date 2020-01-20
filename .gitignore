@@ -4,3 +4,4 @@
 .Ruserdata
 *.icloud
 .DS_Store
+*.Rproj
