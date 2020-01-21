@@ -19,7 +19,7 @@
 #' field names to be overruled.
 #'
 #' Because the expectation is that the input files will be very large, the
-#' function uses assignment by reference on the daily input table to change it
+#' function uses updating by reference on the daily input table to change it
 #' to data.table class prior to processing. This saves a considerable amount of
 #' memory by avoiding making an unnecessary copy of the input daily table, but
 #' has the side effect of the initial input file being changed to a data.table.

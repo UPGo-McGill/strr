@@ -23,6 +23,14 @@
 #' `HomeAway Listing Main Image URL` fields are removed on import). Eventually
 #' the function will be updated to support inputs from Inside Airbnb instead.
 #'
+#' Because the expectation is that the input files will be very large, the
+#' function uses updating by reference on the property input table. This saves a
+#' considerable amount of memory by avoiding making an unnecessary copy of the
+#' input table, but has the side effect of changing the initial input file even
+#' if the output is being assigned to a new object. An `update_by_reference`
+#' argument may be added to the function in the future to override this
+#' behaviour.
+#'
 #' @param property An unprocessed property data frame in the raw AirDNA format,
 #' with either 35 or 56 fields.
 #' @param keep_cols A logical scalar. If the `property` table has 56 fields,
@@ -34,6 +42,7 @@
 #' fields; 2) an error table identifying corrupt or otherwise invalid row
 #' entries; 3) a missing_geography table identifying property_IDs with missing
 #' latitude/longitude coordinates.
+#' @importFrom data.table setDT setnames
 #' @importFrom dplyr %>% bind_rows case_when filter if_else mutate pull select
 #' @importFrom rlang .data set_names
 #' @importFrom stringr str_replace_all str_starts
@@ -43,7 +52,12 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
 
   time_1 <- Sys.time()
 
+
   ### Error checking and initialization ########################################
+
+  .datatable.aware = TRUE
+
+  ab_host <-country <- ha_host <- host_ID <- property_ID <- region <- NULL
 
   if (!inherits(property, "data.frame")) {
     stop("The input table must be a data frame.")
@@ -61,55 +75,53 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
     stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
   }
 
+  setDT(property)
+
 
   ### Trim and rename fields ###################################################
 
-  if (length(property) == 56 && keep_cols) {
-    property <-
-      property %>%
-      set_names(c(
-        "property_ID", "listing_title", "property_type",
-        "listing_type", "created", "scraped",
-        "country", "latitude", "longitude",
-        "region", "city", "zipcode",
-        "neighbourhood", "metro_area", "currency",
-        "daily_rate", "daily_rate_native", "LTM_revenue",
-        "LTM_revenue_native", "LTM_occupancy", "LTM_bookings",
-        "LTM_reserved_days", "LTM_available", "LTM_blocked",
-        "bedrooms", "bathrooms", "max_guests",
-        "calendar_updated", "response_rate", "superhost",
-        "premier_partner", "cancellation", "security_deposit",
-        "security_deposit_native", "cleaning_fee", "cleaning_fee_native",
-        "extra_people_fee", "extra_people_fee_native", "nightly_rate",
-        "monthly_rate", "weekly_rate", "check_in_time",
-        "check_out_time", "minimum_stay", "num_reviews",
-        "num_photos", "instant_book", "rating",
-        "ab_property", "ab_host", "ab_listing_url",
-        "ab_image_url", "ha_property", "ha_host",
-        "ha_listing_url", "ha_image_url"))
-  } else {
+  if (length(property) == 56) {
+    setnames(property,
+             c("property_ID", "listing_title", "property_type",
+               "listing_type", "created", "scraped", "country", "latitude",
+               "longitude", "region", "city", "zipcode", "neighbourhood",
+               "metro_area", "currency", "daily_rate", "daily_rate_native",
+               "LTM_revenue", "LTM_revenue_native", "LTM_occupancy",
+               "LTM_bookings", "LTM_reserved_days", "LTM_available",
+               "LTM_blocked", "bedrooms", "bathrooms", "max_guests",
+               "calendar_updated", "response_rate", "superhost",
+               "premier_partner", "cancellation", "security_deposit",
+               "security_deposit_native", "cleaning_fee", "cleaning_fee_native",
+               "extra_people_fee", "extra_people_fee_native", "nightly_rate",
+               "monthly_rate", "weekly_rate", "check_in_time", "check_out_time",
+               "minimum_stay", "num_reviews", "num_photos", "instant_book",
+               "rating", "ab_property", "ab_host", "ab_listing_url",
+               "ab_image_url", "ha_property", "ha_host", "ha_listing_url",
+               "ha_image_url"))
 
-    if (length(property) == 56 && !keep_cols) {
-
+    if (!keep_cols) {
       helper_progress_message("Dropping extra fields.")
 
-      property <-
-        property %>%
-        # Select correct columns with index positions
-        select(1:11, 13:15, 25:27, 29:33, 35, 37, 42:50, 53:54)
-    }
-
-    property <-
-      property %>%
-      set_names(c("property_ID", "listing_title", "property_type",
-                  "listing_type", "created", "scraped", "country", "latitude",
-                  "longitude", "region", "city", "neighbourhood", "metro_area",
-                  "currency", "bedrooms", "bathrooms", "max_guests",
-                  "response_rate", "superhost", "premier_partner",
-                  "cancellation", "security_deposit", "cleaning_fee",
-                  "extra_people_fee", "check_in_time", "check_out_time",
-                  "minimum_stay", "num_reviews", "num_photos", "instant_book",
-                  "rating", "ab_property", "ab_host", "ha_property", "ha_host"))
+      property[, c("zipcode", "daily_rate", "daily_rate_native", "LTM_revenue",
+                   "LTM_revenue_native", "LTM_occupancy", "LTM_bookings",
+                   "LTM_reserved_days", "LTM_available", "LTM_blocked",
+                   "calendar_updated", "security_deposit_native",
+                   "cleaning_fee_native", "extra_people_fee_native",
+                   "nightly_rate", "monthly_rate", "weekly_rate",
+                   "ab_listing_url", "ab_image_url", "ha_listing_url",
+                   "ha_image_url") := NULL]
+      }
+    } else {
+      setnames(property,
+             c("property_ID", "listing_title", "property_type", "listing_type",
+               "created", "scraped", "country", "latitude", "longitude",
+               "region", "city", "neighbourhood", "metro_area", "currency",
+               "bedrooms", "bathrooms", "max_guests", "response_rate",
+               "superhost", "premier_partner", "cancellation",
+               "security_deposit", "cleaning_fee", "extra_people_fee",
+               "check_in_time", "check_out_time", "minimum_stay", "num_reviews",
+               "num_photos", "instant_book", "rating", "ab_property", "ab_host",
+               "ha_property", "ha_host"))
     }
 
 
@@ -123,33 +135,22 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
     pull(.data$row) %>%
     {property[.,]}
 
-  if (nrow(error) > 0) {
-    property <-
-      readr::problems(property) %>%
-      filter(.data$expected != "56 columns") %>%
-      pull(.data$row) %>%
-      {property[-.,]}
-  }
-
   error <-
     property %>%
     filter(is.na(.data$property_ID) | is.na(.data$listing_type)) %>%
     bind_rows(error)
 
-  property <-
-    property %>%
-    filter(!is.na(.data$property_ID), !is.na(.data$listing_type))
-
   error <-
     property %>%
-    filter(!str_starts(.data$property_ID, "ab-"),
-           !str_starts(.data$property_ID, "ha-")) %>%
+    filter(!str_starts(.data$property_ID, "(ab-)|(ha-)")) %>%
     bind_rows(error)
 
   property <-
     property %>%
-    filter(str_starts(.data$property_ID, "ab-") |
-             str_starts(.data$property_ID, "ha-"))
+    filter(!property_ID %in% error$property_ID)
+
+  helper_progress_message(
+    "(1/5) Entries with invalid property_ID or listing_type identified.")
 
   missing_geography <-
     property %>%
@@ -157,26 +158,25 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
 
   property <-
     property %>%
-    filter(!is.na(.data$latitude), !is.na(.data$longitude))
+    filter(!is.na(.data$latitude)) %>%
+    filter(!is.na(.data$longitude))
 
+  helper_progress_message("(2/5) Entries with missing geography identified.")
 
   ### Replace problematic characters ###########################################
 
-  helper_progress_message("Cleaning entries and adding fields.")
-
   property <-
     property %>%
-    mutate(listing_title = str_replace_all(
-      .data$listing_title, c('\n' = "", '\r' = "", '\"' = "", "\'" = "")))
+    mutate(
+      listing_title = str_replace_all(.data$listing_title, "\n|\r|\"|\'", ""))
+
+  helper_progress_message("(3/5) Problematic characters removed.")
 
 
   ### Add host_ID field ########################################################
 
-  property <-
-    property %>%
-    mutate(host_ID = if_else(!is.na(.data$ab_host),
-                             as.character(.data$ab_host),
-                             .data$ha_host))
+  setDT(property)[, host_ID := as.character(ab_host)
+                  ][is.na(ab_host), host_ID := ha_host]
 
 
   ### Add housing field ########################################################
@@ -188,32 +188,42 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
            .data$housing, .data$latitude:.data$longitude, .data$country,
            .data$region:.data$ha_host)
 
+  helper_progress_message("(4/5) New host_ID and housing fields added.")
+
 
   ### Rename country names to match actual Airbnb usage ########################
 
-  property <-
-    property %>%
-    mutate(country = case_when(
-      .data$country == "Bosnia-Herzegovina"     ~ "Bosnia and Herzegovina",
-      .data$country == "Brunei Darussalam"      ~ "Brunei",
-      .data$country == "C\u00f4te d'Ivoire - Republic of" ~ "Ivory Coast",
-      .data$country == "Curacao"                ~ "Cura\u00e7ao",
-      .data$country == "Falkland Islands"       ~ "Falkland Islands (Malvinas)",
-      .data$country == "Lao"                    ~ "Laos",
-      .data$country == "Macedonia - Republic of" ~ "Macedonia",
-      .data$country == "Palestine"              ~ "Palestinian Territories",
-      .data$country == "Republic of Congo"      ~ "Congo",
-      .data$country == "Saint-Martin"           ~ "Saint Martin",
-      .data$region  == "Bhutan"                 ~ "Bhutan",
-      .data$region  == "Puerto Rico"            ~ "Puerto Rico",
-      .data$region  == "United States Virgin Islands" ~ "U.S. Virgin Islands",
-      TRUE ~ .data$country
-    ))
+  setDT(property
+        )[country == "Bosnia-Herzegovina", country := "Bosnia and Herzegovina"
+           ][country == "Brunei Darussalam", country := "Brunei"
+             ][country == "C\u00f4te d'Ivoire - Republic of",
+               country := "Ivory Coast"
+               ][country == "Curacao", country := "Cura\u00e7ao"
+                 ][country == "Falkland Islands",
+                   country := "Falkland Islands (Malvinas)"
+                   ][country == "Lao", country := "Laos"
+                     ][country == "Macedonia - Republic of",
+                       country := "Macedonia"
+                       ][country == "Palestine",
+                         country := "Palestinian Territories"
+                         ][country == "Republic of Congo", country := "Congo"
+                           ][country == "Saint-Martin",
+                             country := "Saint Martin"
+                             ][region == "Bhutan", country := "Bhutan"
+                               ][region == "Puerto Rico",
+                                 country := "Puerto Rico",
+                                 ][region == "United States Virgin Islands",
+                                   country := "U.S. Virgin Islands"]
+
+  helper_progress_message("(5/5) Country names harmonized with Airbnb's usage.")
+
 
   ### Return output ############################################################
 
   helper_progress_message("Processing complete.", .final = TRUE)
 
-  return(list(property, error, missing_geography))
+  return(list(
+    as_tibble(property), as_tibble(error), as_tibble(missing_geography)
+    ))
 
 }

@@ -47,4 +47,12 @@ after the `Zipcode`, `Average Daily Rate (USD)`,
 `Airbnb Listing Main Image URL`, `HomeAway Listing URL`, and
 `HomeAway Listing Main Image URL` fields are removed on import). Eventually
 the function will be updated to support inputs from Inside Airbnb instead.
+
+Because the expectation is that the input files will be very large, the
+function uses updating by reference on the property input table. This saves a
+considerable amount of memory by avoiding making an unnecessary copy of the
+input table, but has the side effect of changing the initial input file even
+if the output is being assigned to a new object. An `update_by_reference`
+argument may be added to the function in the future to override this
+behaviour.
 }
