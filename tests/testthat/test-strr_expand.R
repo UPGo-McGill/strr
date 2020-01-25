@@ -26,7 +26,7 @@ daily <-
 
 class(daily) <- append(class(daily), "strr_daily")
 
-multi <-
+host <-
   tibble(
     host_ID = c("10000029", "10000029", "10000029", "1000008", "1000008",
                 "1000008", "1000014", "1000014", "1000014", "1000014"),
@@ -42,7 +42,7 @@ multi <-
     count = 1
     )
 
-class(multi) <- append(class(multi), "strr_multi")
+class(host) <- append(class(host), "strr_host")
 
 
 ### Tests ######################################################################
@@ -50,8 +50,8 @@ class(multi) <- append(class(multi), "strr_multi")
 test_that("function succeeds with no errors", {
   # Daily
   expect_equal(nrow(strr_expand(daily)), 30)
-  # Multi
-  expect_equal(nrow(strr_expand(multi)), 212)
+  # Host
+  expect_equal(nrow(strr_expand(host)), 212)
 })
 
 test_that("The quiet flag suppresses all messages", {

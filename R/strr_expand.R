@@ -17,37 +17,37 @@
 #' @param end A character string of format YYYY-MM-DD indicating the
 #'   last date to be provided in the output table. If NULL (default), the
 #'   latest date present in the data will be used.
-#' @param chunk_size A positive integer scalar. How large should each element be
-#' when the table is split for multicore processing? Larger elements should lead
-#' to slightly faster processing times but higher memory usage, so low values
-#' are recommended for RAM-constrained computers.
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return A table with one row per date and all other fields returned
 #' unaltered.
-#' @importFrom dplyr %>% bind_rows filter group_split mutate pull select
+#' @importFrom data.table setDT setnames
+#' @importFrom dplyr %>% filter left_join mutate select
 #' @importFrom furrr future_map_dfr
-#' @importFrom purrr map2
 #' @importFrom rlang .data
-#' @importFrom stringr str_detect
-#' @importFrom tidyr unnest
 #' @export
 
-strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
-                        quiet = FALSE) {
+strr_expand <- function(data, start = NULL, end = NULL, quiet = FALSE) {
 
   time_1 <- Sys.time()
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
+  ## Prepare data.table variables
+
   .datatable.aware = TRUE
 
-  # Remove future global export limit
+  property_ID <- start_date <- end_date <- col_split <- host_ID <- NULL
+
+
+  ## Remove future global export limit
 
   options(future.globals.maxSize = +Inf)
+
   on.exit(.Options$future.globals.maxSize <- NULL)
 
-  # Check if table is daily or ML
+
+  ## Check if table is daily or ML
 
   if (inherits(data, "strr_daily") | names(data)[1] == "property_ID") {
 
@@ -55,15 +55,16 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
 
     daily <- TRUE
 
-  } else if (inherits(data, "strr_multi") | names(data)[1] == "host_ID") {
+  } else if (inherits(data, "strr_host") | names(data)[1] == "host_ID") {
 
-    helper_progress_message("Multilisting table identified.")
+    helper_progress_message("Host table identified.")
 
     daily <- FALSE
 
-  } else stop("Input table must be of class `strr_daily` or `strr_multi`.")
+  } else stop("Input table must be of class `strr_daily` or `strr_host`.")
 
-  # Check that dates are coercible to date class, then coerce them
+
+  ## Check that dates are coercible to date class, then coerce them
 
   if (!missing(start)) {
     start <- tryCatch(as.Date(start), error = function(e) {
@@ -80,28 +81,25 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
 
   ### STORE EXTRA FIELDS AND TRIM DATA #########################################
 
+  setDT(data)
+
   ## TKTK Remove 15 once daily DB update is complete
   if (length(data) %in% c(13, 15)) {
 
     # These fields are per-property
-    join_fields <-
-      data %>%
-      group_by(.data$property_ID) %>%
-      filter(.data$start_date == max(.data$start_date)) %>%
-      ungroup() %>%
-      select(.data$property_ID, .data$host_ID:.data$city)
+    join_fields <- data[, .SD[1], by = property_ID
+                        ][, c("start_date", "end_date", "status", "booked_date",
+                              "price", "res_ID") := NULL]
 
     # These fields are per-property, per-date
     add_fields <-
-      data %>%
-      select(.data$property_ID, date = .data$start_date,
-             .data$status:.data$res_ID)
+      data[, c("property_ID", "start_date", "status", "booked_date", "price",
+               "res_ID")]
 
-    # Keep host_ID, country/region for group_split
-    data <-
-      data %>%
-      select(.data$property_ID, .data$start_date, .data$end_date,
-             .data$host_ID, .data$country, .data$region)
+    setnames(add_fields, "start_date", "date")
+
+    # Just keep data necessary for expansion
+    data <- data[, .(property_ID, start_date, end_date)]
 
   }
 
@@ -110,37 +108,21 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
 
   helper_progress_message("Preparing new date field.")
 
-  data <-
-    data %>%
-    mutate(date = map2(.data$start_date, .data$end_date, ~{.x:.y}))
+  data[, date := list(list(start_date:end_date)), by = 1:nrow(data)]
+
+
+  ## Split by property_ID for daily and host_ID for host
 
   helper_progress_message("Splitting data for processing.")
 
-  ## Split by country and region for daily, with host_ID for multi or as backup
-
   if (daily) {
-    data_list <-
-      data %>%
-      select(-.data$host_ID) %>%
-      group_split(.data$country, .data$region, keep = FALSE)
-
-    # Use host_ID for multi
-  } else {
-    data_list <-
-      data %>%
-      group_split(.data$host_ID)
-  }
-
-  # If a daily file only has a single country, try splitting by host_ID instead
-  if (length(data_list) == 1) {
-    data_list <-
-      data %>%
-      select(-.data$country, -.data$region) %>%
-      group_split(.data$host_ID, keep = FALSE)
-  }
+    data[, col_split := substr(property_ID, 1, 6)]
+    } else {
+      data[, col_split := substr(host_ID, 1, 3)]
+    }
 
   data_list <-
-    data_list %>%
+    split(data, by = "col_split", keep.by = FALSE) %>%
     helper_table_split()
 
 
@@ -152,13 +134,11 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
     data_list %>%
     future_map_dfr(~{
 
-      data.table::setDT(.x)
+      setDT(.x)
 
-      .x[, lapply(.SD, unlist), by = 1:nrow(.x)] %>%
+      .x[, lapply(.SD, unlist), by = 1:nrow(.x)][, nrow := NULL] %>%
         tibble::as_tibble() %>%
-        mutate(date = as.Date(.data$date, origin = "1970-01-01")) %>%
-        select(-.data$nrow)
-
+        mutate(date = as.Date(.data$date, origin = "1970-01-01"))
       },
       # Suppress progress bar if quiet == TRUE or the plan is remote
       .progress = helper_progress()
@@ -208,7 +188,7 @@ strr_expand <- function(data, start = NULL, end = NULL, chunk_size = 1000,
   if (names(data)[1] == "property_ID") {
     class(data) <- append(class(data), "strr_daily")
   } else {
-    class(data) <- append(class(data), "strr_multi")
+    class(data) <- append(class(data), "strr_host")
   }
 
 
