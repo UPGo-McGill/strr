@@ -30,6 +30,8 @@
 #' @param keep_cols A logical scalar. If the `daily` table has 10 fields,
 #' should the superfluous 4 fields be kept, or should the table be trimmed to
 #' the 6 fields which UPGo uses (default)?
+#' @param old_format Temporary option to add created/scraped and not split
+#' output into active and inactive.
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return A list with four elements: 1) the processed daily table, ready for
@@ -47,7 +49,7 @@
 #' @export
 
 strr_process_daily <- function(daily, property, keep_cols = FALSE,
-                               quiet = FALSE) {
+                               old_format = FALSE, quiet = FALSE) {
 
   time_1 <- Sys.time()
 
@@ -209,6 +211,8 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   ### Produce daily and daily_inactive tables ##################################
 
+  if (!old_format) { ## TKTK Delete after new database is deployed
+
   daily_inactive <-
     daily[date < created | date > scraped, verbose = TRUE
           ][order(property_ID, date)
@@ -222,6 +226,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   helper_progress_message(
     "(6/6) Rows outside active listing period identified.")
 
+  } ## TKTK Delete after new database is deployed
 
   ### Return output ############################################################
 
@@ -230,14 +235,20 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   daily <- as_tibble(daily)
   class(daily) <- append(class(daily), "strr_daily")
 
+  if (!old_format) { ## TKTK Delete after new database is deployed
+
   daily_inactive <- as_tibble(daily_inactive)
   class(daily_inactive) <- append(class(daily_inactive), "strr_daily")
+
+  } ## TKTK Delete after new database is deployed
 
   error <- as_tibble(error)
   missing_rows <- as_tibble(missing_rows)
 
 
   ## Compare length of input with lengths of outputs
+
+  if (!old_format) { ## TKTK Delete after new database is deployed
 
   if (daily_rows != nrow(daily) + nrow(daily_inactive) + nrow(error) +
       attr(error, "duplicate_rows")) {
@@ -247,11 +258,17 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
       glue::glue("({nrow(daily) + nrow(daily_inactive)}) plus the number of "),
       glue::glue("duplicated rows ({attr(error, 'duplicate_rows')})."))
   }
+  } ## TKTK Delete after new database is deployed
 
 
   ## Return output
 
   helper_progress_message("Processing complete.", .final = TRUE)
 
+  if (!old_format) { ## TKTK Delete after new database is deployed
+
   return(list(daily, daily_inactive, error, missing_rows))
+
+  } else {return(list(daily, error, missing_rows))} ## TKTK Delete
+
 }
