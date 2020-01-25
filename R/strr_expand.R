@@ -22,7 +22,7 @@
 #' @return A table with one row per date and all other fields returned
 #' unaltered.
 #' @importFrom data.table setDT setnames
-#' @importFrom dplyr %>% filter left_join mutate select
+#' @importFrom dplyr %>% everything filter left_join mutate select
 #' @importFrom furrr future_map_dfr
 #' @importFrom rlang .data
 #' @export
@@ -152,15 +152,15 @@ strr_expand <- function(data, start = NULL, end = NULL, quiet = FALSE) {
   if (length(data) == 4) {
 
     data <-
-      data %>%
-      arrange(.data$property_ID, .data$date) %>%
+      setDT(data)[order(property_ID, date)] %>%
       # Join fields which need to be duplicated for specific date ranges
       left_join(add_fields, by = c("property_ID", "date")) %>%
       tidyr::fill(.data$status:.data$res_ID) %>%
       # Join fields which need to be duplicated for specific properties
       left_join(join_fields, by = "property_ID") %>%
       select(.data$property_ID, .data$date, everything(), -.data$start_date,
-             -.data$end_date)
+             -.data$end_date) %>%
+      tibble::as_tibble()
 
   } else {
 
