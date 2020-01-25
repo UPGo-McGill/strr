@@ -8,7 +8,7 @@ strr_compress(data, quiet = FALSE)
 }
 \arguments{
 \item{data}{A daily table in either the processed UPGo daily format or the
-processed UPGo multilisting format.}
+processed UPGo host format.}
 
 \item{quiet}{A logical scalar. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}
@@ -17,16 +17,16 @@ it return status updates throughout the function (default)?}
 A compressed daily table, ready for upload to a remote database.
 }
 \description{
-\code{strr_compress} takes daily tables (either monthly daily tables from
-AirDNA or ML summary tables produced by UPGo) and compresses them into the
+\code{strr_compress} takes daily tables (either daily activity tables
+produced through \code{\link{strr_process_daily}} or daily host tables
+produced through \code{\link{strr_host}}) and compresses them into the
 UPGo database storage format.
 }
 \details{
-A function for compressing daily activity tables. It takes either AirDNA
-daily tables or UPGo multilisting summary tables which have been processed
-using \code{\link{strr_process_daily}} or \code{\link{strr_multi}}, and
-converts them into a more storage-efficient one-activity-block-per-row
-format.
+A function for compressing daily activity tables. It takes either daily
+listing activity tables (class `strr_daily`) or daily host activity tables
+(class `strr_host`) and converts them into a more storage-efficient
+one-activity-block-per-row format.
 
 The output can subsequently be restored to a non-compressed format using
 \code{\link{strr_expand}}.

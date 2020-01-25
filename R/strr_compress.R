@@ -1,20 +1,20 @@
 #' Function to compress daily STR tables into UPGo DB format
 #'
-#' \code{strr_compress} takes daily tables (either monthly daily tables from
-#' AirDNA or ML summary tables produced by UPGo) and compresses them into the
+#' \code{strr_compress} takes daily tables (either daily activity tables
+#' produced through \code{\link{strr_process_daily}} or daily host tables
+#' produced through \code{\link{strr_host}}) and compresses them into the
 #' UPGo database storage format.
 #'
-#' A function for compressing daily activity tables. It takes either AirDNA
-#' daily tables or UPGo multilisting summary tables which have been processed
-#' using \code{\link{strr_process_daily}} or \code{\link{strr_multi}}, and
-#' converts them into a more storage-efficient one-activity-block-per-row
-#' format.
+#' A function for compressing daily activity tables. It takes either daily
+#' listing activity tables (class `strr_daily`) or daily host activity tables
+#' (class `strr_host`) and converts them into a more storage-efficient
+#' one-activity-block-per-row format.
 #'
 #' The output can subsequently be restored to a non-compressed format using
 #' \code{\link{strr_expand}}.
 #'
 #' @param data A daily table in either the processed UPGo daily format or the
-#' processed UPGo multilisting format.
+#' processed UPGo host format.
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return A compressed daily table, ready for upload to a remote database.
@@ -52,7 +52,7 @@ strr_compress <- function(data, quiet = FALSE) {
     stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
   }
 
-  # Check if table is daily or ML
+  # Check if table is daily or host
 
   if (inherits(data, "strr_daily") | names(data)[1] == "property_ID") {
 
@@ -60,13 +60,13 @@ strr_compress <- function(data, quiet = FALSE) {
 
     daily <- TRUE
 
-  } else if (inherits(data, "strr_multi") | names(data)[1] == "host_ID") {
+  } else if (inherits(data, "strr_host") | names(data)[1] == "host_ID") {
 
-    helper_progress_message("Multilisting table identified.")
+    helper_progress_message("Host table identified.")
 
     daily <- FALSE
 
-  } else stop("Input table must be of class `strr_daily` or `strr_multi`.")
+  } else stop("Input table must be of class `strr_daily` or `strr_host`.")
 
 
   ### Prepare file for analysis ################################################
@@ -124,7 +124,7 @@ strr_compress <- function(data, quiet = FALSE) {
       split(data, by = "PID_split", keep.by = FALSE) %>%
       helper_table_split()
 
-    # Use host_ID for multi
+    # Use host_ID for host
   } else {
 
     data[, host_split := substr(host_ID, 1, 3)]
@@ -153,7 +153,7 @@ strr_compress <- function(data, quiet = FALSE) {
 
     compressed <-
       data_list %>%
-      future_map_dfr(strr_compress_helper_ML,
+      future_map_dfr(strr_compress_helper_host,
                      # Suppress progress bar if !quiet or the plan is remote
                      .progress = helper_progress())
   }
@@ -170,7 +170,7 @@ strr_compress <- function(data, quiet = FALSE) {
     class(compressed) <- append(class(compressed), "strr_daily")
     } else {
       compressed <- as_tibble(compressed[order(host_ID, start_date)])
-      class(compressed) <- append(class(compressed), "strr_multi")
+      class(compressed) <- append(class(compressed), "strr_host")
       }
 
 
@@ -242,20 +242,20 @@ strr_compress_helper <- function(data) {
 }
 
 
-#' Helper function to compress ML file
+#' Helper function to compress host file
 #'
-#' \code{strr_compress_helper_ML} takes a processed ML table and generates a
+#' \code{strr_compress_helper_host} takes a processed host table and generates a
 #' compressed version.
 #'
-#' A helper function for compressing the processed ML summary table.
+#' A helper function for compressing the processed host summary table.
 #'
-#' @param data The processed ML table generated through the strr_compress
+#' @param data The processed host table generated through the strr_compress
 #' function.
-#' @return The output will be a compressed ML table.
+#' @return The output will be a compressed host table.
 #' @importFrom data.table rbindlist setDT
 #' @importFrom rlang .data
 
-strr_compress_helper_ML <- function(data) {
+strr_compress_helper_host <- function(data) {
 
   # Silence R CMD check for data.table fields
   host_ID <- listing_type <- housing <- count <- dates <- start_date <-

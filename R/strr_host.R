@@ -1,6 +1,6 @@
-#' Function to create daily multilisting tables
+#' Function to create daily host activity tables
 #'
-#' \code{strr_multi} takes processed daily tables and produces summary
+#' \code{strr_host} takes processed daily tables and produces summary
 #' tables listings host activity per day.
 #'
 #' A function for aggregating daily activity tables by host, listing type, and
@@ -21,7 +21,7 @@
 #' @importFrom tibble as_tibble
 #' @export
 
-strr_multi <- function(daily, quiet = FALSE) {
+strr_host <- function(daily, quiet = FALSE) {
 
   time_1 <- Sys.time()
 
@@ -46,7 +46,7 @@ strr_multi <- function(daily, quiet = FALSE) {
   }
 
   # Check that table is daily
-  if (!inherits(daily, "strr_multi") & names(daily)[1] != "property_ID") {
+  if (!inherits(daily, "strr_daily") & names(daily)[1] != "property_ID") {
     stop("Input table must be of class `strr_daily`.")
   }
 
@@ -85,7 +85,7 @@ strr_multi <- function(daily, quiet = FALSE) {
 
   helper_progress_message("Beginning processing, using {helper_plan()}.")
 
-  multi <-
+  host <-
     data_list %>%
     future_map_dfr(~{
       setDT(.x)
@@ -98,7 +98,7 @@ strr_multi <- function(daily, quiet = FALSE) {
 
   ## Check validity of output
 
-  if (daily_check != sum(multi$count)) {
+  if (daily_check != sum(host$count)) {
     stop("The function did not return the correct number of entries. ",
          "This might be because a parallel worker failed to complete its job.")
   }
@@ -106,9 +106,9 @@ strr_multi <- function(daily, quiet = FALSE) {
 
   ## Return output
 
-  class(multi) <- append(class(multi), "strr_multi")
+  class(host) <- append(class(host), "strr_host")
 
   helper_progress_message("Processing complete.", .final = TRUE)
 
-  return(multi)
+  return(host)
 }
