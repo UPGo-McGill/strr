@@ -38,7 +38,7 @@ helper_plan <- function() {
     cluster_type <-
       if_else("remote" %in% class(future::plan()), "remote", "local")
 
-    paste0(workers_number, " ", cluster_type, " ", workers_noun)
+    paste0(workers_number, " ", cluster_type, " ", workers_noun, "\n")
     },
     error = function(e) "1 local process"
   )
@@ -140,7 +140,7 @@ helper_progress_message <- function(..., .type = "main", .quiet = NULL) {
 
   if (!.quiet) {
 
-    args <- list(...)
+    args <- purrr::map(list(...), ~glue::glue(.x))
 
     output_time <- crayon::cyan(glue::glue(" ({substr(Sys.time(), 12, 19)})"))
 
