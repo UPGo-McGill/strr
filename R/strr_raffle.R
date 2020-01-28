@@ -127,7 +127,7 @@ strr_raffle <- function(
 
   ### PREPARE POINTS AND POLYS TABLES ##########################################
 
-  helper_progress_message("Preparing tables for analysis.")
+  helper_progress_message("Preparing tables for analysis.", .type = "open")
 
   # Transform polys CRS to match points
   polys <- st_transform(polys, st_crs(points))
@@ -176,15 +176,19 @@ strr_raffle <- function(
         }) %>%
         st_sfc())
 
+  helper_progress_message("Tables prepared for analysis.", .type = "close")
+
 
   ### SPLIT DATA FOR PROCESSING ################################################
 
-  helper_progress_message("Splitting data for processing.")
+  helper_progress_message("Splitting data for processing.", .type = "open")
 
   data_list <-
     intersects %>%
     group_split(.data$.point_ID) %>%
     helper_table_split()
+
+  helper_progress_message("Data split for processing.", .type = "close")
 
 
   ### DO INTEGRATION ###########################################################
@@ -234,7 +238,7 @@ strr_raffle <- function(
     select(-.data$.point_ID, -.data$.point_x, -.data$.point_y) %>%
     select(-.data$geometry, everything(), .data$geometry)
 
-  helper_progress_message("Analysis complete.", .final = TRUE)
+  helper_progress_message("Analysis complete.", .type = "final")
 
   return(points)
 }

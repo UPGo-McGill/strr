@@ -105,15 +105,19 @@ strr_compress <- function(data, quiet = FALSE) {
 
   if (year(min(data$date)) != year(max(data$date))) {
 
-    helper_progress_message("Adding year and month fields.")
+    helper_progress_message("Adding year and month fields.", .type = "open")
 
     data[, c("month", "year") := list(month(date), year(date))]
 
+    helper_progress_message("Year and month fields added.", .type = "close")
+
   } else if (month(min(data$date)) != month(max(data$date))) {
 
-    helper_progress_message("Adding month field.")
+    helper_progress_message("Adding month field.", .type = "open")
 
     data[, month := month(date)]
+
+    helper_progress_message("Month field added.", .type = "close")
 
   }
 
@@ -122,7 +126,7 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ## Split by first three digits of property_ID/host_ID
 
-  helper_progress_message("Splitting table for processing.")
+  helper_progress_message("Splitting table for processing.", .type = "open")
 
   if (daily) {
 
@@ -141,6 +145,8 @@ strr_compress <- function(data, quiet = FALSE) {
       split(data, by = "host_split", keep.by = FALSE) %>%
       helper_table_split()
   }
+
+  helper_progress_message("Table split for processing.", .type = "close")
 
 
   ### Compress processed data file #############################################
@@ -169,7 +175,7 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ## Arrange output and set class
 
-  helper_progress_message("Arranging output table.")
+  helper_progress_message("Arranging output table.", .type = "open")
 
   setDT(compressed)
 
@@ -181,10 +187,11 @@ strr_compress <- function(data, quiet = FALSE) {
       class(compressed) <- append(class(compressed), "strr_host")
       }
 
+  helper_progress_message("Output table arranged.", .type = "close")
 
   ## Return output
 
-  helper_progress_message("Compression complete.", .final = TRUE)
+  helper_progress_message("Compression complete.", .type = "final")
 
   return(compressed)
 }

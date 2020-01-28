@@ -119,13 +119,17 @@ helper_table_split <- function(data_list, multiplier = 4) {
 #' optionally with the current time.
 #' @param ... Character strings to be displayed. The strings can include
 #' code for evaluation via \code{glue::glue} inside `{}`.
+#' @param .type One of c("open", "close", "main", "final"). "Open" prints a
+#' temporary message in grey italics with no timestamp. "Close" is designed to
+#' be called after "open", since it overwrites the previous line with a
+#' message in grey with a timestamp in cyan. "Main" is the same as "close" but
+#' does not override the previous line. "Final" is the same as "main" but
+#' appends an additional line in cyan bold which states the total time.
 #' @param .quiet The name of the argument in the calling function specifying
 #' whether messages should be displayed.
-#' @param .final A logical scalar. Is this the final progress message, to be
-#' formatted in cyan and bold and display the total time?
 #' @return A status message.
 
-helper_progress_message <- function(..., .quiet = NULL, .final = FALSE) {
+helper_progress_message <- function(..., .type = "main", .quiet = NULL) {
 
   ellipsis::check_dots_unnamed()
 
@@ -136,28 +140,44 @@ helper_progress_message <- function(..., .quiet = NULL, .final = FALSE) {
 
   if (!.quiet) {
 
-    args <- purrr::map(list(...), ~{glue::glue(crayon::silver(.x))})
+    args <- list(...)
 
     output_time <- crayon::cyan(glue::glue(" ({substr(Sys.time(), 12, 19)})"))
 
-    if (!.final) {
 
-      message(args, output_time)
+    if (.type == "open") {
 
-    } else {
+      args <- purrr::map(args, crayon::silver$italic)
+      args <- c("\n", args, sep = "")
+
+    } else if (.type == "close") {
+
+      args <- purrr::map(args, crayon::silver)
+      args <- c("\r", args, output_time, sep = "")
+
+    } else if (.type == "main") {
+
+      args <- purrr::map(args, crayon::silver)
+      args <- c("\n", args, output_time, sep = "")
+
+    } else if (.type == "final") {
 
       time_1 <- get("time_1", envir = parent.frame(n = 1))
       total_time <- Sys.time() - time_1
       time_final_1 <- substr(total_time, 1, 5)
       time_final_2 <- attr(total_time, 'units')
 
-      message(
-        args,
-        output_time,
-        "\n",
-        crayon::bold(crayon::cyan(glue::glue(
-          "Total time: {time_final_1} {time_final_2}."))))
-      }
+      total_time <- crayon::cyan$bold(glue::glue(
+        "Total time: {time_final_1} {time_final_2}."
+      ))
+
+      args <- purrr::map(args, crayon::silver)
+      args <- c("\n", args, output_time, "\n", total_time, sep = "")
+
+    }
+
+    message(args, appendLF = FALSE)
+
   }
 }
 

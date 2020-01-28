@@ -177,7 +177,7 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
 
   ### PREPARE TABLE FOR ANALYSIS ###############################################
 
-  helper_progress_message("Preparing table for analysis.")
+  helper_progress_message("Preparing table for analysis.", .type = "open")
 
 
   ## Drop geometry if table is sf
@@ -232,6 +232,8 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
     # Only select needed fields, to reduce object size for remote transfer
     select(.data$property_ID, .data$date, .data$status)
 
+  helper_progress_message("Table prepared for analysis.", .type = "close")
+
 
   ### PERFORM CALCULATIONS #####################################################
 
@@ -259,7 +261,7 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
 
   ## Arrange table then rename fields to match input fields
 
-  helper_progress_message("Arranging output.")
+  helper_progress_message("Arranging output.", .type = "open")
 
   daily <-
     daily %>%
@@ -267,11 +269,12 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
     rename({{ property_ID }} := .data$property_ID,
            {{ date }} := .data$date)
 
+  helper_progress_message("Output arranged.", .type = "close")
 
 
   ### RETURN OUTPUT ############################################################
 
-  helper_progress_message("Analysis complete.", .final = TRUE)
+  helper_progress_message("Analysis complete.", .type = "final")
 
   return(daily)
 

@@ -242,7 +242,8 @@ strr_ghost <- function(
 
   ### POINTS SETUP #############################################################
 
-  helper_progress_message("Filtering listings to ghost hostel candidates.")
+  helper_progress_message("Filtering listings to ghost hostel candidates.",
+                          .type = "open")
 
   # Rename fields for easier processing with future package
   points <-
@@ -279,11 +280,16 @@ strr_ghost <- function(
   # Error handling for case where no clusters are identified
   if (nrow(points) == 0) return(ghost_empty(points, crs_points))
 
+  helper_progress_message("Listings filtered to ghost hostel candidates.",
+                          .type = "close")
+
+
   # Identify possible clusters by date if multi_date == TRUE
   if (multi_date) {
 
     helper_progress_message(
-      "Identifying possible ghost hostel clusters by date.")
+      "Identifying possible ghost hostel clusters by date.",
+      .type = "open")
 
     points <-
       points %>%
@@ -310,8 +316,13 @@ strr_ghost <- function(
     # Error handling for case where no clusters are identified
     if (nrow(points) == 0) return(ghost_empty(points, crs_points))
 
+    helper_progress_message(
+      "Possible ghost hostel clusters identified by date.",
+      .type = "close")
+
     # Create a nested tibble for each possible cluster
-    helper_progress_message("Preparing possible clusters for analysis.")
+    helper_progress_message("Preparing possible clusters for analysis.",
+                            .type = "open")
 
     points <-
       points %>%
@@ -324,6 +335,9 @@ strr_ghost <- function(
       })) %>%
       unnest(.data$data) %>%
       select(-.data$starts, -.data$ends, -.data$date_grid)
+
+    helper_progress_message("Possible clusters prepared for analysis.",
+                            .type = "close")
   }
 
 
@@ -362,7 +376,8 @@ strr_ghost <- function(
 
   ### GHOST TABLE CREATION #####################################################
 
-  helper_progress_message("Combining ghost hostels into output table.")
+  helper_progress_message("Combining ghost hostels into output table.",
+                          .type = "open")
 
   points <-
     points %>%
@@ -394,10 +409,14 @@ strr_ghost <- function(
     # Convert to sf and reattach CRS
     st_as_sf(crs = crs_points)
 
+  helper_progress_message("Ghost hostels combined into output table.",
+                          .type = "close")
+
   # Calculate dates if multi_date == TRUE
   if (multi_date) {
 
-    helper_progress_message("Identifying active date ranges for ghost hostels.")
+    helper_progress_message("Identifying active date ranges for ghost hostels.",
+                            .type = "open")
 
     # Calculate date ranges
     points <-
@@ -423,13 +442,18 @@ strr_ghost <- function(
           which(map_lgl(points$property_IDs, ~all(.x %in% y)))
         }),
         subsets = map2(.data$ghost_ID, .data$subsets, ~{.y[.y != .x]}))
+
+    helper_progress_message("Active date ranges for ghost hostels identified.",
+                            .type = "close")
   }
 
   ## EH_check
 
   if (EH_check) {
 
-    helper_progress_message("Checking for possible entire-home duplicates.")
+    helper_progress_message("Checking for possible entire-home duplicates.",
+                            .type = "open")
+
     EH_buffers <-
       st_buffer(EH_points, distance) %>%
       st_transform(crs_points) %>%
@@ -452,6 +476,10 @@ strr_ghost <- function(
             pull(.data$EH_property_ID))
       })) %>%
       select(-.data$geometry, everything(), .data$geometry)
+
+    helper_progress_message("Possible entire-home duplicates detected.",
+                            .type = "close")
+
   }
 
   # Rename fields to match input fields
@@ -469,7 +497,7 @@ strr_ghost <- function(
 
   if (multi_date) {
 
-    helper_progress_message("Producing final output table.")
+    helper_progress_message("Producing final output table.", .type = "open")
 
     points <-
       points[c("ghost_ID", "start", "end")] %>%
@@ -492,12 +520,13 @@ strr_ghost <- function(
       select(-.data$subsets) %>%
       ungroup()
 
+    helper_progress_message("Final output table produced.", .type = "close")
   }
 
 
   ### RETURN OUTPUT ############################################################
 
-  helper_progress_message("Analysis complete.", .final = TRUE)
+  helper_progress_message("Analysis complete.", .type = "final")
 
   return(points)
 }

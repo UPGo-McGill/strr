@@ -100,7 +100,7 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
                "ha_image_url"))
 
     if (!keep_cols) {
-      helper_progress_message("Dropping extra fields.")
+      helper_progress_message("Dropping extra fields.", .type = "open")
 
       property[, c("zipcode", "daily_rate", "daily_rate_native", "LTM_revenue",
                    "LTM_revenue_native", "LTM_occupancy", "LTM_bookings",
@@ -110,6 +110,9 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
                    "nightly_rate", "monthly_rate", "weekly_rate",
                    "ab_listing_url", "ab_image_url", "ha_listing_url",
                    "ha_image_url") := NULL]
+
+      helper_progress_message("Extra fields dropped.", .type = "close")
+
       }
     } else {
       setnames(property,
@@ -127,7 +130,9 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
 
   ### Produce error files ######################################################
 
-  helper_progress_message("Beginning error check.")
+  helper_progress_message(
+    "(1/5) Identifying entries with invalid property_ID or listing_type.",
+    .type = "open")
 
   error <-
     readr::problems(property) %>%
@@ -150,7 +155,11 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
     filter(!property_ID %in% error$property_ID)
 
   helper_progress_message(
-    "(1/5) Entries with invalid property_ID or listing_type identified.")
+    "(1/5) Entries with invalid property_ID or listing_type identified.",
+    .type = "close")
+
+  helper_progress_message("(2/5) Identifying entries with missing geography.",
+                          .type = "open")
 
   missing_geography <-
     property %>%
@@ -161,19 +170,27 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
     filter(!is.na(.data$latitude)) %>%
     filter(!is.na(.data$longitude))
 
-  helper_progress_message("(2/5) Entries with missing geography identified.")
+  helper_progress_message("(2/5) Entries with missing geography identified.",
+                          .type = "close")
 
   ### Replace problematic characters ###########################################
+
+  helper_progress_message("(3/5) Removing problematic characters.",
+                          .type = "open")
 
   property <-
     property %>%
     mutate(
       listing_title = str_replace_all(.data$listing_title, "\n|\r|\"|\'", ""))
 
-  helper_progress_message("(3/5) Problematic characters removed.")
+  helper_progress_message("(3/5) Problematic characters removed.",
+                          .type = "close")
 
 
   ### Add host_ID field ########################################################
+
+  helper_progress_message("(4/5) Adding new host_ID and housing fields.",
+                          .type = "open")
 
   setDT(property)[, host_ID := as.character(ab_host)
                   ][is.na(ab_host), host_ID := ha_host]
@@ -188,10 +205,14 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
            .data$housing, .data$latitude:.data$longitude, .data$country,
            .data$region:.data$ha_host)
 
-  helper_progress_message("(4/5) New host_ID and housing fields added.")
+  helper_progress_message("(4/5) New host_ID and housing fields added.",
+                          .type = "close")
 
 
   ### Rename country names to match actual Airbnb usage ########################
+
+  helper_progress_message(
+    "(5/5) Harmonizing country names with Airbnb's usage.", .type = "open")
 
   setDT(property
         )[country == "Bosnia-Herzegovina", country := "Bosnia and Herzegovina"
@@ -215,12 +236,13 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
                                  ][region == "United States Virgin Islands",
                                    country := "U.S. Virgin Islands"]
 
-  helper_progress_message("(5/5) Country names harmonized with Airbnb's usage.")
+  helper_progress_message(
+    "(5/5) Country names harmonized with Airbnb's usage.", .type = "close")
 
 
   ### Return output ############################################################
 
-  helper_progress_message("Processing complete.", .final = TRUE)
+  helper_progress_message("Processing complete.", .type = "final")
 
   return(list(
     as_tibble(property), as_tibble(error), as_tibble(missing_geography)

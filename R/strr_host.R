@@ -58,7 +58,8 @@ strr_host <- function(daily, quiet = FALSE) {
 
   ### Trim daily table #########################################################
 
-  helper_progress_message("Trimming daily table to valid entries.")
+  helper_progress_message("Trimming daily table to valid entries.",
+                          .type = "open")
 
   setDT(daily)
 
@@ -69,16 +70,21 @@ strr_host <- function(daily, quiet = FALSE) {
   # Save nrow for final validity check
   daily_check <- nrow(daily)
 
+  helper_progress_message("Daily table trimmed to valid entries.",
+                          .type = "close")
+
 
   ## Produce list for processing
 
-  helper_progress_message("Splitting table for processing.")
+  helper_progress_message("Splitting table for processing.", .type = "open")
 
   daily[, host_split := substr(host_ID, 1, 3)]
 
   data_list <-
     split(daily, by = "host_split", keep.by = FALSE) %>%
     helper_table_split()
+
+  helper_progress_message("Table split for processing.", .type = "close")
 
 
   ### Produce multilisting table ###############################################
@@ -108,7 +114,7 @@ strr_host <- function(daily, quiet = FALSE) {
 
   class(host) <- append(class(host), "strr_host")
 
-  helper_progress_message("Processing complete.", .final = TRUE)
+  helper_progress_message("Processing complete.", .type = "final")
 
   return(host)
 }
