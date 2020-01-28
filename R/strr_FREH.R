@@ -239,7 +239,8 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
 
   setDT(daily)
 
-  helper_progress_message("Beginning processing, using {helper_plan()}.")
+  helper_progress_message("Beginning processing, using {helper_plan()}.",
+                          .type = "progress")
 
   daily <-
     future_map_dfr(start_date:end_date, ~{

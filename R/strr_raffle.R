@@ -193,7 +193,8 @@ strr_raffle <- function(
 
   ### DO INTEGRATION ###########################################################
 
-  helper_progress_message("Beginning analysis, using {helper_plan()}.")
+  helper_progress_message("Beginning analysis, using {helper_plan()}.",
+                          .type = "progress")
 
   intersects <-
     data_list %>%

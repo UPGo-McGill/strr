@@ -354,7 +354,8 @@ strr_ghost <- function(
       split(1:n_chunks)
   })
 
-  helper_progress_message("Identifying ghost hostels, using {helper_plan()}.")
+  helper_progress_message("Identifying ghost hostels, using {helper_plan()}.",
+                          .type = "progress")
 
   points <-
     points_list %>%

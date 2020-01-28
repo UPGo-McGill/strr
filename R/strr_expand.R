@@ -131,7 +131,8 @@ strr_expand <- function(data, start = NULL, end = NULL, quiet = FALSE) {
 
   ### EXPAND TABLE #############################################################
 
-  helper_progress_message("Beginning expansion, using {helper_plan()}.")
+  helper_progress_message("Beginning expansion, using {helper_plan()}.",
+                          .type = "progress")
 
   data <-
     data_list %>%

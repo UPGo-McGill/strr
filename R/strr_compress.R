@@ -151,7 +151,8 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ### Compress processed data file #############################################
 
-  helper_progress_message("Beginning compression, using {helper_plan()}.")
+  helper_progress_message("Beginning compression, using {helper_plan()}.",
+                          .type = "progress")
 
   if (daily) {
 

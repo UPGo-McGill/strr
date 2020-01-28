@@ -38,7 +38,7 @@ helper_plan <- function() {
     cluster_type <-
       if_else("remote" %in% class(future::plan()), "remote", "local")
 
-    paste0(workers_number, " ", cluster_type, " ", workers_noun, "\n")
+    paste0(workers_number, " ", cluster_type, " ", workers_noun)
     },
     error = function(e) "1 local process"
   )
@@ -119,12 +119,14 @@ helper_table_split <- function(data_list, multiplier = 4) {
 #' optionally with the current time.
 #' @param ... Character strings to be displayed. The strings can include
 #' code for evaluation via \code{glue::glue} inside `{}`.
-#' @param .type One of c("open", "close", "main", "final"). "Open" prints a
-#' temporary message in grey italics with no timestamp. "Close" is designed to
-#' be called after "open", since it overwrites the previous line with a
-#' message in grey with a timestamp in cyan. "Main" is the same as "close" but
-#' does not override the previous line. "Final" is the same as "main" but
-#' appends an additional line in cyan bold which states the total time.
+#' @param .type One of c("open", "close", "main", "plan", "final"). "Open"
+#' prints a temporary message in grey italics with no timestamp. "Close" is
+#' designed to be called after "open", since it overwrites the previous line
+#' with a message in grey with a timestamp in cyan. "Main" is the same as
+#' "close" but does not override the previous line. "Progress" adds a newline
+#' after the output so that a subsequent progress bar does not overwrite it.
+#' "Final" is the same as "main" but appends an additional line in cyan bold
+#' which states the total time.
 #' @param .quiet The name of the argument in the calling function specifying
 #' whether messages should be displayed.
 #' @return A status message.
@@ -159,6 +161,11 @@ helper_progress_message <- function(..., .type = "main", .quiet = NULL) {
 
       args <- purrr::map(args, crayon::silver)
       args <- c("\n", args, output_time, sep = "")
+
+    } else if (.type == "progress") {
+
+      args <- purrr::map(args, crayon::silver)
+      args <- c("\n", args, output_time, "\n", sep = "")
 
     } else if (.type == "final") {
 

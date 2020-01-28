@@ -89,7 +89,8 @@ strr_host <- function(daily, quiet = FALSE) {
 
   ### Produce multilisting table ###############################################
 
-  helper_progress_message("Beginning processing, using {helper_plan()}.")
+  helper_progress_message("Beginning processing, using {helper_plan()}.",
+                          .type = "progress")
 
   host <-
     data_list %>%

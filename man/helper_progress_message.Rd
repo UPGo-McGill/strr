@@ -10,12 +10,14 @@ helper_progress_message(..., .type = "main", .quiet = NULL)
 \item{...}{Character strings to be displayed. The strings can include
 code for evaluation via \code{glue::glue} inside `{}`.}
 
-\item{.type}{One of c("open", "close", "main", "final"). "Open" prints a
-temporary message in grey italics with no timestamp. "Close" is designed to
-be called after "open", since it overwrites the previous line with a
-message in grey with a timestamp in cyan. "Main" is the same as "close" but
-does not override the previous line. "Final" is the same as "main" but
-appends an additional line in cyan bold which states the total time.}
+\item{.type}{One of c("open", "close", "main", "plan", "final"). "Open"
+prints a temporary message in grey italics with no timestamp. "Close" is
+designed to be called after "open", since it overwrites the previous line
+with a message in grey with a timestamp in cyan. "Main" is the same as
+"close" but does not override the previous line. "Progress" adds a newline
+after the output so that a subsequent progress bar does not overwrite it.
+"Final" is the same as "main" but appends an additional line in cyan bold
+which states the total time.}
 
 \item{.quiet}{The name of the argument in the calling function specifying
 whether messages should be displayed.}
