@@ -21,7 +21,7 @@
 #' it return status updates throughout the function (default)?
 #' @return A table with one row per date and all other fields returned
 #' unaltered.
-#' @importFrom data.table setDT setnames
+#' @importFrom data.table last setDT setnames
 #' @importFrom dplyr %>% everything filter left_join mutate select
 #' @importFrom furrr future_map_dfr
 #' @importFrom rlang .data
@@ -87,7 +87,7 @@ strr_expand <- function(data, start = NULL, end = NULL, quiet = FALSE) {
   if (length(data) %in% c(13, 15)) {
 
     # These fields are per-property
-    join_fields <- data[, .SD[1], by = property_ID
+    join_fields <- data[, last(.SD), by = property_ID
                         ][, c("start_date", "end_date", "status", "booked_date",
                               "price", "res_ID") := NULL]
 
