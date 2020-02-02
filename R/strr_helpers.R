@@ -179,7 +179,7 @@ helper_progress_message <- function(..., .type = "main", .quiet = NULL) {
       ))
 
       args <- purrr::map(args, crayon::silver)
-      args <- c("\n", args, output_time, "\n", total_time, sep = "")
+      args <- c("\n", args, output_time, "\n", total_time, "\n", sep = "")
 
     }
 
