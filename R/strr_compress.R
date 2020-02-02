@@ -208,7 +208,7 @@ strr_compress <- function(data, quiet = FALSE) {
 #' @param data The processed daily table generated through the strr_compress
 #' function.
 #' @return The output will be a compressed daily table.
-#' @importFrom data.table rbindlist setDT
+#' @importFrom data.table rbindlist setDT setDTthreads
 #' @importFrom rlang .data
 
 strr_compress_helper <- function(data) {
@@ -217,6 +217,8 @@ strr_compress_helper <- function(data) {
   booked_date <- dates <- end_date <- price <- property_ID <- res_ID <-
     start_date <- status <- NULL
 
+  # Make sure data.table is single-threaded within the helper
+  threads <- setDTthreads(1)
   setDT(data)
 
   # Group data by all columns except date
@@ -254,6 +256,9 @@ strr_compress_helper <- function(data) {
 
   } else remainder <- one_length[0,]
 
+  # Restore DT threads
+  setDTthreads(threads)
+
   rbindlist(list(one_length, remainder))
 }
 
@@ -268,7 +273,7 @@ strr_compress_helper <- function(data) {
 #' @param data The processed host table generated through the strr_compress
 #' function.
 #' @return The output will be a compressed host table.
-#' @importFrom data.table rbindlist setDT
+#' @importFrom data.table rbindlist setDT setDTthreads
 #' @importFrom rlang .data
 
 strr_compress_helper_host <- function(data) {
@@ -277,6 +282,8 @@ strr_compress_helper_host <- function(data) {
   host_ID <- listing_type <- housing <- count <- dates <- start_date <-
     end_date <- NULL
 
+  # Make sure data.table is single-threaded within the helper
+  threads <- setDTthreads(1)
   setDT(data)
 
   # Group data by all columns except date
@@ -315,6 +322,9 @@ strr_compress_helper_host <- function(data) {
     remainder[, nrow := NULL]
 
   } else remainder <- one_length[0,]
+
+  # Restore DT threads
+  setDTthreads(threads)
 
   rbindlist(list(one_length, remainder))
 }
