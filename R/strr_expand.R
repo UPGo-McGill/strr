@@ -21,7 +21,7 @@
 #' it return status updates throughout the function (default)?
 #' @return A table with one row per date and all other fields returned
 #' unaltered.
-#' @importFrom data.table last setDT setnames
+#' @importFrom data.table last setDT setDTthreads setnames
 #' @importFrom dplyr %>% everything filter left_join mutate select
 #' @importFrom furrr future_map_dfr
 #' @importFrom rlang .data
@@ -134,6 +134,9 @@ strr_expand <- function(data, start = NULL, end = NULL, quiet = FALSE) {
   helper_progress_message("Beginning expansion, using {helper_plan()}.",
                           .type = "progress")
 
+  # Make sure data.table is single-threaded within the helper
+  threads <- setDTthreads(1)
+
   data <-
     data_list %>%
     future_map_dfr(~{
@@ -147,6 +150,9 @@ strr_expand <- function(data, start = NULL, end = NULL, quiet = FALSE) {
       # Suppress progress bar if quiet == TRUE or the plan is remote
       .progress = helper_progress()
       )
+
+  # Restore DT threads
+  setDTthreads(threads)
 
 
   ### REJOIN TO ADDITIONAL FIELDS, THEN ARRANGE COLUMNS ########################
