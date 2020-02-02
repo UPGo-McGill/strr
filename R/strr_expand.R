@@ -106,16 +106,17 @@ strr_expand <- function(data, start = NULL, end = NULL, quiet = FALSE) {
 
   ### PREPARE DATE FIELD AND SPLIT DATA ########################################
 
-  helper_progress_message("Preparing new date field.", .type = "open")
+  helper_progress_message("(1/4) Preparing new date field.", .type = "open")
 
   data[, date := list(list(start_date:end_date)), by = 1:nrow(data)]
 
-  helper_progress_message("New date field prepared.", .type = "close")
+  helper_progress_message("(1/4) New date field prepared.", .type = "close")
 
 
   ## Split by property_ID for daily and host_ID for host
 
-  helper_progress_message("Splitting data for processing.", .type = "open")
+  helper_progress_message(
+    "(2/4) Splitting data for processing.", .type = "open")
 
   if (daily) {
     data[, col_split := substr(property_ID, 1, 6)]
@@ -127,11 +128,11 @@ strr_expand <- function(data, start = NULL, end = NULL, quiet = FALSE) {
     split(data, by = "col_split", keep.by = FALSE) %>%
     helper_table_split(10)
 
-  helper_progress_message("Data split for processing.", .type = "close")
+  helper_progress_message("2/4) Data split for processing.", .type = "close")
 
   ### EXPAND TABLE #############################################################
 
-  helper_progress_message("Beginning expansion, using {helper_plan()}.",
+  helper_progress_message("(3/4) Beginning expansion, using {helper_plan()}.",
                           .type = "progress")
 
   # Make sure data.table is single-threaded within the helper
@@ -157,7 +158,8 @@ strr_expand <- function(data, start = NULL, end = NULL, quiet = FALSE) {
 
   ### REJOIN TO ADDITIONAL FIELDS, THEN ARRANGE COLUMNS ########################
 
-  helper_progress_message("Joining additional fields to table.", .type = "open")
+  helper_progress_message(
+    "(4/4) Joining additional fields to table.", .type = "open")
 
   if (length(data) == 4) {
 
@@ -182,7 +184,8 @@ strr_expand <- function(data, start = NULL, end = NULL, quiet = FALSE) {
 
   }
 
-  helper_progress_message("Additional fields joined to table.", .type = "close")
+  helper_progress_message(
+    "(4/4) Additional fields joined to table.", .type = "close")
 
 
   ### OPTIONALLY TRIM BASED ON START/END DATE ##################################

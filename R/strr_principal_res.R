@@ -40,6 +40,7 @@
 #' @return The output will be the `property` input table with one additional
 #' logical field (with name taken from the `field_name` argument) indicating
 #' principal residence status.
+#' @importFrom dplyr count filter group_by mutate summarize
 #' @importFrom rlang .data
 #' @export
 
@@ -49,6 +50,8 @@ strr_principal_res <- function(property, daily, host, FREH, ghost,
                                quiet = FALSE) {
 
   ### Error checking and initialization ########################################
+
+  principal_res <- NULL
 
   ## TKTK
 
@@ -75,7 +78,8 @@ strr_principal_res <- function(property, daily, host, FREH, ghost,
       daily %>%
       group_by(.data$property_ID) %>%
       summarize(ML = if_else(
-        sum(ML * (date >= start_date)) + sum(ML * (date <= end_date)) > 0,
+        sum(.data$ML * (.data$date >= start_date)) +
+          sum(.data$ML * (.data$date <= end_date)) > 0,
         TRUE, FALSE))
 
     pr_n <-
@@ -91,7 +95,7 @@ strr_principal_res <- function(property, daily, host, FREH, ghost,
     pr_table <-
       pr_table %>%
       left_join(pr_ML, by = "property_ID") %>%
-      mutate(ML = if_else(is.na(.data$ML), FALSE, ML)) %>%
+      mutate(ML = if_else(is.na(.data$ML), FALSE, .data$ML)) %>%
       left_join(pr_n, by = "property_ID") %>%
       group_by(.data$host_ID, .data$listing_type) %>%
       mutate(LFRML = case_when(
@@ -107,7 +111,7 @@ strr_principal_res <- function(property, daily, host, FREH, ghost,
       group_by(.data$host_ID) %>%
       mutate(prob = sample(0:10000, n(), replace = TRUE),
              LFRML = if_else(
-               sum(.data$LFRML) > 1 & prob != max(.data$prob), FALSE,
+               sum(.data$LFRML) > 1 & .data$prob != max(.data$prob), FALSE,
                .data$LFRML)) %>%
       ungroup() %>%
       select(.data$property_ID, LFRML2 = .data$LFRML) %>%
@@ -117,38 +121,38 @@ strr_principal_res <- function(property, daily, host, FREH, ghost,
       select(-.data$LFRML2)
 
     GH_list <-
-      GH %>%
-      filter(date >= start_date, date <= end_date) %>%
-      pull(property_IDs) %>%
+      ghost %>%
+      filter(.data$date >= start_date, .data$date <= end_date) %>%
+      pull(.data$property_IDs) %>%
       unlist() %>%
       unique()
 
     pr_table <-
       pr_table %>%
-      mutate(GH = if_else(property_ID %in% GH_list, TRUE, FALSE))
+      mutate(GH = if_else(.data$property_ID %in% GH_list, TRUE, FALSE))
 
     pr_table <-
       FREH %>%
-      filter(date >= start_date, date <= end_date) %>%
-      group_by(property_ID) %>%
+      filter(.data$date >= start_date, .data$date <= end_date) %>%
+      group_by(.data$property_ID) %>%
       summarize(FREH = TRUE) %>%
       left_join(pr_table, ., by = "property_ID") %>%
-      mutate(FREH = if_else(is.na(FREH), FALSE, FREH))
+      mutate(FREH = if_else(is.na(.data$FREH), FALSE, .data$FREH))
 
     # Add principal_res field
 
     pr_table <-
       pr_table %>%
       mutate({{ field_name }} := case_when(
-        housing == FALSE               ~ FALSE,
-        GH == TRUE                     ~ FALSE,
-        listing_type == "Shared room"  ~ TRUE,
-        listing_type == "Private room" ~ TRUE,
-        FREH == TRUE                   ~ FALSE,
-        LFRML == TRUE                  ~ TRUE,
-        ML == TRUE                     ~ FALSE,
-        TRUE                           ~ TRUE)) %>%
-      select(property_ID, {{ field_name }})
+        .data$housing == FALSE               ~ FALSE,
+        .data$GH == TRUE                     ~ FALSE,
+        .data$listing_type == "Shared room"  ~ TRUE,
+        .data$listing_type == "Private room" ~ TRUE,
+        .data$FREH == TRUE                   ~ FALSE,
+        .data$LFRML == TRUE                  ~ TRUE,
+        .data$ML == TRUE                     ~ FALSE,
+        TRUE                                 ~ TRUE)) %>%
+      select(.data$property_ID, {{ field_name }})
 
     left_join(property, pr_table, by = "property_ID")
 
