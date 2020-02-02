@@ -125,7 +125,7 @@ strr_expand <- function(data, start = NULL, end = NULL, quiet = FALSE) {
 
   data_list <-
     split(data, by = "col_split", keep.by = FALSE) %>%
-    helper_table_split()
+    helper_table_split(10)
 
   helper_progress_message("Data split for processing.", .type = "close")
 

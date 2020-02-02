@@ -168,7 +168,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
     setDT(daily)
 
-    # Only take the first six rows of new_error to match length of error
+    # Only take the first six columns of new_error to match length of error
     error <- bind_rows(error, select(new_error, 1:6))
   }
 

@@ -73,44 +73,48 @@ strr_principal_res <- function(property, daily, host, FREH, ghost,
 
     pr_ML <-
       daily %>%
-      group_by(property_ID) %>%
+      group_by(.data$property_ID) %>%
       summarize(ML = if_else(
         sum(ML * (date >= start_date)) + sum(ML * (date <= end_date)) > 0,
         TRUE, FALSE))
 
     pr_n <-
       daily %>%
-      filter(status %in% c("R", "A"), date >= start_date, date <= end_date) %>%
-      count(property_ID, status) %>%
-      group_by(property_ID) %>%
-      summarize(n_available = sum(n),
-                n_reserved = sum(n[status == "R"]))
+      filter(.data$status %in% c("R", "A"),
+             .data$date >= start_date,
+             .data$date <= end_date) %>%
+      count(.data$property_ID, .data$status) %>%
+      group_by(.data$property_ID) %>%
+      summarize(n_available = sum(.data$n),
+                n_reserved = sum(.data$n[.data$status == "R"]))
 
     pr_table <-
       pr_table %>%
       left_join(pr_ML, by = "property_ID") %>%
-      mutate(ML = if_else(is.na(ML), FALSE, ML)) %>%
+      mutate(ML = if_else(is.na(.data$ML), FALSE, ML)) %>%
       left_join(pr_n, by = "property_ID") %>%
-      group_by(host_ID, listing_type) %>%
+      group_by(.data$host_ID, .data$listing_type) %>%
       mutate(LFRML = case_when(
-        listing_type != "Entire home/apt" ~ FALSE,
-        ML == FALSE                       ~ FALSE,
-        n_available == min(n_available)   ~ TRUE,
-        TRUE                              ~ FALSE)) %>%
+        .data$listing_type != "Entire home/apt"       ~ FALSE,
+        .data$ML == FALSE                             ~ FALSE,
+        .data$n_available == min(.data$n_available)   ~ TRUE,
+        TRUE                                          ~ FALSE)) %>%
       ungroup()
 
     pr_table <-
       pr_table %>%
-      filter(LFRML == TRUE) %>%
-      group_by(host_ID) %>%
+      filter(.data$LFRML == TRUE) %>%
+      group_by(.data$host_ID) %>%
       mutate(prob = sample(0:10000, n(), replace = TRUE),
              LFRML = if_else(
-               sum(LFRML) > 1 & prob != max(prob), FALSE, LFRML)) %>%
+               sum(.data$LFRML) > 1 & prob != max(.data$prob), FALSE,
+               .data$LFRML)) %>%
       ungroup() %>%
-      select(property_ID, LFRML2 = LFRML) %>%
+      select(.data$property_ID, LFRML2 = .data$LFRML) %>%
       left_join(pr_table, ., by = "property_ID") %>%
-      mutate(LFRML = if_else(!is.na(LFRML2), LFRML2, LFRML)) %>%
-      select(-LFRML2)
+      mutate(LFRML = if_else(!is.na(.data$LFRML2), .data$LFRML2, .data$LFRML)
+             ) %>%
+      select(-.data$LFRML2)
 
     GH_list <-
       GH %>%
