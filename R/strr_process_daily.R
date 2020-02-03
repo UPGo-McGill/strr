@@ -54,7 +54,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   time_1 <- Sys.time()
 
   # Print \n on exit so error messages don't collide with progress messages
-  on.exit(message())
+  on.exit(if (!quiet) message())
 
   helper_progress_message("Beginning processing.")
 

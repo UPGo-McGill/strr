@@ -30,22 +30,19 @@ strr_compress <- function(data, quiet = FALSE) {
 
   time_1 <- Sys.time()
 
-
   ### Error checking and initialization ########################################
 
+  # Print \n on exit so error messages don't collide with progress messages
+  on.exit(if (!quiet) message())
 
-  ## Set data.table variables
-
+  # Set data.table variables
   .datatable.aware = TRUE
-
   property_ID <- start_date <- host_ID <- PID_split <- host_split <- NULL
 
 
-  ## Remove future global export limit
-
+  # Remove future global export limit
   options(future.globals.maxSize = +Inf)
-
-  on.exit(.Options$future.globals.maxSize <- NULL)
+  on.exit(.Options$future.globals.maxSize <- NULL, add = TRUE)
 
   # Check that quiet is a logical
   if (!is.logical(quiet)) {
@@ -53,7 +50,6 @@ strr_compress <- function(data, quiet = FALSE) {
   }
 
   # Check if table is daily or host
-
   if (inherits(data, "strr_daily") | names(data)[1] == "property_ID") {
 
     helper_progress_message("Daily table identified.")
