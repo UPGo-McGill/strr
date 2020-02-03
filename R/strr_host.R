@@ -15,7 +15,7 @@
 #' should it return status updates throughout the function (default)?
 #' @return A processed multilisting table, ready for compression with
 #' \code{\link{strr_compress}}.
-#' @importFrom data.table setDT
+#' @importFrom data.table setDT setDTthreads
 #' @importFrom dplyr %>%
 #' @importFrom rlang .data
 #' @importFrom tibble as_tibble
@@ -58,7 +58,7 @@ strr_host <- function(daily, quiet = FALSE) {
 
   ### Trim daily table #########################################################
 
-  helper_progress_message("Trimming daily table to valid entries.",
+  helper_progress_message("(1/3) Trimming daily table to valid entries.",
                           .type = "open")
 
   setDT(daily)
@@ -70,13 +70,14 @@ strr_host <- function(daily, quiet = FALSE) {
   # Save nrow for final validity check
   daily_check <- nrow(daily)
 
-  helper_progress_message("Daily table trimmed to valid entries.",
+  helper_progress_message("(1/3) Daily table trimmed to valid entries.",
                           .type = "close")
 
 
   ## Produce list for processing
 
-  helper_progress_message("Splitting table for processing.", .type = "open")
+  helper_progress_message("(2/3) Splitting table for processing.",
+                          .type = "open")
 
   daily[, host_split := substr(host_ID, 1, 3)]
 
@@ -84,13 +85,16 @@ strr_host <- function(daily, quiet = FALSE) {
     split(daily, by = "host_split", keep.by = FALSE) %>%
     helper_table_split()
 
-  helper_progress_message("Table split for processing.", .type = "close")
+  helper_progress_message("(2/3) Table split for processing.", .type = "close")
 
 
   ### Produce multilisting table ###############################################
 
-  helper_progress_message("Beginning processing, using {helper_plan()}.",
+  helper_progress_message("(3/3) Beginning processing, using {helper_plan()}.",
                           .type = "progress")
+
+  # Make sure data.table is single-threaded within the helper
+  threads <- setDTthreads(1)
 
   host <-
     data_list %>%
@@ -102,6 +106,11 @@ strr_host <- function(daily, quiet = FALSE) {
     # Suppress progress bar if quiet == TRUE or the plan is remote
     .progress = helper_progress())
 
+  # Restore DT threads
+  setDTthreads(threads)
+
+
+  ### Check and return output ##################################################
 
   ## Check validity of output
 
