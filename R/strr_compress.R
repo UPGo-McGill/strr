@@ -28,9 +28,12 @@
 
 strr_compress <- function(data, quiet = FALSE) {
 
+  ### Error checking and initialization ########################################
+
   time_1 <- Sys.time()
 
-  ### Error checking and initialization ########################################
+  # Set the number of steps for progress reporting
+  steps <- 3
 
   # Print \n on exit so error messages don't collide with progress messages
   on.exit(if (!quiet) message())
@@ -101,19 +104,27 @@ strr_compress <- function(data, quiet = FALSE) {
 
   if (year(min(data$date)) != year(max(data$date))) {
 
-    helper_progress_message("Adding year and month fields.", .type = "open")
+    steps <- 4
+
+    helper_progress_message("(1/", steps, ") Adding year and month fields.",
+                            .type = "open")
 
     data[, c("month", "year") := list(month(date), year(date))]
 
-    helper_progress_message("Year and month fields added.", .type = "close")
+    helper_progress_message("(1/", steps, ") Year and month fields added.",
+                            .type = "close")
 
   } else if (month(min(data$date)) != month(max(data$date))) {
 
-    helper_progress_message("Adding month field.", .type = "open")
+    steps <- 4
+
+    helper_progress_message("(1/", steps, ") Adding month field.",
+                            .type = "open")
 
     data[, month := month(date)]
 
-    helper_progress_message("Month field added.", .type = "close")
+    helper_progress_message("(1/", steps, ") Month field added.",
+                            .type = "close")
 
   }
 
@@ -122,7 +133,8 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ## Split by first three digits of property_ID/host_ID
 
-  helper_progress_message("Splitting table for processing.", .type = "open")
+  helper_progress_message("(", steps - 2, "/", steps,
+                          ") Splitting table for processing.", .type = "open")
 
   if (daily) {
 
@@ -142,13 +154,17 @@ strr_compress <- function(data, quiet = FALSE) {
       helper_table_split()
   }
 
-  helper_progress_message("Table split for processing.", .type = "close")
+  helper_progress_message(
+    "(", steps - 2, "/", steps,
+    ") Table split for processing.", .type = "close")
 
 
   ### Compress processed data file #############################################
 
-  helper_progress_message("Beginning compression, using {helper_plan()}.",
-                          .type = "progress")
+  helper_progress_message(
+    "(", steps - 1, "/", steps,
+    ") Beginning compression, using {helper_plan()}.",
+    .type = "progress")
 
   if (daily) {
 
@@ -172,7 +188,9 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ## Arrange output and set class
 
-  helper_progress_message("Arranging output table.", .type = "open")
+  helper_progress_message("(", steps, "/", steps,
+                          ") Arranging output table.",
+                          .type = "open")
 
   setDT(compressed)
 
@@ -184,7 +202,9 @@ strr_compress <- function(data, quiet = FALSE) {
       class(compressed) <- append(class(compressed), "strr_host")
       }
 
-  helper_progress_message("Output table arranged.", .type = "close")
+  helper_progress_message("(", steps, "/", steps,
+                          ") Output table arranged.",
+                          .type = "close")
 
   ## Return output
 
