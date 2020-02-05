@@ -27,18 +27,19 @@ strr_host <- function(daily, quiet = FALSE) {
 
   ### Error checking and initialization ########################################
 
-  ## data.table setup
+  # Print \n on exit so error messages don't collide with progress messages
+  on.exit(if (!quiet) message())
+
+  # data.table setup
 
   .datatable.aware = TRUE
-
   host_ID <- status <- date <- listing_type <- housing <- host_split <-  NULL
-
 
   ## Error checking
 
   # Remove future global export limit
   options(future.globals.maxSize = +Inf)
-  on.exit(.Options$future.globals.maxSize <- NULL)
+  on.exit(.Options$future.globals.maxSize <- NULL, add = TRUE)
 
   # Check that table is a data frame
   if (!inherits(daily, "data.frame")) {

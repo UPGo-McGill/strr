@@ -27,6 +27,9 @@
 #' @param distance A numeric scalar. The radius (in the units of the CRS) of the
 #'   buffer which will be drawn around points to determine possible listing
 #'   locations.
+#' @param seed An integer scalar. A seed for the random number generation, to
+#' allow reproducible results between iterations of strr_raffle. If NULL
+#' (default), a new seed will be chosen each time.
 #' @param diagnostic A logical scalar. Should a list of polygon candidates and
 #'   associated probabilities be appended to the function output?
 #' @param quiet A logical scalar. Should the function execute quietly, or should
@@ -47,18 +50,21 @@
 #' @export
 
 strr_raffle <- function(
-  points, polys, poly_ID, units, distance = 200, diagnostic = FALSE,
-  quiet = FALSE) {
+  points, polys, poly_ID, units, distance = 200, seed = NULL,
+  diagnostic = FALSE, quiet = FALSE) {
 
   time_1 <- Sys.time()
 
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
+  # Print \n on exit so error messages don't collide with progress messages
+  on.exit(if (!quiet) message())
+
   ## Remove future global export limit
 
   options(future.globals.maxSize = +Inf)
-  on.exit(.Options$future.globals.maxSize <- NULL)
+  on.exit(.Options$future.globals.maxSize <- NULL, add = TRUE)
 
 
   ## Check distance, diagnostic and quiet flags
@@ -123,6 +129,13 @@ strr_raffle <- function(
     error = function(e) stop(
       "The value of `units` is not a valid field in the `polys` input table."
       ))
+
+
+  ## Set seed if seed is supplied
+
+  if (!missing(seed)) {
+    set.seed(seed)
+  }
 
 
   ### PREPARE POINTS AND POLYS TABLES ##########################################

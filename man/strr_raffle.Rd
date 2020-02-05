@@ -10,6 +10,7 @@ strr_raffle(
   poly_ID,
   units,
   distance = 200,
+  seed = NULL,
   diagnostic = FALSE,
   quiet = FALSE
 )
@@ -35,6 +36,10 @@ contains the weighting factor (number of people or housing units).}
 \item{distance}{A numeric scalar. The radius (in the units of the CRS) of the
 buffer which will be drawn around points to determine possible listing
 locations.}
+
+\item{seed}{An integer scalar. A seed for the random number generation, to
+allow reproducible results between iterations of strr_raffle. If NULL
+(default), a new seed will be chosen each time.}
 
 \item{diagnostic}{A logical scalar. Should a list of polygon candidates and
 associated probabilities be appended to the function output?}
