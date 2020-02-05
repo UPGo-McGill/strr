@@ -142,7 +142,7 @@ strr_compress <- function(data, quiet = FALSE) {
 
     data_list <-
       split(data, by = "PID_split", keep.by = FALSE) %>%
-      helper_table_split()
+      helper_table_split(10)
 
     # Use host_ID for host
   } else {
