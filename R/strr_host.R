@@ -23,23 +23,33 @@
 
 strr_host <- function(daily, quiet = FALSE) {
 
-  time_1 <- Sys.time()
-
   ### Error checking and initialization ########################################
 
-  # Print \n on exit so error messages don't collide with progress messages
-  on.exit(if (!quiet) message())
+  time_1 <- Sys.time()
 
-  # data.table setup
+
+  ## Set up on.exit expression for errors
+
+  on.exit({
+    # Flush out any stray multicore processes
+    future_map(1:future::nbrOfWorkers(), ~.x)
+
+    # Restore future global export limit
+    .Options$future.globals.maxSize <- NULL
+
+    # Print \n so error messages don't collide with progress messages
+    if (!quiet) message()
+  })
+
+
+  ## data.table and future setup
 
   .datatable.aware = TRUE
   host_ID <- status <- date <- listing_type <- housing <- host_split <-  NULL
-
-  ## Error checking
-
-  # Remove future global export limit
   options(future.globals.maxSize = +Inf)
-  on.exit(.Options$future.globals.maxSize <- NULL, add = TRUE)
+
+
+  ## Input checking
 
   # Check that table is a data frame
   if (!inherits(daily, "data.frame")) {
@@ -126,6 +136,9 @@ strr_host <- function(daily, quiet = FALSE) {
   class(host) <- append(class(host), "strr_host")
 
   helper_progress_message("Processing complete.", .type = "final")
+
+  # Overwrite previous on.exit call
+  on.exit(.Options$future.globals.maxSize <- NULL)
 
   return(host)
 }

@@ -32,20 +32,34 @@ strr_compress <- function(data, quiet = FALSE) {
 
   time_1 <- Sys.time()
 
-  # Set the number of steps for progress reporting
-  steps <- 3
 
-  # Print \n on exit so error messages don't collide with progress messages
-  on.exit(if (!quiet) message())
+  ## Set up on.exit expression for errors
 
-  # Set data.table variables
+  on.exit({
+    # Flush out any stray multicore processes
+    future_map(1:future::nbrOfWorkers(), ~.x)
+
+    # Restore future global export limit
+    .Options$future.globals.maxSize <- NULL
+
+    # Print \n so error messages don't collide with progress messages
+    if (!quiet) message()
+  })
+
+
+  ## Set data.table and future variables
+
   .datatable.aware = TRUE
   property_ID <- start_date <- host_ID <- PID_split <- host_split <- NULL
-
-
-  # Remove future global export limit
   options(future.globals.maxSize = +Inf)
-  on.exit(.Options$future.globals.maxSize <- NULL, add = TRUE)
+
+
+  ## Set the number of steps for progress reporting
+
+  steps <- 3
+
+
+  ## Input checking
 
   # Check that quiet is a logical
   if (!is.logical(quiet)) {
@@ -151,7 +165,7 @@ strr_compress <- function(data, quiet = FALSE) {
 
     data_list <-
       split(data, by = "host_split", keep.by = FALSE) %>%
-      helper_table_split()
+      helper_table_split(10)
   }
 
   helper_progress_message(
@@ -210,6 +224,9 @@ strr_compress <- function(data, quiet = FALSE) {
 
   helper_progress_message("Compression complete.", .type = "final")
 
+  # Overwrite previous on.exit call
+  on.exit(.Options$future.globals.maxSize <- NULL)
+
   return(compressed)
 }
 
@@ -235,6 +252,7 @@ strr_compress_helper <- function(data) {
 
   # Make sure data.table is single-threaded within the helper
   threads <- setDTthreads(1)
+  on.exit(setDTthreads(threads))
   setDT(data)
 
   # Group data by all columns except date
@@ -272,9 +290,6 @@ strr_compress_helper <- function(data) {
 
   } else remainder <- one_length[0,]
 
-  # Restore DT threads
-  setDTthreads(threads)
-
   rbindlist(list(one_length, remainder))
 }
 
@@ -300,6 +315,7 @@ strr_compress_helper_host <- function(data) {
 
   # Make sure data.table is single-threaded within the helper
   threads <- setDTthreads(1)
+  on.exit(setDTthreads(threads))
   setDT(data)
 
   # Group data by all columns except date
@@ -338,9 +354,6 @@ strr_compress_helper_host <- function(data) {
     remainder[, nrow := NULL]
 
   } else remainder <- one_length[0,]
-
-  # Restore DT threads
-  setDTthreads(threads)
 
   rbindlist(list(one_length, remainder))
 }
