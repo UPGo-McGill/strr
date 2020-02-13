@@ -58,7 +58,7 @@ helper_plan <- function() {
 #' @importFrom future nbrOfWorkers
 #' @importFrom sf st_as_sf
 
-helper_table_split <- function(data_list, multiplier = 4) {
+helper_table_split <- function(data_list, multiplier = 10) {
 
   sf_flag <- inherits(data_list[[1]], "sf")
 
