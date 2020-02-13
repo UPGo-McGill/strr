@@ -110,6 +110,8 @@ strr_host <- function(daily, quiet = FALSE) {
   host <-
     data_list %>%
     future_map_dfr(~{
+      # Try putting the single-threaded specification here too
+      setDTthreads(1)
       setDT(.x)
       .x[,.(count = .N), by = .(host_ID, date, listing_type, housing)] %>%
         as_tibble()
