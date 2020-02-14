@@ -157,6 +157,7 @@ strr_process_daily_2 <- function(daily, property, keep_cols = FALSE,
 
   helper_progress_message("(3/6) Splitting table for processing.", .type = "open")
 
+  setDT(daily)
   daily[, PID_split := substr(property_ID, 1, 6)]
 
   daily_list <-
