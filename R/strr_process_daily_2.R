@@ -238,8 +238,10 @@ strr_process_daily_helper <- function(daily) {
   count <- created <- dif <- full_count <- high <- low <-  price <-
     property_ID <- scraped <- status <- NULL
 
-
-  setDT(daily)
+  # Make sure data.table is single-threaded within the helper
+  threads <- setDTthreads(1)
+  on.exit(setDTthreads(threads))
+  setDT(data)
 
   # This combination of filters is the fastest and least memory-intensive
   error_date <- stats::na.omit(daily, cols = c("date"), invert = TRUE)
