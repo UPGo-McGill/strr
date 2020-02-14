@@ -28,25 +28,10 @@ strr_host_2 <- function(daily, quiet = FALSE) {
   time_1 <- Sys.time()
 
 
-  ## Set up on.exit expression for errors
-
-  # on.exit({
-  #   # Flush out any stray multicore processes
-  #   future_map(1:future::nbrOfWorkers(), ~.x)
-  #
-  #   # Restore future global export limit
-  #   .Options$future.globals.maxSize <- NULL
-  #
-  #   # Print \n so error messages don't collide with progress messages
-  #   if (!quiet) message()
-  # })
-
-
   ## data.table and future setup
 
   .datatable.aware = TRUE
   host_ID <- status <- date <- listing_type <- housing <- host_split <-  NULL
-  options(future.globals.maxSize = +Inf)
 
 
   ## Input checking
