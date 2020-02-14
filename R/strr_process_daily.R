@@ -147,6 +147,10 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
                           .type = "close")
 
 
+  ### TKTK AFTER HERE, MAKE HELPER FUNCTION AND RUN USING FUTURE_MAP
+  ### THEN REASSEMBLE AT THE END
+
+
   ### Process date, status and duplicates ######################################
 
   ## Find rows with missing or invalid date or status

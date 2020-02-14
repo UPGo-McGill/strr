@@ -4,7 +4,7 @@
 \alias{helper_table_split}
 \title{Helper function to split data for parallel processing}
 \usage{
-helper_table_split(data_list, multiplier = 4)
+helper_table_split(data_list, multiplier = 10)
 }
 \arguments{
 \item{data_list}{A list of data elements to be resized}

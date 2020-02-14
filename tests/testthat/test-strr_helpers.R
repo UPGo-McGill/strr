@@ -43,7 +43,7 @@ typeof(data_sf)
 
 test_that("helper_table_split produces the right number of elements", {
 
-  expect_equal(length(helper_table_split(data_list)), 4)
+  expect_equal(length(helper_table_split(data_list)), 10)
   expect_equal(length(helper_table_split(data_list, 6)), 6)
 
 })
