@@ -112,6 +112,9 @@ strr_host <- function(daily, quiet = FALSE) {
       daily[, {setTxtProgressBar(pb, .GRP); .(count = .N)},
             by = .(host_ID, date, listing_type, housing)] %>%
       as_tibble()
+
+    # Add newline to space out progress bar
+    message("\n")
   }
 
 
