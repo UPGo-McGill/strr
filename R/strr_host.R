@@ -17,9 +17,9 @@
 #' \code{\link{strr_compress}}.
 #' @importFrom data.table setDT setDTthreads
 #' @importFrom dplyr %>%
+#' @importFrom future %<-% nbrOfWorkers
 #' @importFrom rlang .data
 #' @importFrom tibble as_tibble
-#' @importFrom utils setTxtProgressBar txtProgressBar
 #' @export
 
 strr_host <- function(daily, quiet = FALSE) {
@@ -86,35 +86,26 @@ strr_host <- function(daily, quiet = FALSE) {
                           .type = "close")
 
 
-  ### Prepare progress bar #####################################################
-
-  if (!quiet) {
-    grpn <- sum(!duplicated(daily))
-  }
-
-
   ### Produce multilisting table ###############################################
 
   helper_progress_message("(2/2) Beginning processing, using {helper_plan()}.",
                           .type = "progress")
 
-  setDTthreads(future::nbrOfWorkers())
+  # Only use future assignment if plan is remote
+  if ("remote" %in% class(future::plan())) {
+    host %<-% {
+      setDTthreads(future::nbrOfWorkers())
 
-  if (quiet) {
+      daily[,.(count = .N), by = .(host_ID, date, listing_type, housing)] %>%
+        as_tibble()
+    }
+  } else {
+    setDTthreads(future::nbrOfWorkers())
+
     host <-
       daily[,.(count = .N), by = .(host_ID, date, listing_type, housing)] %>%
       as_tibble()
-  } else {
 
-    pb <- txtProgressBar(min = 0, max = grpn, style = 3)
-
-    host <-
-      daily[, {setTxtProgressBar(pb, .GRP); .(count = .N)},
-            by = .(host_ID, date, listing_type, housing)] %>%
-      as_tibble()
-
-    # Add newline to space out progress bar
-    message()
   }
 
 
