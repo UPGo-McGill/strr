@@ -4,13 +4,7 @@
 \alias{strr_process_daily}
 \title{Function to process raw daily STR tables into UPGo format}
 \usage{
-strr_process_daily(
-  daily,
-  property,
-  keep_cols = FALSE,
-  old_format = FALSE,
-  quiet = FALSE
-)
+strr_process_daily(daily, property, keep_cols = FALSE, quiet = FALSE)
 }
 \arguments{
 \item{daily}{An unprocessed daily table in the raw AirDNA format, with either
@@ -21,9 +15,6 @@ ten or six fields.}
 \item{keep_cols}{A logical scalar. If the `daily` table has 10 fields,
 should the superfluous 4 fields be kept, or should the table be trimmed to
 the 6 fields which UPGo uses (default)?}
-
-\item{old_format}{Temporary option to add created/scraped and not split
-output into active and inactive.}
 
 \item{quiet}{A logical scalar. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}

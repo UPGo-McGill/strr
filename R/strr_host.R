@@ -19,6 +19,7 @@
 #' @importFrom dplyr %>%
 #' @importFrom rlang .data
 #' @importFrom tibble as_tibble
+#' @importFrom utils setTxtProgressBar txtProgressBar
 #' @export
 
 strr_host <- function(daily, quiet = FALSE) {
@@ -28,12 +29,16 @@ strr_host <- function(daily, quiet = FALSE) {
   time_1 <- Sys.time()
 
 
+  ## data.table and future setup
+
+  .datatable.aware = TRUE
+  host_ID <- status <- date <- listing_type <- housing <- host_split <- .GRP <-
+    NULL
+  options(future.globals.maxSize = +Inf)
+
   ## Set up on.exit expression for errors
 
   on.exit({
-    # Flush out any stray multicore processes
-    future_map(1:future::nbrOfWorkers(), ~.x)
-
     # Restore future global export limit
     .Options$future.globals.maxSize <- NULL
 
@@ -41,12 +46,6 @@ strr_host <- function(daily, quiet = FALSE) {
     if (!quiet) message()
   })
 
-
-  ## data.table and future setup
-
-  .datatable.aware = TRUE
-  host_ID <- status <- date <- listing_type <- housing <- host_split <-  NULL
-  options(future.globals.maxSize = +Inf)
 
 
   ## Input checking
@@ -65,6 +64,8 @@ strr_host <- function(daily, quiet = FALSE) {
   if (!is.logical(quiet)) {
     stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
   }
+
+  helper_progress_message("Daily table identified.")
 
 
   ### Trim daily table #########################################################
@@ -85,42 +86,33 @@ strr_host <- function(daily, quiet = FALSE) {
                           .type = "close")
 
 
-  ## Produce list for processing
+  ### Prepare progress bar #####################################################
 
-  helper_progress_message("(2/3) Splitting table for processing.",
-                          .type = "open")
-
-  daily[, host_split := substr(host_ID, 1, 3)]
-
-  data_list <-
-    split(daily, by = "host_split", keep.by = FALSE) %>%
-    helper_table_split()
-
-  helper_progress_message("(2/3) Table split for processing.", .type = "close")
+  if (!quiet) {
+    grpn <- sum(!duplicated(daily))
+  }
 
 
   ### Produce multilisting table ###############################################
 
-  helper_progress_message("(3/3) Beginning processing, using {helper_plan()}.",
+  helper_progress_message("(2/2) Beginning processing, using {helper_plan()}.",
                           .type = "progress")
 
-  # Make sure data.table is single-threaded within the helper
-  threads <- setDTthreads(1)
+  setDTthreads(future::nbrOfWorkers())
 
-  host <-
-    data_list %>%
-    future_map_dfr(~{
-      # Try putting the single-threaded specification here too
-      setDTthreads(1)
-      setDT(.x)
-      .x[,.(count = .N), by = .(host_ID, date, listing_type, housing)] %>%
-        as_tibble()
-    },
-    # Suppress progress bar if quiet == TRUE or the plan is remote
-    .progress = helper_progress())
+  if (quiet) {
+    host <-
+      daily[,.(count = .N), by = .(host_ID, date, listing_type, housing)] %>%
+      as_tibble()
+  } else {
 
-  # Restore DT threads
-  setDTthreads(threads)
+    pb <- txtProgressBar(min = 0, max = grpn, style = 3)
+
+    host <-
+      daily[, {setTxtProgressBar(pb, .GRP); .(count = .N)},
+            by = .(host_ID, date, listing_type, housing)] %>%
+      as_tibble()
+  }
 
 
   ### Check and return output ##################################################

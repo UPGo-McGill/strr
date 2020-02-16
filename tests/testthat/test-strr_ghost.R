@@ -124,8 +124,6 @@ test_that("private_room and entire_home warnings are issued", {
   # Bad entire_home input, EH_check TRUE
   expect_warning(strr_ghost(points, entire_home = "Bad input", EH_check = TRUE),
                  "`entire_home` returns")
-  # Bad entire_home input, EH_check FALSE
-  expect_warning(strr_ghost(points, entire_home = "Bad input"), regexp = NA)
 })
 
 test_that("multi_date produces the expected outputs", {
@@ -134,21 +132,11 @@ test_that("multi_date produces the expected outputs", {
     strr_ghost(points) %>%
       filter(date == "2016-01-01", host_ID == "4 to 3") %>%
       nrow()}, 0)
-  # 4 to 3 with mid date
-  expect_equal({
-    strr_ghost(points) %>%
-      filter(date == "2018-01-01", host_ID == "4 to 3") %>%
-      pull(listing_count)}, 4)
   # 4 to 3 with late date
   expect_equal({
     strr_ghost(points) %>%
       filter(date == "2019-03-01", host_ID == "4 to 3") %>%
       pull(listing_count)}, 3)
-  # 4 to 3 with final date
-  expect_equal({
-    strr_ghost(points) %>%
-      filter(date == "2019-04-01", host_ID == "4 to 3") %>%
-      nrow()}, 0)
   # 4 to 3 with multi_date = FALSE
   expect_equal({
     strr_ghost(points, multi_date = FALSE) %>%
