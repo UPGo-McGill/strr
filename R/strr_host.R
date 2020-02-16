@@ -114,7 +114,7 @@ strr_host <- function(daily, quiet = FALSE) {
       as_tibble()
 
     # Add newline to space out progress bar
-    message("\n")
+    message()
   }
 
 
