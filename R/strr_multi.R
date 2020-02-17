@@ -27,6 +27,7 @@
 #' multilisting status.
 #' @importFrom data.table setcolorder setDT
 #' @importFrom dplyr %>% if_else rename
+#' @importFrom future %<-%
 #' @importFrom rlang .data
 #' @importFrom tibble as_tibble
 #' @export
@@ -250,12 +251,22 @@ strr_multi <- function(daily, host,
 
   steps_so_far <- steps_so_far + 1
 
-  helper_progress_message("(", steps_so_far, "/", steps,
-                          ") Joining results into daily table.")
+  helper_progress_message(
+    "(", steps_so_far, "/", steps,
+    ") Joining results into daily table, using {helper_plan()}.")
 
-  daily <-
-    multi[daily, on = setdiff(names(multi), ".ML")
-           ][, .ML := if_else(is.na(.ML), FALSE, .ML)]
+  # Only use future assignment if plan is remote
+  if ("remote" %in% class(future::plan())) {
+    daily %<-% {
+      setDTthreads(future::nbrOfWorkers())
+      multi[daily, on = setdiff(names(multi), ".ML")
+            ][, .ML := if_else(is.na(.ML), FALSE, .ML)]
+    }
+  } else {
+    daily <-
+      multi[daily, on = setdiff(names(multi), ".ML")
+            ][, .ML := if_else(is.na(.ML), FALSE, .ML)]
+  }
 
   setcolorder(daily, c(col_names, ".ML"))
 
