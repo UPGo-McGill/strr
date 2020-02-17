@@ -146,7 +146,8 @@ strr_multi <- function(daily, host,
 
     helper_progress_message(
       "(", steps_so_far, "/", steps,
-      ") Combining housing and non-housing listings, using {helper_plan()}.")
+      ") Combining housing and non-housing listings, using {helper_plan()}.",
+      .type = "open")
 
     # Only use future assignment if plan is remote
     if ("remote" %in% class(future::plan())) {
@@ -160,6 +161,11 @@ strr_multi <- function(daily, host,
     }
   }
 
+  helper_progress_message(
+    "(", steps_so_far, "/", steps,
+    ") Housing and non-housing listings combined.",
+    .type = "close")
+
 
   ### Extract subsets and join to daily ########################################
 
@@ -170,11 +176,17 @@ strr_multi <- function(daily, host,
     steps_so_far <- steps_so_far + 1
 
     helper_progress_message("(", steps_so_far, "/", steps,
-                            ") Calculating entire-home multilistings.")
+                            ") Calculating entire-home multilistings.",
+                            .type = "open")
 
     multi <-
       host[listing_type == "Entire home/apt" & count >= EH
            ][, c(".ML", "count") := list(TRUE, NULL)]
+
+    helper_progress_message(
+      "(", steps_so_far, "/", steps, ") Entire-home multilistings calculated.",
+      .type = "close")
+
     }
 
 
@@ -185,7 +197,8 @@ strr_multi <- function(daily, host,
     steps_so_far <- steps_so_far + 1
 
     helper_progress_message("(", steps_so_far, "/", steps,
-                            ") Calculating private-room multilistings.")
+                            ") Calculating private-room multilistings.",
+                            .type = "open")
 
     if (is.na(EH)) {
       multi <-
@@ -198,7 +211,12 @@ strr_multi <- function(daily, host,
             multi,
             host[listing_type == "Private room" & count >= PR
                  ][, c(".ML", "count") := list(TRUE, NULL)])
-        }}
+      }
+
+    helper_progress_message("(", steps_so_far, "/", steps,
+                            ") Private-room multilistings calculated.",
+                            .type = "close")
+    }
 
 
   ## Shared room
@@ -208,7 +226,8 @@ strr_multi <- function(daily, host,
     steps_so_far <- steps_so_far + 1
 
     helper_progress_message("(", steps_so_far, "/", steps,
-                            ") Calculating shared-room multilistings.")
+                            ") Calculating shared-room multilistings.",
+                            .type = "open")
 
     if (is.na(EH) && is.na(PR)) {
       multi <-
@@ -221,7 +240,13 @@ strr_multi <- function(daily, host,
           multi,
           host[listing_type == "Shared room" & count >= SR
                ][, c(".ML", "count") := list(TRUE, NULL)])
-      }}
+    }
+
+    helper_progress_message("(", steps_so_far, "/", steps,
+                            ") Shared-room multilistings calculated.",
+                            .type = "close")
+
+    }
 
 
   ## Hotel room
@@ -231,7 +256,8 @@ strr_multi <- function(daily, host,
     steps_so_far <- steps_so_far + 1
 
     helper_progress_message("(", steps_so_far, "/", steps,
-                            ") Calculating hotel-room multilistings.")
+                            ") Calculating hotel-room multilistings.",
+                            .type = "open")
 
     if (is.na(EH) && is.na(PR) && is.na(SR)) {
       multi <-
@@ -244,7 +270,13 @@ strr_multi <- function(daily, host,
           multi,
           host[listing_type == "Hotel room" & count >= HR
                ][, c(".ML", "count") := list(TRUE, NULL)])
-      }}
+    }
+
+    helper_progress_message("(", steps_so_far, "/", steps,
+                            ") Hotel-room multilistings calculated.",
+                            .type = "close")
+
+    }
 
 
   ### Join results into daily table ############################################
@@ -253,7 +285,8 @@ strr_multi <- function(daily, host,
 
   helper_progress_message(
     "(", steps_so_far, "/", steps,
-    ") Joining results into daily table, using {helper_plan()}.")
+    ") Joining results into daily table, using {helper_plan()}.",
+    .type = "open")
 
   # Only use future assignment if plan is remote
   if ("remote" %in% class(future::plan())) {
@@ -267,6 +300,11 @@ strr_multi <- function(daily, host,
       multi[daily, on = setdiff(names(multi), ".ML")
             ][, .ML := if_else(is.na(.ML), FALSE, .ML)]
   }
+
+  helper_progress_message(
+    "(", steps_so_far, "/", steps,
+    ") Results joined into daily table.",
+    .type = "close")
 
   setcolorder(daily, c(col_names, ".ML"))
 

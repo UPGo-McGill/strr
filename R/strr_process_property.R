@@ -173,6 +173,7 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
   helper_progress_message("(2/5) Entries with missing geography identified.",
                           .type = "close")
 
+
   ### Replace problematic characters ###########################################
 
   helper_progress_message("(3/5) Removing problematic characters.",
