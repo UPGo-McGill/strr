@@ -163,7 +163,7 @@ strr_multi <- function(daily, host,
 
   helper_progress_message(
     "(", steps_so_far, "/", steps,
-    ") Housing and non-housing listings combined.",
+    ") Housing and non-housing listings combined, using {helper_plan()}.",
     .type = "close")
 
 
@@ -303,7 +303,7 @@ strr_multi <- function(daily, host,
 
   helper_progress_message(
     "(", steps_so_far, "/", steps,
-    ") Results joined into daily table.",
+    ") Results joined into daily table, using {helper_plan()}.",
     .type = "close")
 
   setcolorder(daily, c(col_names, ".ML"))
