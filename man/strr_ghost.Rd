@@ -6,13 +6,13 @@
 \usage{
 strr_ghost(
   points,
+  start_date = NULL,
+  end_date = NULL,
   property_ID = property_ID,
   host_ID = host_ID,
   multi_date = TRUE,
   created = created,
   scraped = scraped,
-  start_date = NULL,
-  end_date = NULL,
   distance = 200,
   min_listings = 3,
   listing_type = listing_type,
@@ -29,6 +29,14 @@ attributes, an attempt will be made to convert it to sf using
 \code{\link{strr_as_sf}}. The result will be transformed into the Web
 Mercator projection (EPSG: 3857) for distance calculations. To use a
 projection more suitable to the data, supply an sf or sp object.}
+
+\item{start_date}{A character string of format YYYY-MM-DD indicating the
+first date for which to run the analysis. If NULL (default), all dates will
+be used. This argument is ignored if `multi_date` is FALSE.}
+
+\item{end_date}{A character string of format YYYY-MM-DD indicating the last
+date for which to run the analysis. If NULL (default), all dates will be
+used. This argument is ignored if `multi_date` is FALSE.}
 
 \item{property_ID}{The name of a character or numeric variable in the points
 object which uniquely identifies STR listings.}
@@ -48,14 +56,6 @@ the creation date for each listing. This argument is ignored if
 \item{scraped}{The name of a date variable in the points object which gives
 the last-scraped date for each listing. This argument is ignored if
 `multi_date` is FALSE.}
-
-\item{start_date}{A character string of format YYYY-MM-DD indicating the
-first date for which to run the analysis. If NULL (default), all dates will
-be used. This argument is ignored if `multi_date` is FALSE.}
-
-\item{end_date}{A character string of format YYYY-MM-DD indicating the last
-date for which to run the analysis. If NULL (default), all dates will be
-used. This argument is ignored if `multi_date` is FALSE.}
 
 \item{distance}{A numeric scalar. The radius (in the units of the CRS) of the
 buffer which will be drawn around points to determine possible ghost hostel

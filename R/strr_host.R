@@ -100,7 +100,7 @@ strr_host <- function(daily, quiet = FALSE) {
         as_tibble()
     }
   } else {
-    setDTthreads(future::nbrOfWorkers())
+    threads <- setDTthreads(future::nbrOfWorkers())
 
     host <-
       daily[,.(count = .N), by = .(host_ID, date, listing_type, housing)] %>%
@@ -126,7 +126,10 @@ strr_host <- function(daily, quiet = FALSE) {
   helper_progress_message("Processing complete.", .type = "final")
 
   # Overwrite previous on.exit call
-  on.exit(.Options$future.globals.maxSize <- NULL)
+  on.exit({
+    .Options$future.globals.maxSize <- NULL
+    setDTthreads(threads)
+    })
 
   return(host)
 }

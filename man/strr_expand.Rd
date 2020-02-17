@@ -4,20 +4,12 @@
 \alias{strr_expand}
 \title{Function to expand compressed STR tables}
 \usage{
-strr_expand(data, start = NULL, end = NULL, quiet = FALSE)
+strr_expand(data, quiet = FALSE)
 }
 \arguments{
 \item{data}{A table in compressed UPGo DB format (e.g. created by running
 \code{\link{strr_compress}}). Currently daily activity files and ML daily
 summary tables are recognized.}
-
-\item{start}{A character string of format YYYY-MM-DD indicating the
-first date to be provided in the output table. If NULL (default), the
-earliest date present in the data will be used.}
-
-\item{end}{A character string of format YYYY-MM-DD indicating the
-last date to be provided in the output table. If NULL (default), the
-latest date present in the data will be used.}
 
 \item{quiet}{A logical scalar. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}

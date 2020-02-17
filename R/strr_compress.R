@@ -96,15 +96,6 @@ strr_compress <- function(data, quiet = FALSE) {
     join_cols <-
       c("host_ID", "listing_type", "housing", "country", "region", "city")
 
-    #### TKTK DELETE ONCE DB IS UPDATED
-    if (length(data) == 14) {
-      join_cols <-
-        c("host_ID", "listing_type", "created", "scraped", "housing", "country",
-          "region", "city")
-    }
-    #### TKTK DELETE TO HERE
-
-
     join_fields <-
       data[, .SD[1L], by = property_ID,
            .SDcols = join_cols]

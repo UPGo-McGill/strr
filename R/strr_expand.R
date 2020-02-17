@@ -11,12 +11,6 @@
 #' @param data A table in compressed UPGo DB format (e.g. created by running
 #' \code{\link{strr_compress}}). Currently daily activity files and ML daily
 #' summary tables are recognized.
-#' @param start A character string of format YYYY-MM-DD indicating the
-#'   first date to be provided in the output table. If NULL (default), the
-#'   earliest date present in the data will be used.
-#' @param end A character string of format YYYY-MM-DD indicating the
-#'   last date to be provided in the output table. If NULL (default), the
-#'   latest date present in the data will be used.
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return A table with one row per date and all other fields returned
@@ -27,7 +21,7 @@
 #' @importFrom rlang .data
 #' @export
 
-strr_expand <- function(data, start = NULL, end = NULL, quiet = FALSE) {
+strr_expand <- function(data, quiet = FALSE) {
 
   time_1 <- Sys.time()
 
@@ -64,27 +58,12 @@ strr_expand <- function(data, start = NULL, end = NULL, quiet = FALSE) {
   } else stop("Input table must be of class `strr_daily` or `strr_host`.")
 
 
-  ## Check that dates are coercible to date class, then coerce them
-
-  if (!missing(start)) {
-    start <- tryCatch(as.Date(start), error = function(e) {
-      stop(paste0('The value of `start`` ("', start,
-                  '") is not coercible to a date.'))
-    })}
-
-  if (!missing(end)) {
-    end <- tryCatch(as.Date(end), error = function(e) {
-      stop(paste0('The value of `end` ("', end,
-                  '") is not coercible to a date.'))
-    })}
-
-
   ### STORE EXTRA FIELDS AND TRIM DATA #########################################
 
   setDT(data)
 
   ## TKTK Remove 15 once daily DB update is complete
-  if (length(data) %in% c(13, 15)) {
+  if (length(data) == 13) {
 
     # These fields are per-property
     join_fields <- data[, last(.SD), by = property_ID
@@ -186,17 +165,6 @@ strr_expand <- function(data, start = NULL, end = NULL, quiet = FALSE) {
 
   helper_progress_message(
     "(4/4) Additional fields joined to table.", .type = "close")
-
-
-  ### OPTIONALLY TRIM BASED ON START/END DATE ##################################
-
-  if (!missing(start)) {
-    data <- filter(data, .data$date >= start)
-  }
-
-  if (!missing(end)) {
-    data <- filter(data, .data$date <= end)
-  }
 
 
   ### SET CLASS OF OUTPUT ######################################################

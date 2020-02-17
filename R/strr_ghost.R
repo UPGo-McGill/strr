@@ -84,8 +84,8 @@
 #' @export
 
 strr_ghost <- function(
-  points, property_ID = property_ID, host_ID = host_ID, multi_date = TRUE,
-  created = created, scraped = scraped, start_date = NULL, end_date = NULL,
+  points, start_date = NULL, end_date = NULL, property_ID = property_ID,
+  host_ID = host_ID, multi_date = TRUE, created = created, scraped = scraped,
   distance = 200, min_listings = 3, listing_type = listing_type,
   private_room = "Private room", EH_check = FALSE,
   entire_home = "Entire home/apt", quiet = FALSE) {
