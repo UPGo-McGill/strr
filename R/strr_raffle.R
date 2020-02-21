@@ -198,7 +198,8 @@ strr_raffle <- function(
 
   data_list <-
     intersects %>%
-    group_split(.data$.point_ID) %>%
+    mutate(.PID_split = substr(.data$.point_ID, 1, 3)) %>%
+    group_split(.data$.PID_split, keep = FALSE) %>%
     helper_table_split()
 
   helper_progress_message("Data split for processing.", .type = "close")
