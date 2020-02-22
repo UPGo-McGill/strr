@@ -30,27 +30,30 @@
 #' @param seed An integer scalar. A seed for the random number generation, to
 #' allow reproducible results between iterations of strr_raffle. If NULL
 #' (default), a new seed will be chosen each time.
+#' @param pdf A character scalar. The probability density function which should
+#' be used for assigning listing locations within the `distance` radius. The
+#' only option currently is "airbnb", which is a radially symmetric normal
+#' curve around the point origin, with mean 100 m and standard deviation 50 m.
+#' More options may be added in the future.
 #' @param diagnostic A logical scalar. Should a list of polygon candidates and
 #'   associated probabilities be appended to the function output?
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
-#' @return The output will be the input points object with a new `poly_ID` field
-#'   appended. The `winner` field specifies which polygon from the polys object
-#'   was probabilistically assigned to the listing, taking the name of the field
-#'   identified in the `poly_ID` argument. If diagnostic == TRUE, a `candidates`
-#'   field will also be appended, which lists the possible polygons for each
-#'   point, along with their probabilities.
-#' @importFrom dplyr %>% as_tibble enquo everything filter group_by left_join
-#' @importFrom dplyr mutate select summarize
+#' @return The output will be the input points object with a new field
+#'   appended, which specifies which polygon from the `polys` object was
+#'   probabilistically assigned to the listing, and which takes the name of the
+#'   field identified in the `poly_ID` argument. If diagnostic == TRUE, a
+#'   `candidates` field will also be appended, which lists the possible polygons
+#'   for each point, along with their probabilities.
+#' @importFrom data.table copy data.table setDT setorder
+#' @importFrom dplyr %>% everything left_join mutate n select
 #' @importFrom rlang := .data
-#' @importFrom sf st_area st_as_sf st_buffer st_coordinates st_crs
-#' @importFrom sf st_drop_geometry st_intersection st_set_agr st_sfc
-#' @importFrom sf st_transform
-#' @importFrom stats dnorm
+#' @importFrom sf st_area st_as_sf st_buffer st_cast st_coordinates st_crs
+#' @importFrom sf st_collection_extract st_intersection st_sfc st_transform
 #' @export
 
 strr_raffle <- function(
-  points, polys, poly_ID, units, distance = 200, seed = NULL,
+  points, polys, poly_ID, units, distance = 200, seed = NULL, pdf = "airbnb",
   diagnostic = FALSE, quiet = FALSE) {
 
   time_1 <- Sys.time()
@@ -58,20 +61,42 @@ strr_raffle <- function(
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
-  # Print \n on exit so error messages don't collide with progress messages
-  on.exit(if (!quiet) message())
+  helper_progress_message("Raffling point locations.")
 
-  ## Remove future global export limit
+  ## Prepare data.table variables
 
+  .datatable.aware = TRUE
+
+  .I <- .point_ID <- .point_x <- .point_y <- candidates <- geometry <-
+    int_units <- poly_area <- probability <- NULL
+
+  # Suppress message about spatstat s3 message
+  s3_warn <- Sys.getenv("_R_S3_METHOD_REGISTRATION_NOTE_OVERWRITES_")
+  Sys.setenv("_R_S3_METHOD_REGISTRATION_NOTE_OVERWRITES_" = FALSE)
+
+  # Remove future global export limit
   options(future.globals.maxSize = +Inf)
-  on.exit(.Options$future.globals.maxSize <- NULL, add = TRUE)
 
+  # Print \n on exit so error messages don't collide with progress messages
+  # And restore s3 overwrite setting
+  # And remove future global size setting
+  on.exit({
+    if (!quiet) message()
+    Sys.setenv("_R_S3_METHOD_REGISTRATION_NOTE_OVERWRITES_" = s3_warn)
+    .Options$future.globals.maxSize <- NULL
+    })
 
-  ## Check distance, diagnostic and quiet flags
+  ## Check distance, pdf, diagnostic and quiet flags
 
   # Check that distance > 0
   if (distance <= 0) {
     stop("The argument `distance` must be a positive number.")
+  }
+
+  # Check that pdf == "airbnb"
+
+  if (!pdf == "airbnb") {
+    stop("The argument `pdf` must take the value 'airbnb'.")
   }
 
   # Check that diagnostic is a logical
@@ -99,7 +124,7 @@ strr_raffle <- function(
   if (!inherits(points, "sf")) {
     tryCatch({
       points <- strr_as_sf(points, 3857)
-      helper_progress_message("Converting input table to sf.")
+      helper_progress_message("Input table converted to sf.")
       },
     error = function(e) {
       stop(paste0("The object `points` must be of class sf or sp, ",
@@ -140,118 +165,110 @@ strr_raffle <- function(
 
   ### PREPARE POINTS AND POLYS TABLES ##########################################
 
-  helper_progress_message("Preparing tables for analysis.", .type = "open")
+  helper_progress_message("(1/3) Preparing tables for analysis.",
+                          .type = "open")
 
-  # Transform polys CRS to match points
-  polys <- st_transform(polys, st_crs(points))
-
-  # Initialize helper fields
-  points <-
-    points %>%
-    mutate(.point_x = st_coordinates(.)[,1],
-           .point_y = st_coordinates(.)[,2],
-           .point_ID = seq_len(nrow(points)))
+  # Transform polys CRS to match points and rename fields for data.table
+  polys <- st_transform(polys, st_crs(points)) %>%
+    rename(poly_ID = {{ poly_ID }},
+           units = {{ units }})
 
   # Clean up polys and initialize poly_area field
   polys <-
-    polys %>%
-    filter({{ units }} > 0) %>%
-    # Prevent warnings from the st operations
-    st_set_agr("constant") %>%
-    mutate(
-      # Make sure poly_ID isn't factor
-      {{ poly_ID }} := as.character({{ poly_ID }}),
-      poly_area = st_area(.)
-    ) %>%
-    st_set_agr("constant")
+    setDT(polys)[units > 0, .(poly_ID = as.character(poly_ID), units,
+                              poly_area = st_area(geometry),
+                              geometry)] %>%
+    st_as_sf(agr = "constant")
 
+  # Initialize intersects
+  points <- mutate(points, .point_ID = seq_len(n()))
+  intersects <- copy(points)
 
   # Generate buffers and intersect with polygons
   intersects <-
-    points %>%
-    st_buffer(dist = distance, nQuadSegs = 10) %>%
-    st_set_agr("constant") %>%
-    st_intersection(polys)
+    # Initialize helper fields
+    setDT(intersects)[, .(
+      .point_ID,
+      .point_x = st_coordinates(geometry)[,1],
+      .point_y = st_coordinates(geometry)[,2],
+      geometry = st_buffer(geometry, dist = distance, nQuadSegs = 10))] %>%
+    st_as_sf(agr = "constant") %>%
+    st_intersection(polys) %>%
+    st_collection_extract("POLYGON") %>%
+    st_cast("POLYGON", warn = FALSE)
 
-  # Estimate int_units
-  intersects <-
-    intersects %>%
-    mutate(
-      int_units = as.numeric({{ units }} * st_area(.) / .data$poly_area)) %>%
-    st_set_agr("constant")
 
-  # Transform intersects relative to point coordinates
-  intersects <-
-    intersects %>%
-    mutate(geometry = purrr::pmap(
-      list(.data$geometry, .data$.point_x, .data$.point_y), ~{
-        ..1 - c(..2, ..3)
-        }) %>%
-        st_sfc())
+  # Store results where there is only one possible option
+  one_choice <- setDT(intersects)[, if (.N == 1) .SD, by = ".point_ID"]
 
-  helper_progress_message("Tables prepared for analysis.", .type = "close")
+  intersects <- intersects[, if (.N > 1) .SD, by = ".point_ID"]
+
+  # Estimate int_units and transform intersects relative to point coordinates
+  coord_shift <- function(g, x, y) g - c(x, y)
+
+  intersects[, c("int_units", "geometry", ".PID_split") :=
+               list(as.numeric(units * st_area(geometry) / poly_area),
+                    st_sfc(mapply(coord_shift, geometry, .point_x,
+                                  .point_y, SIMPLIFY = FALSE)),
+                    substr(.point_ID, 1, 3))]
+
+  helper_progress_message("(1/3) Tables prepared for analysis.",
+                          .type = "close")
 
 
   ### SPLIT DATA FOR PROCESSING ################################################
 
-  helper_progress_message("Splitting data for processing.", .type = "open")
+  helper_progress_message("(2/3) Splitting data for processing.",
+                          .type = "open")
 
   data_list <-
-    intersects %>%
-    mutate(.PID_split = substr(.data$.point_ID, 1, 3)) %>%
-    group_split(.data$.PID_split, keep = FALSE) %>%
+    split(intersects, by = ".PID_split", keep.by = FALSE) %>%
     helper_table_split()
 
-  helper_progress_message("Data split for processing.", .type = "close")
+  helper_progress_message("(2/3) Data split for processing.", .type = "close")
 
 
   ### DO INTEGRATION ###########################################################
 
-  helper_progress_message("Beginning analysis, using {helper_plan()}.",
+  helper_progress_message("(3/3) Beginning analysis, using {helper_plan()}.",
                           .type = "progress")
 
   intersects <-
     data_list %>%
-    future_map(raffle_integrate,
-               # Suppress progress bar if quiet == TRUE or the plan is remote
-               .progress = helper_progress()
-               ) %>%
-    do.call(rbind, .)
+    map(setDT) %>%
+    future_map(raffle_integrate, .progress = helper_progress()) %>%
+    rbindlist()
 
   ### PROCESS RESULTS AND RETURN OUTPUT ########################################
 
-  # Initialize results object
+  # Produce results object
   results <-
-    intersects %>%
-    st_drop_geometry() %>%
-    group_by(.data$.point_ID)
+    intersects[, .(
+      candidates = list(data.table(poly_ID, probability)),
+      poly_ID = base::sample(poly_ID, size = 1, prob = probability)),
+      keyby = .point_ID]
 
-  # Choose winners and add diagnostic field
-  results <-
-    results %>%
-    nest(data = c({{ poly_ID }}, .data$probability)) %>%
-    summarize(
-      candidates = list(bind_rows(.data$data)),
-      {{ poly_ID}} := as.character(
-        base::sample(map(.data$data, pull, 1), 1,
-                     prob = map(.data$data, pull, 2)))
-      ) %>%
-    mutate(candidates = map(.data$candidates, ~{
-      .x %>% mutate(probability = .data$probability / sum(.data$probability))
-      }))
+  # Add results from one_choice
+  if (nrow(one_choice) > 0) {
+    one_choice <-
+      one_choice[, .(candidates = list(data.table(poly_ID, probability = 1)),
+                     poly_ID),
+                 by = .point_ID]
+
+    results <-
+      setorder(rbindlist(list(results, one_choice)), .point_ID)
+  }
 
   # Drop diagnostic field if not requested
-  if (!diagnostic) {
-    results <- results %>%
-      select(-.data$candidates)
-  }
+  if (!diagnostic) results[, candidates := NULL]
 
   # Join winners to point file and arrange output
   points <-
     points %>%
     left_join(results, by = ".point_ID") %>%
-    select(-.data$.point_ID, -.data$.point_x, -.data$.point_y) %>%
-    select(-.data$geometry, everything(), .data$geometry)
+    select(-.data$.point_ID) %>%
+    select(-.data$geometry, everything(), .data$geometry) %>%
+    rename({{ poly_ID }} := .data$poly_ID)
 
   helper_progress_message("Analysis complete.", .type = "final")
 
@@ -288,18 +305,21 @@ raffle_pdf <- function(x) {
 #' listing locations) over the intersect polygons using polyCub. In the future,
 #' other PDFs may be added.
 #'
-#' @param intersects An sf data frame.
+#' @param intersects A data.table with an sf geometry column.
 #' @return The output will be the input data frame with a `probability` field
 #' added.
-#' @importFrom dplyr %>% mutate
+#' @importFrom methods as
 #' @importFrom polyCub polyCub.midpoint
 #' @importFrom rlang .data
 
 raffle_integrate <- function(intersects) {
-  suppressMessages(
-    intersects %>%
-      mutate(probability = purrr::map2_dbl(.data$geometry, .data$int_units, ~{
-        polyCub.midpoint(as(.x, "Spatial"), raffle_pdf) * .y
-      }))
-  )
-}
+
+  .datatable.aware = TRUE
+  probability <- geometry <- int_units <- NULL
+
+  int_fun <- function(x, y) {
+    polyCub.midpoint(as(x, "Spatial"), raffle_pdf) * y
+  }
+
+  intersects[, probability := mapply(int_fun, geometry, int_units)]
+  }

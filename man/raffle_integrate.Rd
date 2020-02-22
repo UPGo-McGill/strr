@@ -7,7 +7,7 @@
 raffle_integrate(intersects)
 }
 \arguments{
-\item{intersects}{An sf data frame.}
+\item{intersects}{A data.table with an sf geometry column.}
 }
 \value{
 The output will be the input data frame with a `probability` field

@@ -67,6 +67,7 @@ helper_table_split <- function(data_list, multiplier = 10) {
 
   # Initialize list of index positions
   index_positions <- list()
+  length(index_positions) <- n_elements
 
   # Order from largest to smallest
   data_list <-
@@ -104,9 +105,8 @@ helper_table_split <- function(data_list, multiplier = 10) {
     })
     # Otherwise use faster rbindlist
   } else {
-    data_list <- map(index_positions, ~{
-      as_tibble(rbindlist(data_list[.x]))
-    })
+    data_list <-
+      map(index_positions, ~rbindlist(data_list[.x]))
   }
 
   data_list
