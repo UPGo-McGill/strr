@@ -11,6 +11,7 @@ strr_raffle(
   units,
   distance = 200,
   seed = NULL,
+  pdf = "airbnb",
   diagnostic = FALSE,
   quiet = FALSE
 )
@@ -41,6 +42,12 @@ locations.}
 allow reproducible results between iterations of strr_raffle. If NULL
 (default), a new seed will be chosen each time.}
 
+\item{pdf}{A character scalar. The probability density function which should
+be used for assigning listing locations within the `distance` radius. The
+only option currently is "airbnb", which is a radially symmetric normal
+curve around the point origin, with mean 100 m and standard deviation 50 m.
+More options may be added in the future.}
+
 \item{diagnostic}{A logical scalar. Should a list of polygon candidates and
 associated probabilities be appended to the function output?}
 
@@ -48,12 +55,12 @@ associated probabilities be appended to the function output?}
 it return status updates throughout the function (default)?}
 }
 \value{
-The output will be the input points object with a new `poly_ID` field
-  appended. The `winner` field specifies which polygon from the polys object
-  was probabilistically assigned to the listing, taking the name of the field
-  identified in the `poly_ID` argument. If diagnostic == TRUE, a `candidates`
-  field will also be appended, which lists the possible polygons for each
-  point, along with their probabilities.
+The output will be the input points object with a new field
+  appended, which specifies which polygon from the `polys` object was
+  probabilistically assigned to the listing, and which takes the name of the
+  field identified in the `poly_ID` argument. If diagnostic == TRUE, a
+  `candidates` field will also be appended, which lists the possible polygons
+  for each point, along with their probabilities.
 }
 \description{
 \code{strr_raffle} takes reported STR listing locations and assigns the

@@ -44,7 +44,7 @@ test_that("Raffle candidates are correct", {
   expect_equal(
     nrow(strr_raffle(
       points, polys, GeoUID, dwellings, diagnostic = TRUE)[9,]$candidates[[1]]),
-    3)
+    4)
   expect_equal(
     nrow(strr_raffle(
       points, polys, GeoUID, dwellings, diagnostic = TRUE)[1,]$candidates[[1]]),
