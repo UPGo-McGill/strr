@@ -165,7 +165,7 @@ strr_raffle <- function(
 
   ### PREPARE POINTS AND POLYS TABLES ##########################################
 
-  helper_progress_message("(1/3) Preparing tables for analysis.",
+  helper_progress_message("(1/4) Preparing tables for analysis.",
                           .type = "open")
 
   # Transform polys CRS to match points and rename fields for data.table
@@ -183,6 +183,12 @@ strr_raffle <- function(
   # Initialize intersects
   points <- mutate(points, .point_ID = seq_len(n()))
   intersects <- copy(points)
+
+  helper_progress_message("(1/4) Tables prepared for analysis.",
+                          .type = "close")
+
+  helper_progress_message("(2/4) Intersecting points with polygons.",
+                          .type = "open")
 
   # Generate buffers and intersect with polygons
   intersects <-
@@ -216,25 +222,25 @@ strr_raffle <- function(
                                   .point_y, SIMPLIFY = FALSE)),
                     substr(.point_ID, 1, 3))]
 
-  helper_progress_message("(1/3) Tables prepared for analysis.",
+  helper_progress_message("(2/4) Points intersected with polygons.",
                           .type = "close")
 
 
   ### SPLIT DATA FOR PROCESSING ################################################
 
-  helper_progress_message("(2/3) Splitting data for processing.",
+  helper_progress_message("(3/4) Splitting data for processing.",
                           .type = "open")
 
   data_list <-
     split(intersects, by = ".PID_split", keep.by = FALSE) %>%
     helper_table_split()
 
-  helper_progress_message("(2/3) Data split for processing.", .type = "close")
+  helper_progress_message("(3/4) Data split for processing.", .type = "close")
 
 
   ### DO INTEGRATION ###########################################################
 
-  helper_progress_message("(3/3) Beginning analysis, using {helper_plan()}.",
+  helper_progress_message("(4/4) Beginning analysis, using {helper_plan()}.",
                           .type = "progress")
 
   intersects <-
