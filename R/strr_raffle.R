@@ -193,10 +193,14 @@ strr_raffle <- function(
       .point_y = st_coordinates(geometry)[,2],
       geometry = st_buffer(geometry, dist = distance, nQuadSegs = 10))] %>%
     st_as_sf(agr = "constant") %>%
-    st_intersection(polys) %>%
-    st_collection_extract("POLYGON") %>%
-    st_cast("POLYGON", warn = FALSE)
+    st_intersection(polys)
 
+  # Cast multipolygons to polygons
+  intersects <-
+    intersects %>%
+    filter(!st_is(geometry, "POLYGON")) %>%
+    st_cast("POLYGON", warn = FALSE) %>%
+    rbind(filter(intersects, st_is(geometry, "POLYGON")))
 
   # Store results where there is only one possible option
   one_choice <- setDT(intersects)[, if (.N == 1) .SD, by = ".point_ID"]
