@@ -4,11 +4,7 @@
 
 context("strr_ghost tests")
 
-#' @importFrom dplyr %>% arrange
-#' @importFrom tibble tibble
-#' @importFrom sf st_as_sf st_crs st_drop_geometry st_point st_sfc
-
-points <- tibble::tibble(
+points <- dplyr::tibble(
   property_ID = 1:19,
   host_ID = c(
     rep("No GH", 3),

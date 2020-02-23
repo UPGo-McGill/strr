@@ -16,7 +16,7 @@
 #' @return A table with one row per date and all other fields returned
 #' unaltered.
 #' @importFrom data.table last setDT setDTthreads setnames
-#' @importFrom dplyr %>% everything filter left_join mutate select
+#' @importFrom dplyr %>% as_tibble everything filter left_join mutate select
 #' @importFrom furrr future_map_dfr
 #' @importFrom rlang .data
 #' @export
@@ -124,7 +124,7 @@ strr_expand <- function(data, quiet = FALSE) {
       setDT(.x)
 
       .x[, lapply(.SD, unlist), by = 1:nrow(.x)][, nrow := NULL] %>%
-        tibble::as_tibble() %>%
+        as_tibble() %>%
         mutate(date = as.Date(.data$date, origin = "1970-01-01"))
       },
       # Suppress progress bar if quiet == TRUE or the plan is remote
@@ -151,7 +151,7 @@ strr_expand <- function(data, quiet = FALSE) {
       left_join(join_fields, by = "property_ID") %>%
       select(.data$property_ID, .data$date, everything(), -.data$start_date,
              -.data$end_date) %>%
-      tibble::as_tibble()
+      as_tibble()
 
   } else {
 

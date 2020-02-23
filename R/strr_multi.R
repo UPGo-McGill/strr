@@ -26,10 +26,9 @@
 #' logical field (with name taken from the `field_name` argument) indicating
 #' multilisting status.
 #' @importFrom data.table setcolorder setDT
-#' @importFrom dplyr %>% if_else rename
+#' @importFrom dplyr %>% as_tibble if_else rename
 #' @importFrom future %<-%
 #' @importFrom rlang .data
-#' @importFrom tibble as_tibble
 #' @export
 
 strr_multi <- function(daily, host,

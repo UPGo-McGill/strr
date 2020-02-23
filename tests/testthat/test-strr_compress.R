@@ -5,7 +5,7 @@
 context("strr_compress tests")
 
 daily <-
-  tibble(property_ID = c(rep("ab-1", 20), rep("ab-2", 10)),
+  dplyr::tibble(property_ID = c(rep("ab-1", 20), rep("ab-2", 10)),
          date = as.Date(c(
            "2018-04-01", "2018-04-02", "2018-04-03", "2018-04-04",
            "2018-04-05", "2018-04-06", "2018-04-07", "2018-04-08",
@@ -29,7 +29,7 @@ daily <-
          city = NA)
 
 multi <-
-  tibble(host_ID = c(rep("ab-1", 20), rep("ab-2", 10)),
+  dplyr::tibble(host_ID = c(rep("ab-1", 20), rep("ab-2", 10)),
          date = as.Date(c(
            "2018-04-01", "2018-04-02", "2018-04-03", "2018-04-04",
            "2018-04-05", "2018-04-06", "2018-04-07", "2018-04-08",

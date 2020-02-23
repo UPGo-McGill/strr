@@ -19,11 +19,10 @@
 #' it return status updates throughout the function (default)?
 #' @return A compressed daily table, ready for upload to a remote database.
 #' @importFrom data.table month setDT year
-#' @importFrom dplyr %>% arrange bind_rows filter group_by group_split mutate
-#' @importFrom dplyr pull select
+#' @importFrom dplyr %>% arrange as_tibble bind_rows filter group_by group_split
+#' @importFrom dplyr mutate pull select
 #' @importFrom furrr future_map_dfr
 #' @importFrom rlang .data
-#' @importFrom tibble as_tibble
 #' @export
 
 strr_compress <- function(data, quiet = FALSE) {

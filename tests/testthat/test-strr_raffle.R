@@ -4,10 +4,6 @@
 
 context("strr_raffle tests")
 
-#' @importFrom dplyr %>% arrange
-#' @importFrom tibble tibble
-#' @importFrom sf st_as_sf st_crs st_drop_geometry st_point st_sfc
-
 load("strr_raffle_data.Rdata")
 
 

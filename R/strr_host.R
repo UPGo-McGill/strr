@@ -16,10 +16,9 @@
 #' @return A processed multilisting table, ready for compression with
 #' \code{\link{strr_compress}}.
 #' @importFrom data.table setDT setDTthreads
-#' @importFrom dplyr %>%
+#' @importFrom dplyr %>% as_tibble
 #' @importFrom future %<-% nbrOfWorkers
 #' @importFrom rlang .data
-#' @importFrom tibble as_tibble
 #' @export
 
 strr_host <- function(daily, quiet = FALSE) {

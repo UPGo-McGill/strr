@@ -5,7 +5,7 @@
 context("strr_helpers tests")
 
 data <-
-  tibble(
+  dplyr::tibble(
     a = c(rep("A", 200), rep("B", 50), rep("C", 50), rep("D", 50), rep("E", 25),
           rep("F", 25), rep("G", 10), rep("H", 10), rep("I", 8), rep("J", 5),
           rep("K", 79), rep("L", 39), rep("M", 10), rep("N", 99), rep("O", 39),
@@ -20,7 +20,7 @@ data_list <-
   group_split(a)
 
 data_sf <-
-  tibble(
+  dplyr::tibble(
     a = c(rep("A", 200), rep("B", 50), rep("C", 50), rep("D", 50), rep("E", 25),
           rep("F", 25), rep("G", 10), rep("H", 10), rep("I", 8), rep("J", 5),
           rep("K", 79), rep("L", 39), rep("M", 10), rep("N", 99), rep("O", 39),

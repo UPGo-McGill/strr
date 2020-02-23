@@ -43,7 +43,8 @@
 #' entries; 3) a missing_geography table identifying property_IDs with missing
 #' latitude/longitude coordinates.
 #' @importFrom data.table setDT setnames
-#' @importFrom dplyr %>% bind_rows case_when filter if_else mutate pull select
+#' @importFrom dplyr %>% as_tibble bind_rows case_when filter if_else mutate
+#' @importFrom dplyr pull select
 #' @importFrom rlang .data set_names
 #' @importFrom stringr str_replace_all str_starts
 #' @export
@@ -135,7 +136,7 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
     .type = "open")
 
   error <-
-    readr::problems(property) %>%
+    attr(property, "problems") %>%
     filter(.data$expected != "56 columns") %>%
     pull(.data$row) %>%
     {property[.,]}

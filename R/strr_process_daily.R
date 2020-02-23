@@ -41,9 +41,8 @@
 #' identifying property_IDs with missing dates in between their first and last
 #' date entries, and therefore potentially missing data.
 #' @importFrom data.table setDT setnames
-#' @importFrom dplyr %>% anti_join distinct filter inner_join select
+#' @importFrom dplyr %>% anti_join as_tibble distinct filter inner_join select
 #' @importFrom rlang .data
-#' @importFrom tibble as_tibble
 #' @export
 
 strr_process_daily <- function(daily, property, keep_cols = FALSE,

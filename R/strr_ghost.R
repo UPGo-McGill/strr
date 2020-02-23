@@ -74,7 +74,7 @@
 #'   of additional variables present in the points object. `geometry`: the
 #'   polygons representing the possible locations of each ghost hostel.
 #' @importFrom dplyr %>% arrange desc filter group_by mutate n pull rename
-#' @importFrom dplyr ungroup
+#' @importFrom dplyr tibble ungroup
 #' @importFrom furrr future_map
 #' @importFrom methods is
 #' @importFrom purrr map map2 map_dbl map_int map_lgl
@@ -465,7 +465,7 @@ strr_ghost <- function(
       mutate(EH_check = map2(.data$geometry, host_ID, ~{
 
         geom <-
-          tibble::tibble(geometry = list(.x)) %>%
+          tibble(geometry = list(.x)) %>%
           st_as_sf(crs = crs_points)
 
         EH_host <-

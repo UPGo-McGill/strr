@@ -40,9 +40,8 @@
 #' @return The output will be the `property` input table with one additional
 #' logical field (with name taken from the `field_name` argument) indicating
 #' principal residence status.
-#' @importFrom dplyr count filter group_by mutate summarize
+#' @importFrom dplyr count filter group_by mutate summarize tibble
 #' @importFrom rlang .data
-#' @export
 
 strr_principal_res <- function(property, daily, host, FREH, ghost,
                                start_date = NULL, end_date = NULL,

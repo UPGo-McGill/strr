@@ -5,7 +5,7 @@
 context("strr_expand tests")
 
 daily <-
-  tibble(property_ID = c(rep("ab-1", 3), rep("ab-2", 3)),
+  dplyr::tibble(property_ID = c(rep("ab-1", 3), rep("ab-2", 3)),
          start_date = as.Date(c(
            "2018-04-01", "2018-04-06", "2018-04-08",
            "2018-04-01", "2018-04-05", "2018-04-08")),
@@ -27,7 +27,7 @@ daily <-
 class(daily) <- append(class(daily), "strr_daily")
 
 host <-
-  tibble(
+  dplyr::tibble(
     host_ID = c("10000029", "10000029", "10000029", "1000008", "1000008",
                 "1000008", "1000014", "1000014", "1000014", "1000014"),
     start_date = as.Date(c("2014-10-01", "2014-11-01", "2014-12-01",
