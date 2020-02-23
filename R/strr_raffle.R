@@ -271,7 +271,13 @@ strr_raffle <- function(
     points %>%
     left_join(results, by = ".point_ID") %>%
     select(-.data$.point_ID) %>%
-    select(-.data$geometry, everything(), .data$geometry) %>%
+    select(-.data$geometry, everything(), .data$geometry)
+
+  # Rename poly_ID field in points, but check name duplicate first
+  try(points <- select(points, -{{ poly_ID }}))
+
+  points <-
+    points %>%
     rename({{ poly_ID }} := .data$poly_ID)
 
   helper_progress_message("Analysis complete.", .type = "final")
