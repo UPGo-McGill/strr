@@ -8,7 +8,7 @@ Author: David Wachsmuth
 Maintainer: David Wachsmuth <david.wachsmuth@mcgill.ca>
 Description: Tools for preparing and analyzing data about short-term rentals,
     with an emphasis on property files produced by Inside Airbnb or AirDNA, and
-    daily activity files produced by AirDNA.
+    daily activity and review files produced by AirDNA.
 License: GPL-3
 Encoding: UTF-8
 LazyData: true

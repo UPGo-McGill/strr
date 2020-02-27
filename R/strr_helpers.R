@@ -53,12 +53,22 @@ helper_plan <- function() {
 #' @param data_list A list of data elements to be resized
 #' @param multiplier An integer scalar. What multiple of the number of available
 #' processes should the data be combined into?
+#' @param type A character scalar, either ".list" if the input is a list of data
+#' frames or, if the input is a single data frame, the name of a variable
+#' containing nested data frames.
 #' @return A list of data elements.
 #' @importFrom data.table rbindlist
 #' @importFrom future nbrOfWorkers
 #' @importFrom sf st_as_sf
 
-helper_table_split <- function(data_list, multiplier = 10) {
+helper_table_split <- function(data_list, multiplier = 10, type = ".list") {
+
+  if (type != ".list") {
+
+    table <- data_list
+    data_list <- table[[type]]
+
+  }
 
   sf_flag <- inherits(data_list[[1]], "sf")
 
@@ -98,16 +108,25 @@ helper_table_split <- function(data_list, multiplier = 10) {
 
   }
 
-  # If table is sf, use do.call to rbind, to preserve geometry column
-  if (sf_flag) {
-    data_list <- map(index_positions, ~{
-      do.call(rbind, data_list[.x])
-    })
-    # Otherwise use faster rbindlist
-  } else {
+  # Deal with case where input is nested data frame
+  if (type != ".list") {
+
     data_list <-
-      map(index_positions, ~rbindlist(data_list[.x]))
+      map(index_positions, ~table[.x,])
+
+  } else {
+    # If table is sf, use do.call to rbind, to preserve geometry column
+    if (sf_flag) {
+      data_list <- map(index_positions, ~{
+        do.call(rbind, data_list[.x])
+      })
+      # Otherwise use faster rbindlist
+    } else {
+      data_list <-
+        map(index_positions, ~rbindlist(data_list[.x]))
+    }
   }
+
 
   data_list
 }

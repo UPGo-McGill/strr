@@ -4,13 +4,17 @@
 \alias{helper_table_split}
 \title{Helper function to split data for parallel processing}
 \usage{
-helper_table_split(data_list, multiplier = 10)
+helper_table_split(data_list, multiplier = 10, type = ".list")
 }
 \arguments{
 \item{data_list}{A list of data elements to be resized}
 
 \item{multiplier}{An integer scalar. What multiple of the number of available
 processes should the data be combined into?}
+
+\item{type}{A character scalar, either ".list" if the input is a list of data
+frames or, if the input is a single data frame, the name of a variable
+containing nested data frames.}
 }
 \value{
 A list of data elements.
