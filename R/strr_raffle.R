@@ -191,6 +191,13 @@ strr_raffle <- function(
     rename(poly_ID = {{ poly_ID }},
            units = {{ units }})
 
+  # Check for invalid polys geometry
+  polys <-
+    polys %>%
+    filter(st_is(geometry, "GEOMETRYCOLLECTION")) %>%
+    mutate(geometry = st_union(st_collection_extract(geometry, "POLYGON"))) %>%
+    rbind(filter(polys, !st_is(geometry, "GEOMETRYCOLLECTION")))
+
   # Clean up polys and initialize poly_area field
   polys <-
     setDT(polys)[units > 0, .(poly_ID = as.character(poly_ID), units,
