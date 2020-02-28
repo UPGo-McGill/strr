@@ -46,3 +46,16 @@ test_that("Raffle candidates are correct", {
       points, polys, GeoUID, dwellings, diagnostic = TRUE)[1,]$candidates[[1]]),
     1)
 })
+
+test_that("Odd field names are handled properly", {
+  # points with field named {{ poly_ID }}
+  expect_equal(nrow(strr_raffle(
+    rename(points, GeoUID = property_ID), polys, GeoUID, dwellings)), 31)
+  # points with field name "poly_ID"
+  expect_equal(nrow(strr_raffle(
+    rename(points, poly_ID = property_ID), polys, GeoUID, dwellings)), 31)
+  # points and polys with field name "poly_ID"
+  expect_equal(nrow(strr_raffle(
+    rename(points, poly_ID = property_ID),
+    rename(polys, poly_ID = GeoUID), poly_ID, dwellings)), 31)
+})

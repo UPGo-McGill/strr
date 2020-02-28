@@ -42,9 +42,11 @@
 #' @return The output will be the input points object with a new field
 #'   appended, which specifies which polygon from the `polys` object was
 #'   probabilistically assigned to the listing, and which takes the name of the
-#'   field identified in the `poly_ID` argument. If diagnostic == TRUE, a
-#'   `candidates` field will also be appended, which lists the possible polygons
-#'   for each point, along with their probabilities.
+#'   field identified in the `poly_ID` argument. (If there was already a field
+#'   with that name in the `points` object, the new field will have "_new"
+#'   appended to its name.) If diagnostic == TRUE, a `candidates` field will
+#'   also be appended, which lists the possible polygons for each point, along
+#'   with their probabilities.
 #' @importFrom data.table copy data.table setDT setorder
 #' @importFrom dplyr %>% everything left_join mutate n select
 #' @importFrom rlang := .data
@@ -155,6 +157,22 @@ strr_raffle <- function(
       "The value of `units` is not a valid field in the `polys` input table."
       ))
 
+
+  ## Set poly_ID_flag to avoid future name collision with poly_ID
+
+  poly_ID_flag <-
+    dplyr::case_when(
+      tryCatch({select(points, poly_ID); TRUE},
+               error = function(e) FALSE)  ~ "string",
+      tryCatch({select(points, {{ poly_ID }}); TRUE},
+               error = function(e) FALSE)  ~ "symbol",
+      TRUE ~ "none"
+    )
+
+  # Rename points$poly_ID if it exists
+  if (poly_ID_flag == "string") {
+    points <- rename(points, poly_ID_temp = .data$poly_ID)
+  }
 
   ## Set seed if seed is supplied
 
@@ -279,12 +297,19 @@ strr_raffle <- function(
     select(-.data$.point_ID) %>%
     select(-.data$geometry, everything(), .data$geometry)
 
-  # Rename poly_ID field in points, but check name duplicate first
-  try(points <- select(points, -{{ poly_ID }}))
+  # Rename poly_ID field in points, but check name duplication first
 
-  points <-
-    points %>%
-    rename({{ poly_ID }} := .data$poly_ID)
+  if (poly_ID_flag == "string") {
+    points <-
+      points %>% rename(poly_ID_new = poly_ID, poly_ID = .data$poly_ID_temp)
+  } else if (poly_ID_flag == "symbol") {
+    # Append "_new" to the poly_ID argument, then rename
+    new_name <- paste0(rlang::as_string(ensym(poly_ID)), "_new")
+    points <- points %>% rename(!! new_name := .data$poly_ID)
+  } else if (poly_ID_flag == "none") {
+    # Rename "poly_ID" to the argument passed to poly_ID
+    points <- points %>% rename({{ poly_ID }} := .data$poly_ID)
+  }
 
   helper_progress_message("Analysis complete.", .type = "final")
 
