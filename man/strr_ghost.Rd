@@ -100,7 +100,7 @@ The output will be a tidy data frame of identified ghost hostels,
   polygons representing the possible locations of each ghost hostel.
 }
 \description{
-\code{strr_ghost_future} takes reported STR listing locations and identifies
+\code{strr_ghost} takes reported STR listing locations and identifies
 possible "ghost hostels"--clusters of private-room STR listings operating in
 a single building.
 }

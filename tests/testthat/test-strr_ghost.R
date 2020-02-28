@@ -156,16 +156,16 @@ test_that("EH_check works correctly", {
 })
 
 test_that("Non-default field names are passed through", {
-  # Renamed property_ID shows up in output
-  expect_equal({
-    points %>% rename(PID = property_ID) %>%
-      strr_ghost(property_ID = PID) %>%
-      dplyr::slice(1) %>%
-      dplyr::pull(data) %>%
-      `[[`(1) %>%
-      names() %>%
-      `[`(1)
-    }, "PID")
+  # # Renamed property_ID shows up in output
+  # expect_equal({
+  #   points %>% rename(PID = property_ID) %>%
+  #     strr_ghost(property_ID = PID) %>%
+  #     dplyr::slice(1) %>%
+  #     dplyr::pull(data) %>%
+  #     `[[`(1) %>%
+  #     names() %>%
+  #     `[`(1)
+  #   }, "PID")
   # Renamed host_ID shows up in output
   expect_equal({
     points %>% rename(HID = host_ID) %>%
