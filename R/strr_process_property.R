@@ -135,11 +135,16 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
     "(1/5) Identifying entries with invalid property_ID or listing_type.",
     .type = "open")
 
-  error <-
-    attr(property, "problems") %>%
-    filter(.data$expected != "56 columns") %>%
-    pull(.data$row) %>%
-    {property[.,]}
+  error <- property[0,]
+
+  if (!is.null(attr(property, "problems"))) {
+    error <-
+      attr(property, "problems") %>%
+      filter(.data$expected != "56 columns") %>%
+      pull(.data$row) %>%
+      {property[.,]} %>%
+      bind_rows(error)
+  }
 
   error <-
     property %>%
