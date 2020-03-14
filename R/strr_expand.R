@@ -41,7 +41,7 @@ strr_expand <- function(data, quiet = FALSE) {
   on.exit(.Options$future.globals.maxSize <- NULL)
 
 
-  ## Check if table is daily or ML
+  ## Check if table is daily or host
 
   if (inherits(data, "strr_daily") | names(data)[1] == "property_ID") {
 
@@ -62,8 +62,7 @@ strr_expand <- function(data, quiet = FALSE) {
 
   setDT(data)
 
-  ## TKTK Remove 15 once daily DB update is complete
-  if (length(data) == 13) {
+  if (daily) {
 
     # These fields are per-property
     join_fields <- data[, last(.SD), by = property_ID
@@ -83,19 +82,13 @@ strr_expand <- function(data, quiet = FALSE) {
   }
 
 
-  ### PREPARE DATE FIELD AND SPLIT DATA ########################################
-
-  helper_progress_message("(1/4) Preparing new date field.", .type = "open")
-
-  data[, date := list(list(start_date:end_date)), by = 1:nrow(data)]
-
-  helper_progress_message("(1/4) New date field prepared.", .type = "close")
+  ### SPLIT DATA ###############################################################
 
 
   ## Split by property_ID for daily and host_ID for host
 
   helper_progress_message(
-    "(2/4) Splitting data for processing.", .type = "open")
+    "(1/3) Splitting data for processing.", .type = "open")
 
   if (daily) {
     data[, col_split := substr(property_ID, 1, 6)]
@@ -105,13 +98,13 @@ strr_expand <- function(data, quiet = FALSE) {
 
   data_list <-
     split(data, by = "col_split", keep.by = FALSE) %>%
-    helper_table_split(10)
+    helper_table_split()
 
-  helper_progress_message("2/4) Data split for processing.", .type = "close")
+  helper_progress_message("(1/3) Data split for processing.", .type = "close")
 
   ### EXPAND TABLE #############################################################
 
-  helper_progress_message("(3/4) Beginning expansion, using {helper_plan()}.",
+  helper_progress_message("(2/3) Beginning expansion, using {helper_plan()}.",
                           .type = "progress")
 
   # Make sure data.table is single-threaded within the helper
@@ -123,6 +116,10 @@ strr_expand <- function(data, quiet = FALSE) {
 
       setDT(.x)
 
+      # Add new date field
+      .x[, date := list(list(start_date:end_date)), by = 1:nrow(.x)]
+
+      # Unnest
       .x[, lapply(.SD, unlist), by = 1:nrow(.x)][, nrow := NULL] %>%
         as_tibble() %>%
         mutate(date = as.Date(.data$date, origin = "1970-01-01"))
@@ -138,9 +135,9 @@ strr_expand <- function(data, quiet = FALSE) {
   ### REJOIN TO ADDITIONAL FIELDS, THEN ARRANGE COLUMNS ########################
 
   helper_progress_message(
-    "(4/4) Joining additional fields to table.", .type = "open")
+    "(3/3) Joining additional fields to table.", .type = "open")
 
-  if (length(data) == 4) {
+  if (daily) {
 
     data <-
       setDT(data)[order(property_ID, date)] %>%
@@ -164,12 +161,12 @@ strr_expand <- function(data, quiet = FALSE) {
   }
 
   helper_progress_message(
-    "(4/4) Additional fields joined to table.", .type = "close")
+    "(3/3) Additional fields joined to table.", .type = "close")
 
 
   ### SET CLASS OF OUTPUT ######################################################
 
-  if (names(data)[1] == "property_ID") {
+  if (daily) {
     class(data) <- append(class(data), "strr_daily")
   } else {
     class(data) <- append(class(data), "strr_host")

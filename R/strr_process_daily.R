@@ -229,20 +229,20 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   ### Produce daily and daily_inactive tables ##################################
 
   helper_progress_message(
-    "(6/6) Identifying rows outside active listing period.", .type = "open")
+    "(6/6) Identifying inactive rows.", .type = "open")
 
   daily_inactive <-
-    daily[date < created | date > scraped, verbose = TRUE
+    daily[date < created | date > scraped | status == "U"
           ][order(property_ID, date)
             ][, c("created", "scraped") := NULL]
 
   daily <-
-    daily[date >= created & date <= scraped
+    daily[date >= created & date <= scraped & status != "U"
           ][order(property_ID, date)
             ][, c("created", "scraped") := NULL]
 
   helper_progress_message(
-    "(6/6) Rows outside active listing period identified.", .type = "close")
+    "(6/6) Inactive rows identified.", .type = "close")
 
 
   ### Return output ############################################################
