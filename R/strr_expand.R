@@ -74,7 +74,7 @@ strr_expand <- function(data, quiet = FALSE) {
 
   ### SET BATCH PROCESSING STRATEGY ############################################
 
-  if (nrow(data) >= chunk_size) {
+  if (nrow(data) > chunk_size) {
 
     iterations <- ceiling(nrow(data) / chunk_size)
 
