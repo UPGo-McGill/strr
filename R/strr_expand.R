@@ -261,9 +261,6 @@ strr_expand_helper <- function(data, daily_flag, quiet) {
     data_list %>%
     future_map_dfr(~{
 
-      # Flush out any stray multicore processes
-      future_map(1:future::nbrOfWorkers(), ~.x)
-
       setDT(.x)
 
       # Add new date field
@@ -281,6 +278,8 @@ strr_expand_helper <- function(data, daily_flag, quiet) {
   # Restore DT threads
   setDTthreads(threads)
 
+  # Flush out any stray multicore processes
+  future_map(1:future::nbrOfWorkers(), ~.x)
 
   return(data)
 
