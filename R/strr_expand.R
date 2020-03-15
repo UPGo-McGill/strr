@@ -29,6 +29,7 @@ strr_expand <- function(data, quiet = FALSE) {
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
   chunk_size <- 20000000
+  iterations <- 0
 
   ## Prepare data.table variables
 
@@ -61,15 +62,8 @@ strr_expand <- function(data, quiet = FALSE) {
   } else stop("Input table must be of class `strr_daily` or `strr_host`.")
 
 
-  ### PROCESS FOR SMALL TABLE ##################################################
+  ### SET BATCH PROCESSING STRATEGY ############################################
 
-  # Just run strr_expand_helper directly
-  if (nrow(data) < chunk_size) data <- strr_expand_helper(data, daily, quiet)
-
-
-  ### PROCESS FOR LARGE TABLE ##################################################
-
-  # Split data into 50-million-line chunks
   if (nrow(data) >= chunk_size) {
 
     iterations <- ceiling(nrow(data) / chunk_size)
@@ -79,13 +73,58 @@ strr_expand <- function(data, quiet = FALSE) {
       iterations,
       " batches.")
 
+  }
+
+
+  ### STORE EXTRA FIELDS AND TRIM DATA #########################################
+
+  setDT(data)
+
+  if (daily) {
+
+    # These fields are per-property
+    join_fields <- data[, last(.SD), by = property_ID
+                        ][, c("start_date", "end_date", "status", "booked_date",
+                              "price", "res_ID") := NULL]
+
+    # These fields are per-property, per-date
+    add_fields <-
+      data[, c("property_ID", "start_date", "status", "booked_date", "price",
+               "res_ID")]
+
+    setnames(add_fields, "start_date", "date")
+
+    # Just keep data necessary for expansion
+    data <- data[, .(property_ID, start_date, end_date)]
+
+  }
+
+
+
+  ### PROCESS FOR SMALL TABLE ##################################################
+
+  # Just run strr_expand_helper directly
+  if (iterations == 0) {
+
+    helper_progress_message("(1/2) Beginning expansion, using {helper_plan()}.",
+                            .type = "progress")
+
+    data <- strr_expand_helper(data, daily, quiet)
+
+  } else {
+
+
+  ### PROCESS FOR LARGE TABLE ##################################################
+
+    # Split data into 20-million-line chunks
     data_list <- list()
     length(data_list) <- iterations
 
+    # Process each batch sequentially
     for (i in seq_len(iterations)) {
 
-      helper_progress_message("\n", "\n", "Processing batch ", i, " of ",
-                              iterations, ".")
+      helper_progress_message("(", i, "/", iterations + 1, ") Expanding batch ",
+        i, ", using {helper_plan()}.", .type = "progress")
 
       data_list[[i]] <-
         data %>%
@@ -94,8 +133,54 @@ strr_expand <- function(data, quiet = FALSE) {
 
     }
 
+    # Bind batches together
     data <- bind_rows(data_list)
 
+  }
+
+
+  ### REJOIN TO ADDITIONAL FIELDS, THEN ARRANGE COLUMNS ########################
+
+  if (iterations == 0) {
+    helper_progress_message(
+      "(2/2) Joining additional fields to table.", .type = "open")
+
+  } else {
+    helper_progress_message(
+      "(", iterations + 1, "/", iterations + 1,
+      ") Joining additional fields to table.", .type = "open")
+  }
+
+  if (daily) {
+
+    data <-
+      data %>%
+      # Join fields which need to be duplicated for specific date ranges
+      left_join(add_fields, by = c("property_ID", "date")) %>%
+      tidyr::fill(.data$status:.data$res_ID) %>%
+      # Join fields which need to be duplicated for specific properties
+      left_join(join_fields, by = "property_ID") %>%
+      select(.data$property_ID, .data$date, everything(), -.data$start_date,
+             -.data$end_date) %>%
+      as_tibble()
+
+  } else {
+
+    data <-
+      data %>%
+      select(.data$host_ID, .data$date, everything(), -.data$start_date,
+             -.data$end_date)
+
+  }
+
+  if (iterations == 0) {
+    helper_progress_message(
+      "(2/2) Additional fields joined to table.", .type = "open")
+
+  } else {
+    helper_progress_message(
+      "(", iterations + 1, "/", iterations + 1,
+      ") Additional fields joined to table.", .type = "open")
   }
 
 
@@ -141,38 +226,9 @@ strr_expand_helper <- function(data, daily_flag, quiet) {
   property_ID <- start_date <- end_date <- col_split <- host_ID <- NULL
 
 
-  ### STORE EXTRA FIELDS AND TRIM DATA #########################################
-
-  setDT(data)
-
-  if (daily_flag) {
-
-    # These fields are per-property
-    join_fields <- data[, last(.SD), by = property_ID
-                        ][, c("start_date", "end_date", "status", "booked_date",
-                              "price", "res_ID") := NULL]
-
-    # These fields are per-property, per-date
-    add_fields <-
-      data[, c("property_ID", "start_date", "status", "booked_date", "price",
-               "res_ID")]
-
-    setnames(add_fields, "start_date", "date")
-
-    # Just keep data necessary for expansion
-    data <- data[, .(property_ID, start_date, end_date)]
-
-  }
-
-
   ### SPLIT DATA ###############################################################
 
-
-  ## Split by property_ID for daily and host_ID for host
-
-  helper_progress_message(
-    "(1/3) Splitting data for processing.", .type = "open")
-
+  # Split by property_ID for daily and host_ID for host
   if (daily_flag) {
     data[, col_split := substr(property_ID, 1, 6)]
   } else {
@@ -183,13 +239,8 @@ strr_expand_helper <- function(data, daily_flag, quiet) {
     split(data, by = "col_split", keep.by = FALSE) %>%
     helper_table_split()
 
-  helper_progress_message("(1/3) Data split for processing.", .type = "close")
-
 
   ### EXPAND TABLE #############################################################
-
-  helper_progress_message("(2/3) Beginning expansion, using {helper_plan()}.",
-                          .type = "progress")
 
   # Make sure data.table is single-threaded within the helper
   threads <- setDTthreads(1)
@@ -215,36 +266,6 @@ strr_expand_helper <- function(data, daily_flag, quiet) {
   # Restore DT threads
   setDTthreads(threads)
 
-
-  ### REJOIN TO ADDITIONAL FIELDS, THEN ARRANGE COLUMNS ########################
-
-  helper_progress_message(
-    "(3/3) Joining additional fields to table.", .type = "open")
-
-  if (daily_flag) {
-
-    data <-
-      setDT(data)[order(property_ID, date)] %>%
-      # Join fields which need to be duplicated for specific date ranges
-      left_join(add_fields, by = c("property_ID", "date")) %>%
-      tidyr::fill(.data$status:.data$res_ID) %>%
-      # Join fields which need to be duplicated for specific properties
-      left_join(join_fields, by = "property_ID") %>%
-      select(.data$property_ID, .data$date, everything(), -.data$start_date,
-             -.data$end_date) %>%
-      as_tibble()
-
-  } else {
-
-    data <-
-      data %>%
-      select(.data$host_ID, .data$date, everything(), -.data$start_date,
-             -.data$end_date)
-
-  }
-
-  helper_progress_message(
-    "(3/3) Additional fields joined to table.", .type = "close")
 
   return(data)
 
