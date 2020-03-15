@@ -222,8 +222,8 @@ strr_expand <- function(data, quiet = FALSE) {
 strr_expand_helper <- function(data, daily_flag, quiet) {
 
   .datatable.aware = TRUE
-
   property_ID <- start_date <- end_date <- col_split <- host_ID <- NULL
+  setDT(data)
 
 
   ### SPLIT DATA ###############################################################
