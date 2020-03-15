@@ -84,7 +84,8 @@ strr_expand <- function(data, quiet = FALSE) {
 
     for (i in seq_len(iterations)) {
 
-      helper_progress_message("Processing batch ", i, " of ", iterations, ".")
+      helper_progress_message("\n", "Processing batch ", i, " of ", iterations,
+                              ".")
 
       data_list[[i]] <-
         data %>%
@@ -101,8 +102,10 @@ strr_expand <- function(data, quiet = FALSE) {
   ### SET CLASS OF OUTPUT ######################################################
 
   if (daily) {
+    data <- arrange(data, .data$property_ID, .data$date)
     class(data) <- append(class(data), "strr_daily")
   } else {
+    data <- arrange(data, .data$host_ID, .data$date)
     class(data) <- append(class(data), "strr_host")
   }
 
@@ -236,8 +239,7 @@ strr_expand_helper <- function(data, daily_flag, quiet) {
     data <-
       data %>%
       select(.data$host_ID, .data$date, everything(), -.data$start_date,
-             -.data$end_date) %>%
-      arrange(.data$host_ID, .data$date)
+             -.data$end_date)
 
   }
 
