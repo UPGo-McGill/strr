@@ -84,8 +84,8 @@ strr_expand <- function(data, quiet = FALSE) {
 
     for (i in seq_len(iterations)) {
 
-      helper_progress_message("\n", "Processing batch ", i, " of ", iterations,
-                              ".")
+      helper_progress_message("\n", "\n", "Processing batch ", i, " of ",
+                              iterations, ".")
 
       data_list[[i]] <-
         data %>%
