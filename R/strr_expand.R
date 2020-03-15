@@ -28,6 +28,8 @@ strr_expand <- function(data, quiet = FALSE) {
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
+  chunk_size <- 40000000
+
   ## Prepare data.table variables
 
   .datatable.aware = TRUE
@@ -62,18 +64,18 @@ strr_expand <- function(data, quiet = FALSE) {
   ### PROCESS FOR SMALL TABLE ##################################################
 
   # Just run strr_expand_helper directly
-  if (nrow(data) < 50000000) data <- strr_expand_helper(data, daily, quiet)
+  if (nrow(data) < chunk_size) data <- strr_expand_helper(data, daily, quiet)
 
 
   ### PROCESS FOR LARGE TABLE ##################################################
 
   # Split data into 50-million-line chunks
-  if (nrow(data) >= 50000000) {
+  if (nrow(data) >= chunk_size) {
 
-    iterations <- ceiling(nrow(data) / 50000000)
+    iterations <- ceiling(nrow(data) / chunk_size)
 
     helper_progress_message(
-      "Table is larger than 50,000,000 rows. It will be processed in ",
+      "Table is larger than 40,000,000 rows. It will be processed in ",
       iterations,
       " batches.")
 
@@ -82,11 +84,11 @@ strr_expand <- function(data, quiet = FALSE) {
 
     for (i in seq_len(iterations)) {
 
-      helper_progress_message("Processing batch ", i, ".")
+      helper_progress_message("Processing batch ", i, " of ", iterations, ".")
 
       data_list[[i]] <-
         data %>%
-        slice(((i - 1) * 50000000 + 1):(i * 50000000)) %>%
+        slice(((i - 1) * chunk_size + 1):(i * chunk_size)) %>%
         strr_expand_helper(daily, quiet)
 
     }
