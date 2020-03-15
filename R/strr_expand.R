@@ -31,18 +31,28 @@ strr_expand <- function(data, quiet = FALSE) {
   chunk_size <- 20000000
   iterations <- 0
 
-  ## Prepare data.table variables
+
+  ## Set up on.exit expression for errors
+
+  on.exit({
+    # Flush out any stray multicore processes
+    future_map(1:future::nbrOfWorkers(), ~.x)
+
+    # Restore future global export limit
+    .Options$future.globals.maxSize <- NULL
+
+    # Print \n so error messages don't collide with progress messages
+    if (!quiet) message()
+  })
+
+
+  ## Prepare data.table and future variables
 
   .datatable.aware = TRUE
 
   property_ID <- start_date <- end_date <- col_split <- host_ID <- NULL
 
-
-  ## Remove future global export limit
-
   options(future.globals.maxSize = +Inf)
-
-  on.exit(.Options$future.globals.maxSize <- NULL)
 
 
   ## Check if table is daily or host
@@ -199,6 +209,8 @@ strr_expand <- function(data, quiet = FALSE) {
 
   helper_progress_message("Expansion complete.", .type = "final")
 
+  on.exit(.Options$future.globals.maxSize <- NULL)
+
   return(data)
 }
 
@@ -248,6 +260,9 @@ strr_expand_helper <- function(data, daily_flag, quiet) {
   data <-
     data_list %>%
     future_map_dfr(~{
+
+      # Flush out any stray multicore processes
+      future_map(1:future::nbrOfWorkers(), ~.x)
 
       setDT(.x)
 
