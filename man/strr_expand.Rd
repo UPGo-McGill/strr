@@ -8,8 +8,8 @@ strr_expand(data, quiet = FALSE)
 }
 \arguments{
 \item{data}{A table in compressed UPGo DB format (e.g. created by running
-\code{\link{strr_compress}}). Currently daily activity files and ML daily
-summary tables are recognized.}
+\code{\link{strr_compress}}). Currently daily activity tables and host tables
+are recognized.}
 
 \item{quiet}{A logical scalar. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}
