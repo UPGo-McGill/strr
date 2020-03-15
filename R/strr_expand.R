@@ -175,12 +175,12 @@ strr_expand <- function(data, quiet = FALSE) {
 
   if (iterations == 0) {
     helper_progress_message(
-      "(2/2) Additional fields joined to table.", .type = "open")
+      "(2/2) Additional fields joined to table.", .type = "close")
 
   } else {
     helper_progress_message(
       "(", iterations + 1, "/", iterations + 1,
-      ") Additional fields joined to table.", .type = "open")
+      ") Additional fields joined to table.", .type = "close")
   }
 
 
