@@ -28,7 +28,7 @@ strr_expand <- function(data, quiet = FALSE) {
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
-  chunk_size <- 40000000
+  chunk_size <- 20000000
 
   ## Prepare data.table variables
 
@@ -75,7 +75,7 @@ strr_expand <- function(data, quiet = FALSE) {
     iterations <- ceiling(nrow(data) / chunk_size)
 
     helper_progress_message(
-      "Table is larger than 40,000,000 rows. It will be processed in ",
+      "Table is larger than 20,000,000 rows. It will be processed in ",
       iterations,
       " batches.")
 
