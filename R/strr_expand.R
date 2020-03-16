@@ -67,10 +67,12 @@ strr_expand <- function(data, quiet = FALSE) {
   ## Check for maximum size
 
   if (nrow(data) > 300000000) {
-    if ({daily %>%
+    if ({
+      data %>%
         mutate(rows = as.numeric(end_date) - as.numeric(start_date) + 1) %>%
         pull(.data$rows) %>%
-        sum()} > 2294398000) {
+        sum()
+      } > 2294398000) {
       stop(
         "Output table will exceed maximum R data frame size (2 billion rows).")
     }
