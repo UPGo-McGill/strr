@@ -29,7 +29,7 @@ strr_expand <- function(data, quiet = FALSE) {
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
   chunk_size <- 10000000
-  iterations <- 0
+  iterations <- 1
 
 
   ## Set up on.exit expression for errors
@@ -114,7 +114,7 @@ strr_expand <- function(data, quiet = FALSE) {
   ### PROCESS FOR SMALL TABLE ##################################################
 
   # Just run strr_expand_helper directly
-  if (iterations == 0) {
+  if (iterations == 1) {
 
     helper_progress_message("(1/2) Beginning expansion, using {helper_plan()}.",
                             .type = "progress")
@@ -144,27 +144,21 @@ strr_expand <- function(data, quiet = FALSE) {
     }
 
     # Bind batches together
-    data <- bind_rows(data_list)
+    data <- rbindlist(data_list)
 
   }
 
 
   ### REJOIN TO ADDITIONAL FIELDS, THEN ARRANGE COLUMNS ########################
 
-  if (iterations == 0) {
-    helper_progress_message(
-      "(2/2) Joining additional fields to table.", .type = "open")
-
-  } else {
-    helper_progress_message(
-      "(", iterations + 1, "/", iterations + 1,
-      ") Joining additional fields to table.", .type = "open")
-  }
+  helper_progress_message(
+    "(", iterations + 1, "/", iterations + 1,
+    ") Arranging table and joining additional fields.", .type = "open")
 
   if (daily) {
 
     data <-
-      data %>%
+      setDT(data)[order(property_ID, date)] %>%
       # Join fields which need to be duplicated for specific date ranges
       left_join(add_fields, by = c("property_ID", "date")) %>%
       tidyr::fill(.data$status:.data$res_ID) %>%
@@ -177,30 +171,22 @@ strr_expand <- function(data, quiet = FALSE) {
   } else {
 
     data <-
-      data %>%
+      setDT(data)[order(host_ID, date)] %>%
       select(.data$host_ID, .data$date, everything(), -.data$start_date,
              -.data$end_date)
 
   }
 
-  if (iterations == 0) {
-    helper_progress_message(
-      "(2/2) Additional fields joined to table.", .type = "close")
-
-  } else {
-    helper_progress_message(
-      "(", iterations + 1, "/", iterations + 1,
-      ") Additional fields joined to table.", .type = "close")
-  }
+  helper_progress_message(
+    "(", iterations + 1, "/", iterations + 1,
+    ") Table arranged and additional fields joined.", .type = "close")
 
 
   ### SET CLASS OF OUTPUT ######################################################
 
   if (daily) {
-    data <- arrange(data, .data$property_ID, .data$date)
     class(data) <- append(class(data), "strr_daily")
   } else {
-    data <- arrange(data, .data$host_ID, .data$date)
     class(data) <- append(class(data), "strr_host")
   }
 
