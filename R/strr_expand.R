@@ -58,17 +58,9 @@ strr_expand <- function(data, quiet = FALSE) {
   ## Check if table is daily or host
 
   if (inherits(data, "strr_daily") | names(data)[1] == "property_ID") {
-
-    helper_progress_message("Daily table identified.")
-
     daily <- TRUE
-
   } else if (inherits(data, "strr_host") | names(data)[1] == "host_ID") {
-
-    helper_progress_message("Host table identified.")
-
     daily <- FALSE
-
   } else stop("Input table must be of class `strr_daily` or `strr_host`.")
 
 
@@ -78,11 +70,21 @@ strr_expand <- function(data, quiet = FALSE) {
 
     iterations <- ceiling(nrow(data) / chunk_size)
 
-    helper_progress_message(
-      "Table is larger than 10,000,000 rows. It will be processed in ",
-      iterations,
-      " batches.")
-
+    if (daily) {
+      helper_progress_message(
+        "Daily table identified. It will be processed in ", iterations,
+        " batches.")
+    } else {
+      helper_progress_message(
+        "Host table identified. It will be processed in ", iterations,
+        " batches.")
+    }
+  } else {
+    if (daily) {
+      helper_progress_message("Daily table identified.")
+    } else {
+      helper_progress_message("Host table identified.")
+    }
   }
 
 
