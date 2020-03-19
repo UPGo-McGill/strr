@@ -69,7 +69,7 @@ strr_host <- function(daily, quiet = FALSE) {
 
   ### Trim daily table #########################################################
 
-  helper_progress_message("(1/3) Trimming daily table to valid entries.",
+  helper_progress_message("(1/2) Trimming daily table to valid entries.",
                           .type = "open")
 
   setDT(daily)
@@ -81,7 +81,7 @@ strr_host <- function(daily, quiet = FALSE) {
   # Save nrow for final validity check
   daily_check <- nrow(daily)
 
-  helper_progress_message("(1/3) Daily table trimmed to valid entries.",
+  helper_progress_message("(1/2) Daily table trimmed to valid entries.",
                           .type = "close")
 
 
