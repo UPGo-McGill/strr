@@ -226,6 +226,8 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
            ][country == "Brunei Darussalam", country := "Brunei"
              ][country == "C\u00f4te d'Ivoire - Republic of",
                country := "Ivory Coast"
+               ][country == "Democratic Republic of Congo",
+                 country := "Democratic Republic of the Congo"
                ][country == "Curacao", country := "Cura\u00e7ao"
                  ][country == "Falkland Islands",
                    country := "Falkland Islands (Malvinas)"
