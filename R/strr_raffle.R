@@ -238,9 +238,8 @@ strr_raffle <- function(
 
   intersects <- intersects[, if (.N > 1) .SD, by = ".point_ID"]
 
-  # Only run subseqent steps if
-
-  if (length(intersects) == 0) {
+  # Only run subseqent steps if there are points with multiple intersects
+  if (nrow(intersects) == 0) {
 
     one_choice <-
       one_choice[, .(candidates = list(data.table(poly_ID, probability = 1)),
