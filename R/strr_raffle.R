@@ -226,6 +226,11 @@ strr_raffle <- function(
     st_as_sf(agr = "constant") %>%
     st_intersection(polys)
 
+  # Exit early if no intersections are found
+  if (nrow(intersects) == 0) {
+    stop("The points and polys tables do not intersect.")
+  }
+
   # Cast multipolygons to polygons
   intersects <-
     intersects %>%
