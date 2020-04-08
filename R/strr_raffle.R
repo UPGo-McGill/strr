@@ -238,60 +238,74 @@ strr_raffle <- function(
 
   intersects <- intersects[, if (.N > 1) .SD, by = ".point_ID"]
 
-  # Estimate int_units and transform intersects relative to point coordinates
-  coord_shift <- function(g, x, y) g - c(x, y)
+  # Only run subseqent steps if
 
-  intersects[, c("int_units", "geometry", ".PID_split") :=
-               list(as.numeric(units * st_area(geometry) / poly_area),
-                    st_sfc(mapply(coord_shift, geometry, .point_x,
-                                  .point_y, SIMPLIFY = FALSE)),
-                    substr(.point_ID, 1, 3))]
+  if (length(intersects) == 0) {
 
-  helper_progress_message("(2/4) Points intersected with polygons.",
-                          .type = "close")
-
-
-  ### SPLIT DATA FOR PROCESSING ################################################
-
-  helper_progress_message("(3/4) Splitting data for processing.",
-                          .type = "open")
-
-  data_list <-
-    split(intersects, by = ".PID_split", keep.by = FALSE) %>%
-    helper_table_split()
-
-  helper_progress_message("(3/4) Data split for processing.", .type = "close")
-
-
-  ### DO INTEGRATION ###########################################################
-
-  helper_progress_message("(4/4) Beginning analysis, using {helper_plan()}.",
-                          .type = "progress")
-
-  intersects <-
-    data_list %>%
-    map(setDT) %>%
-    future_map(raffle_integrate, .progress = helper_progress()) %>%
-    rbindlist()
-
-  ### PROCESS RESULTS AND RETURN OUTPUT ########################################
-
-  # Produce results object
-  results <-
-    intersects[, .(
-      candidates = list(data.table(poly_ID, probability)),
-      poly_ID = base::sample(poly_ID, size = 1, prob = probability)),
-      keyby = .point_ID]
-
-  # Add results from one_choice
-  if (nrow(one_choice) > 0) {
     one_choice <-
       one_choice[, .(candidates = list(data.table(poly_ID, probability = 1)),
                      poly_ID),
                  by = .point_ID]
 
+    results <- one_choice
+
+  } else {
+
+    # Estimate int_units and transform intersects relative to point coordinates
+    coord_shift <- function(g, x, y) g - c(x, y)
+
+    intersects[, c("int_units", "geometry", ".PID_split") :=
+                 list(as.numeric(units * st_area(geometry) / poly_area),
+                      st_sfc(mapply(coord_shift, geometry, .point_x,
+                                    .point_y, SIMPLIFY = FALSE)),
+                      substr(.point_ID, 1, 3))]
+
+    helper_progress_message("(2/4) Points intersected with polygons.",
+                            .type = "close")
+
+
+    ### SPLIT DATA FOR PROCESSING ##############################################
+
+    helper_progress_message("(3/4) Splitting data for processing.",
+                            .type = "open")
+
+    data_list <-
+      split(intersects, by = ".PID_split", keep.by = FALSE) %>%
+      helper_table_split()
+
+    helper_progress_message("(3/4) Data split for processing.", .type = "close")
+
+
+    ### DO INTEGRATION #########################################################
+
+    helper_progress_message("(4/4) Beginning analysis, using {helper_plan()}.",
+                            .type = "progress")
+
+    intersects <-
+      data_list %>%
+      map(setDT) %>%
+      future_map(raffle_integrate, .progress = helper_progress()) %>%
+      rbindlist()
+
+    ### PROCESS RESULTS AND RETURN OUTPUT ######################################
+
+    # Produce results object
     results <-
-      setorder(rbindlist(list(results, one_choice)), .point_ID)
+      intersects[, .(
+        candidates = list(data.table(poly_ID, probability)),
+        poly_ID = base::sample(poly_ID, size = 1, prob = probability)),
+        keyby = .point_ID]
+
+    # Add results from one_choice
+    if (nrow(one_choice) > 0) {
+      one_choice <-
+        one_choice[, .(candidates = list(data.table(poly_ID, probability = 1)),
+                       poly_ID),
+                   by = .point_ID]
+
+      results <-
+        setorder(rbindlist(list(results, one_choice)), .point_ID)
+    }
   }
 
   # Drop diagnostic field if not requested
