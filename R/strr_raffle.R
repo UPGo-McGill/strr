@@ -60,6 +60,9 @@ strr_raffle <- function(
 
   time_1 <- Sys.time()
 
+  chunk_size <- 50000
+  iterations <- 1
+
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
@@ -181,6 +184,21 @@ strr_raffle <- function(
   }
 
 
+  ### SET BATCH PROCESSING STRATEGY ############################################
+
+  if (nrow(points) > chunk_size) {
+
+    iterations <- ceiling(nrow(points) / chunk_size)
+
+    helper_progress_message(
+        "Points table identified. It will be processed in ", iterations,
+        " batches.")
+
+  } else {
+    helper_progress_message("Points table identified.")
+  }
+
+
   ### PREPARE POINTS AND POLYS TABLES ##########################################
 
   helper_progress_message("(1/4) Preparing tables for analysis.",
@@ -280,16 +298,48 @@ strr_raffle <- function(
     helper_progress_message("(3/4) Data split for processing.", .type = "close")
 
 
-    ### DO INTEGRATION #########################################################
+    ### DO INTEGRATION FOR SMALL TABLE #########################################
 
-    helper_progress_message("(4/4) Beginning analysis, using {helper_plan()}.",
-                            .type = "progress")
+    if (iterations == 1) {
+      helper_progress_message("(4/4) Beginning analysis, using {helper_plan()}.",
+                              .type = "progress")
 
-    intersects <-
-      data_list %>%
-      map(setDT) %>%
-      future_map(raffle_integrate, .progress = helper_progress()) %>%
-      rbindlist()
+      intersects <-
+        data_list %>%
+        map(setDT) %>%
+        future_map(raffle_integrate, .progress = helper_progress()) %>%
+        rbindlist()
+
+    } else {
+
+
+    ### DO INTEGRATION FOR LARGE TABLE #########################################
+
+      # Split data into 50,000-row chunks
+      no_elements <- ceiling(length(data_list) / iterations)
+
+      # Initialize empty list
+      intersects_list <- vector("list", iterations)
+
+      # Process each batch sequentially
+      for (i in seq_len(iterations)) {
+
+        helper_progress_message("(", i, "/", iterations + 1, ") Analyzing batch ",
+                                i, ", using {helper_plan()}.", .type = "progress")
+
+        intersects_list[[i]] <-
+          data_list[(1 + no_elements * (i - 1)):
+                      min((no_elements * i), length(data_list))] %>%
+          map(setDT) %>%
+          future_map(raffle_integrate, .progress = helper_progress()) %>%
+          rbindlist()
+      }
+
+      # Bind batches together
+      intersects <- rbindlist(intersects_list)
+
+    }
+
 
     ### PROCESS RESULTS AND RETURN OUTPUT ######################################
 
