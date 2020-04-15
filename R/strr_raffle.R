@@ -240,8 +240,9 @@ strr_raffle <- function(
 
   if (iterations == 1) {
 
-    helper_progress_message("(2/3) Intersecting points with polygons.",
-                            .type = "open")
+    helper_progress_message(
+      "(2/3) Intersecting points with polygons, using {helper_plan()}.",
+      .type = "progress")
 
     # Generate buffers and intersect with polygons
     intersects <-
@@ -301,17 +302,14 @@ strr_raffle <- function(
                                       .point_y, SIMPLIFY = FALSE)),
                         substr(.point_ID, 1, 3))]
 
-      helper_progress_message("(2/", 2 + iterations,
-                              ") Points intersected with polygons.",
-                              .type = "close")
-
       # Split data for processing
       data_list <-
         split(intersects, by = ".PID_split", keep.by = FALSE) %>%
         helper_table_split()
 
       helper_progress_message(
-        "(3/3) Beginning analysis, using {helper_plan()}.", .type = "progress")
+        "(3/3) Analyzing intersections, using {helper_plan()}.",
+        .type = "progress")
 
       # Do integration
       intersects <-

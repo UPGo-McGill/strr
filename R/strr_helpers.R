@@ -184,7 +184,7 @@ helper_progress_message <- function(..., .type = "main", .quiet = NULL) {
     } else if (.type == "progress") {
 
       args <- purrr::map(args, crayon::silver)
-      args <- c("\n", args, output_time, "\n\n", sep = "")
+      args <- c("\n", args, output_time, "\n", sep = "")
 
     } else if (.type == "final") {
 
