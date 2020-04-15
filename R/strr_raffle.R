@@ -357,9 +357,9 @@ strr_raffle <- function(
           slice(((i - 1) * chunk_size + 1):(i * chunk_size))
 
         # Generate buffers and intersect with polygons
-        intersects <-
+        intersects_list[[i]] <-
           # Initialize helper fields
-          setDT(intersects)[, .(
+          setDT(intersects_list[[i]])[, .(
             .point_ID,
             .point_x = st_coordinates(geometry)[,1],
             .point_y = st_coordinates(geometry)[,2])] %>%
