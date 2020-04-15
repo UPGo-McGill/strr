@@ -65,7 +65,7 @@ strr_raffle <- function(
 
   ## Prepare batch processing variables
 
-  chunk_size <- 50000
+  chunk_size <- 25000
   iterations <- 1
 
 
