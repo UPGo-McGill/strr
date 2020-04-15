@@ -60,13 +60,14 @@ strr_raffle <- function(
 
   time_1 <- Sys.time()
 
-  chunk_size <- 50000
-  iterations <- 1
-
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
-  helper_progress_message("Raffling point locations.")
+  ## Prepare batch processing variables
+
+  chunk_size <- 50000
+  iterations <- 1
+
 
   ## Prepare data.table variables
 
@@ -90,6 +91,7 @@ strr_raffle <- function(
     Sys.setenv("_R_S3_METHOD_REGISTRATION_NOTE_OVERWRITES_" = s3_warn)
     .Options$future.globals.maxSize <- NULL
     })
+
 
   ## Check distance, pdf, diagnostic and quiet flags
 
@@ -146,6 +148,7 @@ strr_raffle <- function(
     stop("The object `polys` must be of class sf or sp.")
   }
 
+
   ## Check that polys fields exist
 
   tryCatch(
@@ -191,17 +194,17 @@ strr_raffle <- function(
     iterations <- ceiling(nrow(points) / chunk_size)
 
     helper_progress_message(
-        "Points table identified. It will be processed in ", iterations,
-        " batches.")
+        "Raffling point locations in ", iterations, " batches.")
 
   } else {
-    helper_progress_message("Points table identified.")
+    helper_progress_message("Raffling point locations.")
   }
 
 
   ### PREPARE POINTS AND POLYS TABLES ##########################################
 
-  helper_progress_message("(1/4) Preparing tables for analysis.",
+  helper_progress_message("(1/", max(3, 1 + iterations),
+                          ") Preparing tables for analysis.",
                           .type = "open")
 
   # Transform polys CRS to match points and rename fields for data.table
@@ -227,140 +230,217 @@ strr_raffle <- function(
   points <- mutate(points, .point_ID = seq_len(n()))
   intersects <- copy(points)
 
-  helper_progress_message("(1/4) Tables prepared for analysis.",
+  helper_progress_message("(1/", max(3, 1 + iterations),
+                          ") Tables prepared for analysis.",
                           .type = "close")
 
-  helper_progress_message("(2/4) Intersecting points with polygons.",
-                          .type = "open")
 
-  # Generate buffers and intersect with polygons
-  intersects <-
-    # Initialize helper fields
-    setDT(intersects)[, .(
-      .point_ID,
-      .point_x = st_coordinates(geometry)[,1],
-      .point_y = st_coordinates(geometry)[,2],
-      geometry = st_buffer(geometry, dist = distance, nQuadSegs = 10))] %>%
-    st_as_sf(agr = "constant") %>%
-    st_intersection(polys)
+  ### PROCESS FOR SMALL TABLE ##################################################
 
-  # Exit early if no intersections are found
-  if (nrow(intersects) == 0) {
-    stop("The points and polys tables do not intersect.")
-  }
+  if (iterations == 1) {
 
-  # Cast multipolygons to polygons
-  intersects <-
-    intersects %>%
-    filter(!st_is(geometry, "POLYGON")) %>%
-    st_cast("POLYGON", warn = FALSE) %>%
-    rbind(filter(intersects, st_is(geometry, "POLYGON")))
-
-  # Store results where there is only one possible option
-  one_choice <- setDT(intersects)[, if (.N == 1) .SD, by = ".point_ID"]
-
-  intersects <- intersects[, if (.N > 1) .SD, by = ".point_ID"]
-
-  # Only run subseqent steps if there are points with multiple intersects
-  if (nrow(intersects) == 0) {
-
-    one_choice <-
-      one_choice[, .(candidates = list(data.table(poly_ID, probability = 1)),
-                     poly_ID),
-                 by = .point_ID]
-
-    results <- one_choice
-
-  } else {
-
-    # Estimate int_units and transform intersects relative to point coordinates
-    coord_shift <- function(g, x, y) g - c(x, y)
-
-    intersects[, c("int_units", "geometry", ".PID_split") :=
-                 list(as.numeric(units * st_area(geometry) / poly_area),
-                      st_sfc(mapply(coord_shift, geometry, .point_x,
-                                    .point_y, SIMPLIFY = FALSE)),
-                      substr(.point_ID, 1, 3))]
-
-    helper_progress_message("(2/4) Points intersected with polygons.",
-                            .type = "close")
-
-
-    ### SPLIT DATA FOR PROCESSING ##############################################
-
-    helper_progress_message("(3/4) Splitting data for processing.",
+    helper_progress_message("(2/3) Intersecting points with polygons.",
                             .type = "open")
 
-    data_list <-
-      split(intersects, by = ".PID_split", keep.by = FALSE) %>%
-      helper_table_split()
+    # Generate buffers and intersect with polygons
+    intersects <-
+      # Initialize helper fields
+      setDT(intersects)[, .(
+        .point_ID,
+        .point_x = st_coordinates(geometry)[,1],
+        .point_y = st_coordinates(geometry)[,2],
+        geometry = st_buffer(geometry, dist = distance, nQuadSegs = 10))] %>%
+      st_as_sf(agr = "constant") %>%
+      st_intersection(polys)
 
-    helper_progress_message("(3/4) Data split for processing.", .type = "close")
+    # Exit early if no intersections are found
+    if (nrow(intersects) == 0) {
+      stop("The points and polys tables do not intersect.")
+    }
+
+    # Cast multipolygons to polygons
+    intersects <-
+      intersects %>%
+      filter(!st_is(geometry, "POLYGON")) %>%
+      st_cast("POLYGON", warn = FALSE) %>%
+      rbind(filter(intersects, st_is(geometry, "POLYGON")))
+
+    # Store results where there is only one possible option
+    one_choice <- setDT(intersects)[, if (.N == 1) .SD, by = ".point_ID"]
+
+    intersects <- intersects[, if (.N > 1) .SD, by = ".point_ID"]
 
 
-    ### DO INTEGRATION FOR SMALL TABLE #########################################
+    # Only run subseqent steps if there are points with multiple intersects
+    if (nrow(intersects) == 0) {
 
-    if (iterations == 1) {
-      helper_progress_message("(4/4) Beginning analysis, using {helper_plan()}.",
-                              .type = "progress")
+      one_choice <-
+        one_choice[, .(candidates = list(data.table(poly_ID, probability = 1)),
+                       poly_ID),
+                   by = .point_ID]
 
+      results <- one_choice
+
+    } else {
+
+      # Estimate int_units, transform intersects relative to point coordinates
+      coord_shift <- function(g, x, y) g - c(x, y)
+
+      intersects[, c("int_units", "geometry", ".PID_split") :=
+                   list(as.numeric(units * st_area(geometry) / poly_area),
+                        st_sfc(mapply(coord_shift, geometry, .point_x,
+                                      .point_y, SIMPLIFY = FALSE)),
+                        substr(.point_ID, 1, 3))]
+
+      helper_progress_message("(2/", 2 + iterations,
+                              ") Points intersected with polygons.",
+                              .type = "close")
+
+      # Split data for processing
+      data_list <-
+        split(intersects, by = ".PID_split", keep.by = FALSE) %>%
+        helper_table_split()
+
+      helper_progress_message(
+        "(3/3) Beginning analysis, using {helper_plan()}.", .type = "progress")
+
+      # Do integration
       intersects <-
         data_list %>%
         map(setDT) %>%
         future_map(raffle_integrate, .progress = helper_progress()) %>%
         rbindlist()
 
+      # Produce results object
+      results <-
+        intersects[, .(
+          candidates = list(data.table(poly_ID, probability)),
+          poly_ID = base::sample(poly_ID, size = 1, prob = probability)),
+          keyby = .point_ID]
+
+      # Add results from one_choice
+      if (nrow(one_choice) > 0) {
+        one_choice <-
+          one_choice[, .(candidates = list(
+            data.table(poly_ID, probability = 1)), poly_ID), by = .point_ID]
+
+        results <-
+          setorder(rbindlist(list(results, one_choice)), .point_ID)
+        }
+      }
+
+
+    ### PROCESS FOR LARGE TABLE ################################################
+
     } else {
 
-
-    ### DO INTEGRATION FOR LARGE TABLE #########################################
-
-      # Split data into 50,000-row chunks
-      no_elements <- ceiling(length(data_list) / iterations)
-
-      # Initialize empty list
+      # Initialize empty lists
       intersects_list <- vector("list", iterations)
+      results_list <- vector("list", iterations)
 
       # Process each batch sequentially
       for (i in seq_len(iterations)) {
 
-        helper_progress_message("(", i, "/", iterations + 1, ") Analyzing batch ",
-                                i, ", using {helper_plan()}.", .type = "progress")
+        helper_progress_message(
+          "(", i + 1, "/", iterations + 1, ") Analyzing batch ", i,
+          ", using {helper_plan()}.", .type = "progress")
 
         intersects_list[[i]] <-
-          data_list[(1 + no_elements * (i - 1)):
-                      min((no_elements * i), length(data_list))] %>%
-          map(setDT) %>%
-          future_map(raffle_integrate, .progress = helper_progress()) %>%
-          rbindlist()
+          intersects %>%
+          slice(((i - 1) * chunk_size + 1):(i * chunk_size))
+
+        # Generate buffers and intersect with polygons
+        intersects_list[[i]] <-
+          # Initialize helper fields
+          setDT(intersects_list[[i]])[, .(
+            .point_ID,
+            .point_x = st_coordinates(geometry)[,1],
+            .point_y = st_coordinates(geometry)[,2],
+            geometry = st_buffer(geometry, distance, nQuadSegs = 10))] %>%
+          st_as_sf(agr = "constant") %>%
+          st_intersection(polys)
+
+        # Exit early if no intersections are found
+        if (nrow(intersects_list[[i]]) == 0) {
+          intersects_list[[i]] <- NULL
+          next
+        }
+
+        # Cast multipolygons to polygons
+        intersects_list[[i]] <-
+          intersects_list[[i]] %>%
+          filter(!st_is(geometry, "POLYGON")) %>%
+          st_cast("POLYGON", warn = FALSE) %>%
+          rbind(filter(intersects_list[[i]], st_is(geometry, "POLYGON")))
+
+        # Store results where there is only one possible option
+        one_choice <-
+          setDT(intersects_list[[i]])[, if (.N == 1) .SD, by = ".point_ID"]
+
+        intersects_list[[i]] <-
+          intersects_list[[i]][, if (.N > 1) .SD, by = ".point_ID"]
+
+        # Only run subseqent steps if there are points with multiple intersects
+        if (nrow(intersects_list[[i]]) == 0) {
+
+          one_choice <-
+            one_choice[, .(candidates = list(
+              data.table(poly_ID, probability = 1)), poly_ID), by = .point_ID]
+
+          results_list[[i]] <- one_choice
+
+        } else {
+
+          # Estimate int_units, transform intersects relative to point coords
+          coord_shift <- function(g, x, y) g - c(x, y)
+
+          intersects_list[[i]][, c("int_units", "geometry", ".PID_split") :=
+                                 list(as.numeric(
+                                   units * st_area(geometry) / poly_area),
+                                   st_sfc(mapply(coord_shift, geometry,
+                                                 .point_x, .point_y,
+                                                 SIMPLIFY = FALSE)),
+                                   substr(.point_ID, 1, 3))]
+
+          # Split data for processing
+          data_list <-
+            split(intersects_list[[i]], by = ".PID_split", keep.by = FALSE) %>%
+            helper_table_split()
+
+          # Do integration
+          intersects_list[[i]] <-
+            data_list %>%
+            map(setDT) %>%
+            future_map(raffle_integrate, .progress = helper_progress()) %>%
+            rbindlist()
+
+          # Produce results object
+          results_list[[i]] <-
+            intersects_list[[i]][, .(
+              candidates = list(data.table(poly_ID, probability)),
+              poly_ID = base::sample(poly_ID, size = 1, prob = probability)),
+              keyby = .point_ID]
+
+          # Add results from one_choice
+          if (nrow(one_choice) > 0) {
+            one_choice <-
+              one_choice[, .(candidates = list(
+                data.table(poly_ID, probability = 1)), poly_ID), by = .point_ID]
+
+            results_list[[i]] <-
+              setorder(rbindlist(list(results_list[[i]], one_choice)),
+                       .point_ID)
+          }
+        }
       }
 
       # Bind batches together
-      intersects <- rbindlist(intersects_list)
+      results <-  setorder(rbindlist(results_list), .point_ID)
 
     }
 
 
-    ### PROCESS RESULTS AND RETURN OUTPUT ######################################
-
-    # Produce results object
-    results <-
-      intersects[, .(
-        candidates = list(data.table(poly_ID, probability)),
-        poly_ID = base::sample(poly_ID, size = 1, prob = probability)),
-        keyby = .point_ID]
-
-    # Add results from one_choice
-    if (nrow(one_choice) > 0) {
-      one_choice <-
-        one_choice[, .(candidates = list(data.table(poly_ID, probability = 1)),
-                       poly_ID),
-                   by = .point_ID]
-
-      results <-
-        setorder(rbindlist(list(results, one_choice)), .point_ID)
-    }
-  }
+  ### PROCESS RESULTS AND RETURN OUTPUT ########################################
 
   # Drop diagnostic field if not requested
   if (!diagnostic) results[, candidates := NULL]
