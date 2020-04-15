@@ -207,10 +207,11 @@ strr_raffle <- function(
                           ") Preparing tables for analysis.",
                           .type = "open")
 
-  # Transform polys CRS to match points and rename fields for data.table
-  polys <- st_transform(polys, st_crs(points)) %>%
-    rename(poly_ID = {{ poly_ID }},
-           units = {{ units }})
+  # Transform points CRS to match polys
+  points <- st_transform(points, st_crs(polys))
+
+  # Rename polys fields for data.table
+  polys <- rename(polys, poly_ID = {{ poly_ID }}, units = {{ units }})
 
   # Check for invalid polys geometry
   polys <-
@@ -244,14 +245,22 @@ strr_raffle <- function(
 
     # Generate buffers and intersect with polygons
     intersects <-
-      # Initialize helper fields
+      # Initialize helper fields and drop geometry for the split
       setDT(intersects)[, .(
         .point_ID,
         .point_x = st_coordinates(geometry)[,1],
-        .point_y = st_coordinates(geometry)[,2],
-        geometry = st_buffer(geometry, dist = distance, nQuadSegs = 10))] %>%
-      st_as_sf(agr = "constant") %>%
-      st_intersection(polys)
+        .point_y = st_coordinates(geometry)[,2])] %>%
+      split(by = ".point_ID") %>%
+      helper_table_split(1) %>%
+      future_map(~{
+        .x %>%
+          st_as_sf(coords = c(".point_x", ".point_y"), crs = st_crs(points),
+                   remove = FALSE, agr = "constant") %>%
+          st_buffer(distance, 10) %>%
+          st_intersection(polys)
+      }, .progress = TRUE) %>%
+      rbindlist() %>%
+      st_as_sf()
 
     # Exit early if no intersections are found
     if (nrow(intersects) == 0) {
@@ -350,15 +359,23 @@ strr_raffle <- function(
           slice(((i - 1) * chunk_size + 1):(i * chunk_size))
 
         # Generate buffers and intersect with polygons
-        intersects_list[[i]] <-
+        intersects <-
           # Initialize helper fields
-          setDT(intersects_list[[i]])[, .(
+          setDT(intersects)[, .(
             .point_ID,
             .point_x = st_coordinates(geometry)[,1],
-            .point_y = st_coordinates(geometry)[,2],
-            geometry = st_buffer(geometry, distance, nQuadSegs = 10))] %>%
-          st_as_sf(agr = "constant") %>%
-          st_intersection(polys)
+            .point_y = st_coordinates(geometry)[,2])] %>%
+          split(by = ".point_ID") %>%
+          helper_table_split(1) %>%
+          future_map(~{
+            .x %>%
+              st_as_sf(coords = c(".point_x", ".point_y"), crs = st_crs(points),
+                       remove = FALSE, agr = "constant") %>%
+              st_buffer(distance, 10) %>%
+              st_intersection(polys)
+          }, .progress = TRUE) %>%
+          rbindlist() %>%
+          st_as_sf()
 
         # Exit early if no intersections are found
         if (nrow(intersects_list[[i]]) == 0) {
