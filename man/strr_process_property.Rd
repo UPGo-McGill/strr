@@ -8,11 +8,11 @@ strr_process_property(property, keep_cols = FALSE, quiet = FALSE)
 }
 \arguments{
 \item{property}{An unprocessed property data frame in the raw AirDNA format,
-with either 35 or 56 fields.}
+with either 36 or 56 fields.}
 
 \item{keep_cols}{A logical scalar. If the `property` table has 56 fields,
-should the superfluous 21 fields be kept, or should the table be trimmed to
-the 35 fields which UPGo uses (default)?}
+should the superfluous 20 fields be kept, or should the table be trimmed to
+the 36 fields which UPGo uses (default)?}
 
 \item{quiet}{A logical scalar. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}
@@ -43,10 +43,10 @@ after the `Zipcode`, `Average Daily Rate (USD)`,
 `Calendar Last Updated`, `Security Deposit (Native)`,
 `Cleaning Fee (Native)`, `Extra People Fee (Native)`,
 `Published Nightly Rate (USD)`, `Published Monthly Rate (USD)`,
-`Published Weekly Rate (USD)`, `Airbnb Listing URL`,
-`Airbnb Listing Main Image URL`, `HomeAway Listing URL`, and
-`HomeAway Listing Main Image URL` fields are removed on import). Eventually
-the function will be updated to support inputs from Inside Airbnb instead.
+`Published Weekly Rate (USD)`, `Airbnb Listing URL`, `HomeAway Listing URL`,
+and `HomeAway Listing Main Image URL` fields are removed on import).
+Eventually the function will be updated to support inputs from Inside
+Airbnb as well.
 
 Because the expectation is that the input files will be very large, the
 function uses updating by reference on the property input table. This saves a

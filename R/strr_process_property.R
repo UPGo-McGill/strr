@@ -18,10 +18,10 @@
 #' `Calendar Last Updated`, `Security Deposit (Native)`,
 #' `Cleaning Fee (Native)`, `Extra People Fee (Native)`,
 #' `Published Nightly Rate (USD)`, `Published Monthly Rate (USD)`,
-#' `Published Weekly Rate (USD)`, `Airbnb Listing URL`,
-#' `Airbnb Listing Main Image URL`, `HomeAway Listing URL`, and
-#' `HomeAway Listing Main Image URL` fields are removed on import). Eventually
-#' the function will be updated to support inputs from Inside Airbnb instead.
+#' `Published Weekly Rate (USD)`, `Airbnb Listing URL`, `HomeAway Listing URL`,
+#' and `HomeAway Listing Main Image URL` fields are removed on import).
+#' Eventually the function will be updated to support inputs from Inside
+#' Airbnb as well.
 #'
 #' Because the expectation is that the input files will be very large, the
 #' function uses updating by reference on the property input table. This saves a
@@ -32,10 +32,10 @@
 #' behaviour.
 #'
 #' @param property An unprocessed property data frame in the raw AirDNA format,
-#' with either 35 or 56 fields.
+#' with either 36 or 56 fields.
 #' @param keep_cols A logical scalar. If the `property` table has 56 fields,
-#' should the superfluous 21 fields be kept, or should the table be trimmed to
-#' the 35 fields which UPGo uses (default)?
+#' should the superfluous 20 fields be kept, or should the table be trimmed to
+#' the 36 fields which UPGo uses (default)?
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return A list with three elements: 1) the processed property table, with 35
@@ -64,8 +64,8 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
     stop("The input table must be a data frame.")
   }
 
-  if (!length(property) %in% c(35, 56)) {
-    stop("The input table must have either 35 or 56 fields.")
+  if (!length(property) %in% c(36, 56)) {
+    stop("The input table must have either 36 or 56 fields.")
   }
 
   # Check that keep_cols and quiet are logical
@@ -109,8 +109,7 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
                    "calendar_updated", "security_deposit_native",
                    "cleaning_fee_native", "extra_people_fee_native",
                    "nightly_rate", "monthly_rate", "weekly_rate",
-                   "ab_listing_url", "ab_image_url", "ha_listing_url",
-                   "ha_image_url") := NULL]
+                   "ab_listing_url", "ha_listing_url", "ha_image_url") := NULL]
 
       helper_progress_message("Extra fields dropped.", .type = "close")
 
@@ -125,7 +124,7 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
                "security_deposit", "cleaning_fee", "extra_people_fee",
                "check_in_time", "check_out_time", "minimum_stay", "num_reviews",
                "num_photos", "instant_book", "rating", "ab_property", "ab_host",
-               "ha_property", "ha_host"))
+               "ab_image_url", "ha_property", "ha_host"))
     }
 
 
@@ -210,6 +209,7 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
     strr_housing() %>%
     select(.data$property_ID, .data$host_ID, .data$listing_title:.data$scraped,
            .data$housing, .data$latitude:.data$longitude, .data$country,
+           # TKTK this will erroneously drop the last field if keep_cols is TRUE
            .data$region:.data$ha_host)
 
   helper_progress_message("(4/5) New host_ID and housing fields added.",
