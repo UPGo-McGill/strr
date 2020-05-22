@@ -56,7 +56,7 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
-  time_1 <- Sys.time()
+  start_time <- Sys.time()
 
   .datatable.aware = TRUE
 

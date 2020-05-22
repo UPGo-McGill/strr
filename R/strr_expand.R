@@ -24,7 +24,7 @@
 
 strr_expand <- function(data, quiet = FALSE) {
 
-  time_1 <- Sys.time()
+  start_time <- Sys.time()
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 

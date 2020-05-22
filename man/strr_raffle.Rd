@@ -20,12 +20,10 @@ strr_raffle(
 \item{points}{An sf or sp point-geometry object, in a projected coordinate
 system. If the data frame does not have spatial attributes, an attempt will
 be made to convert it to sf using \code{\link{strr_as_sf}}. The result will
-be transformed into the Web Mercator projection (EPSG: 3857) for distance
-and area calculations. To use a projection more suitable to the data,
-supply an sf or sp object.}
+be transformed into the CRS of `polys`.}
 
 \item{polys}{An sf or sp polygon-geometry object with administrative
-geographies as polygons. It will be transformed into the CRS of `points`.}
+geographies as polygons.}
 
 \item{poly_ID}{The name of a character or numeric variable in the polys
 object to be used as an ID to identify the "winning" polygon assigned to

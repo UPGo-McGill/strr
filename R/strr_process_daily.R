@@ -48,7 +48,7 @@
 strr_process_daily <- function(daily, property, keep_cols = FALSE,
                                quiet = FALSE) {
 
-  time_1 <- Sys.time()
+  start_time <- Sys.time()
 
   # Print \n on exit so error messages don't collide with progress messages
   on.exit(if (!quiet) message())

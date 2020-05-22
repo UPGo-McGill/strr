@@ -152,7 +152,9 @@ helper_table_split <- function(data_list, multiplier = 10, type = ".list") {
 
 helper_progress_message <- function(..., .type = "main", .quiet = NULL) {
 
-  ellipsis::check_dots_unnamed()
+  if (requireNamespace("ellipsis", quietly = TRUE)) {
+    ellipsis::check_dots_unnamed()
+  }
 
   if (missing(.quiet)) {
     .quiet <-
@@ -188,8 +190,8 @@ helper_progress_message <- function(..., .type = "main", .quiet = NULL) {
 
     } else if (.type == "final") {
 
-      time_1 <- get("time_1", envir = parent.frame(n = 1))
-      total_time <- Sys.time() - time_1
+      start_time <- get("start_time", envir = parent.frame(n = 1))
+      total_time <- Sys.time() - start_time
       time_final_1 <- substr(total_time, 1, 5)
       time_final_2 <- attr(total_time, 'units')
 
@@ -229,5 +231,93 @@ helper_test_field <- function(data, field, arg_name) {
         "`{arg_name}` argument is not a valid field in the ",
         "input table.")
       )})
+}
+
+
+#' Helper function to set a progress reporting strategy
+#'
+#' \code{handler_strr} sets a progress reporting strategy.
+#'
+#' @param message A character string describing the task being iterated.
+#' @return No visible output.
+
+handler_strr <- function(message) {
+
+  progressr::handlers(
+    progressr::handler_progress(
+      format = crayon::silver(crayon::italic(paste0(
+        message,
+        " :current of :total (:tick_rate/s) [:bar] :percent, ETA: :eta"))),
+      show_after = 0
+    ))
+}
+
+
+#' Helper function to display a message
+#'
+#' \code{helper_message} produces a formatted progress message.
+#' @param ... Character strings to be displayed. The strings can include
+#' code for evaluation via \code{glue::glue} inside `{}`.
+#' @param .type One of c("open", "close", "main", "final"). "Open" prints a
+#' temporary message in grey italics with no timestamp. "Close" is designed to
+#' be called after "open", since it overwrites the previous line with a message
+#' in grey with a timestamp in cyan. "Main" is the same as "close" but does not
+#' override the previous line. "Final" is the same as "main" but appends an
+#' additional line in cyan bold which states the total time.
+#' @param .quiet The name of the argument in the calling function specifying
+#' whether messages should be displayed.
+#' @return A status message.
+
+helper_message <- function(..., .type = "main", .quiet = NULL) {
+
+  if (requireNamespace("ellipsis", quietly = TRUE)) {
+    ellipsis::check_dots_unnamed()
+  }
+
+  if (missing(.quiet)) {
+    .quiet <-
+      get("quiet", envir = parent.frame(n = 1))
+  }
+
+  if (!.quiet) {
+
+    args <- purrr::map(list(...), ~glue::glue(.x))
+
+    output_time <- crayon::cyan(glue::glue(" ({substr(Sys.time(), 12, 19)})"))
+
+
+    if (.type == "open") {
+
+      args <- purrr::map(args, crayon::silver$italic)
+
+    } else if (.type == "close") {
+
+      args <- purrr::map(args, crayon::silver)
+      args <- c("\r", args, output_time, "\n", sep = "")
+
+    } else if (.type == "main") {
+
+      args <- purrr::map(args, crayon::silver)
+      args <- c(args, output_time, "\n", sep = "")
+
+    } else if (.type == "final") {
+
+      start_time <- get("start_time", envir = parent.frame(n = 1))
+      total_time <- Sys.time() - start_time
+      time_final_1 <- substr(total_time, 1, 5)
+      time_final_2 <- attr(total_time, 'units')
+
+      total_time <- crayon::cyan$bold(glue::glue(
+        "Total time: {time_final_1} {time_final_2}."
+      ))
+
+      args <- purrr::map(args, crayon::silver)
+      args <- c(args, output_time, "\n", total_time, "\n", sep = "")
+
+    }
+
+    message(args, appendLF = FALSE)
+
+  }
 }
 

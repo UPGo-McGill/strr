@@ -94,7 +94,7 @@ strr_ghost <- function(
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
-  time_1 <- Sys.time()
+  start_time <- Sys.time()
 
   helper_progress_message("Analyzing ghost hostels.")
 
@@ -477,7 +477,8 @@ strr_ghost <- function(
     EH_gm_fun <- function(x, y) {
       gm <- st_sf(geometry = st_sfc(list(x)), crs = crs_points,
                   agr = "constant")
-      EH_host <- st_set_agr(EH_buffers[EH_buffers$host_ID == y,], "constant")
+      EH_host <- sf::st_set_agr(EH_buffers[EH_buffers$host_ID == y,],
+                                "constant")
       st_intersection(gm, EH_host) %>% pull(.data$EH_property_ID)
     }
 

@@ -38,7 +38,7 @@ strr_multi <- function(daily, host,
 
   ### Error checking and initialization ########################################
 
-  time_1 <- Sys.time()
+  start_time <- Sys.time()
 
 
   ## data.table and future setup

@@ -14,11 +14,9 @@
 #' @param points An sf or sp point-geometry object, in a projected coordinate
 #'   system. If the data frame does not have spatial attributes, an attempt will
 #'   be made to convert it to sf using \code{\link{strr_as_sf}}. The result will
-#'   be transformed into the Web Mercator projection (EPSG: 3857) for distance
-#'   and area calculations. To use a projection more suitable to the data,
-#'   supply an sf or sp object.
+#'   be transformed into the CRS of `polys`.
 #' @param polys An sf or sp polygon-geometry object with administrative
-#'   geographies as polygons. It will be transformed into the CRS of `points`.
+#'   geographies as polygons.
 #' @param poly_ID The name of a character or numeric variable in the polys
 #'   object to be used as an ID to identify the "winning" polygon assigned to
 #'   each point in the output.
@@ -48,52 +46,59 @@
 #'   also be appended, which lists the possible polygons for each point, along
 #'   with their probabilities.
 #' @importFrom data.table copy data.table setDT setorder
-#' @importFrom dplyr %>% everything left_join mutate n select
+#' @importFrom dplyr %>%
 #' @importFrom rlang := .data
-#' @importFrom sf st_area st_as_sf st_buffer st_cast st_coordinates st_crs
-#' @importFrom sf st_collection_extract st_intersection st_sfc st_transform
 #' @export
 
 strr_raffle <- function(
   points, polys, poly_ID, units, distance = 200, seed = NULL, pdf = "airbnb",
   diagnostic = FALSE, quiet = FALSE) {
 
-  time_1 <- Sys.time()
-
-
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
-  ## Prepare batch processing variables
+  start_time <- Sys.time()
+
+
+  ## Prepare progress reporting ------------------------------------------------
+
+  .strr_env$pb <- progressr::progressor(0)
+
+
+  ## Prepare batch processing variables ----------------------------------------
 
   chunk_size <- 25000
   iterations <- 1
 
 
-  ## Prepare data.table variables
+  ## Prepare data.table and future variables -----------------------------------
 
   .datatable.aware = TRUE
 
   .I <- .point_ID <- .point_x <- .point_y <- candidates <- geometry <-
     int_units <- poly_area <- probability <- NULL
 
-  # Suppress message about spatstat s3 message
+  options(future.globals.maxSize = +Inf)
+
+
+  ## Try to suppress message about spatstat s3 message -------------------------
+
   s3_warn <- Sys.getenv("_R_S3_METHOD_REGISTRATION_NOTE_OVERWRITES_")
   Sys.setenv("_R_S3_METHOD_REGISTRATION_NOTE_OVERWRITES_" = FALSE)
 
-  # Remove future global export limit
-  options(future.globals.maxSize = +Inf)
 
-  # Print \n on exit so error messages don't collide with progress messages
-  # And restore s3 overwrite setting
-  # And remove future global size setting
+  ## Set on.exit options -------------------------------------------------------
+
   on.exit({
+    # Print \n on exit so error messages don't collide with progress messages
     if (!quiet) message()
+    # And restore s3 overwrite setting
     Sys.setenv("_R_S3_METHOD_REGISTRATION_NOTE_OVERWRITES_" = s3_warn)
+    # And remove future global size setting
     .Options$future.globals.maxSize <- NULL
     })
 
 
-  ## Check distance, pdf, diagnostic and quiet flags
+  ## Check distance, pdf, diagnostic and quiet flags ---------------------------
 
   # Check that distance > 0
   if (distance <= 0) {
@@ -117,21 +122,21 @@ strr_raffle <- function(
   }
 
 
-  ## Handle spatial attributes
+  ## Handle spatial attributes -------------------------------------------------
 
   # Convert points and polys from sp
   if (inherits(points, "Spatial")) {
-    points <- st_as_sf(points)
+    points <- sf::st_as_sf(points)
   }
   if (inherits(polys, "Spatial")) {
-    polys <- st_as_sf(polys)
+    polys <- sf::st_as_sf(polys)
   }
 
   # Check that points is sf, and convert to sf if possible
   if (!inherits(points, "sf")) {
     tryCatch({
-      points <- strr_as_sf(points, 3857)
-      helper_progress_message("Input table converted to sf.")
+      points <- strr_as_sf(points, sf::st_crs(polys))
+      helper_message("Input table converted to sf.")
       },
     error = function(e) {
       stop(paste0("The object `points` must be of class sf or sp, ",
@@ -149,7 +154,7 @@ strr_raffle <- function(
   }
 
 
-  ## Check that polys fields exist
+  ## Check that polys fields exist ---------------------------------------------
 
   tryCatch(
     pull(polys, {{ poly_ID }}),
@@ -164,23 +169,7 @@ strr_raffle <- function(
       ))
 
 
-  ## Set poly_ID_flag to avoid future name collision with poly_ID
-
-  poly_ID_flag <-
-    dplyr::case_when(
-      tryCatch({select(points, poly_ID); TRUE},
-               error = function(e) FALSE)  ~ "string",
-      tryCatch({select(points, {{ poly_ID }}); TRUE},
-               error = function(e) FALSE)  ~ "symbol",
-      TRUE ~ "none"
-    )
-
-  # Rename points$poly_ID if it exists
-  if (poly_ID_flag == "string") {
-    points <- rename(points, poly_ID_temp = .data$poly_ID)
-  }
-
-  ## Set seed if seed is supplied
+  ## Set seed if seed is supplied ----------------------------------------------
 
   if (!missing(seed)) {
     set.seed(seed)
@@ -193,269 +182,144 @@ strr_raffle <- function(
 
     iterations <- ceiling(nrow(points) / chunk_size)
 
-    helper_progress_message(
-        "Raffling point locations in ", iterations, " batches.")
-
-  } else {
-    helper_progress_message("Raffling point locations.")
+    helper_message("Raffling point locations in ", iterations, " batches.")
   }
 
 
   ### PREPARE POINTS AND POLYS TABLES ##########################################
 
-  helper_progress_message("(1/", max(3, 1 + iterations),
-                          ") Preparing tables for analysis.",
-                          .type = "open")
+  helper_message("(1/", 1 + iterations, ") Preparing tables for analysis.",
+                 .type = "open")
+
+
+  ## Process points ------------------------------------------------------------
 
   # Transform points CRS to match polys
-  points <- st_transform(points, st_crs(polys))
+  points <- sf::st_transform(points, sf::st_crs(polys))
+
+  # Add .point_ID field for subsequent use
+  points <- dplyr::mutate(points, .point_ID = seq_len(dplyr::n()))
+
+
+  ## Process polys -------------------------------------------------------------
+
+  # Set poly_ID_flag to avoid future name collision with poly_ID
+  poly_ID_flag <-
+    dplyr::case_when(
+      tryCatch({dplyr::select(points, poly_ID); TRUE},
+               error = function(e) FALSE)  ~ "string",
+      tryCatch({dplyr::select(points, {{ poly_ID }}); TRUE},
+               error = function(e) FALSE)  ~ "symbol",
+      TRUE ~ "none"
+    )
+
+  # Rename points$poly_ID if it exists
+  if (poly_ID_flag == "string") {
+    points <- dplyr::rename(points, poly_ID_temp = .data$poly_ID)
+  }
 
   # Rename polys fields for data.table
-  polys <- rename(polys, poly_ID = {{ poly_ID }}, units = {{ units }})
+  polys <- dplyr::rename(polys, poly_ID = {{ poly_ID }}, units = {{ units }})
 
   # Check for invalid polys geometry
   polys <-
     polys %>%
-    filter(st_is(geometry, "GEOMETRYCOLLECTION")) %>%
-    mutate(geometry = st_union(st_collection_extract(geometry, "POLYGON"))) %>%
-    rbind(filter(polys, !st_is(geometry, "GEOMETRYCOLLECTION")))
+    dplyr::filter(sf::st_is(geometry, "GEOMETRYCOLLECTION")) %>%
+    dplyr::mutate(geometry = sf::st_union(sf::st_collection_extract(
+      geometry, "POLYGON"))) %>%
+    rbind(dplyr::filter(polys, !sf::st_is(geometry, "GEOMETRYCOLLECTION")))
 
   # Clean up polys and initialize poly_area field
   polys <-
     setDT(polys)[units > 0, .(poly_ID = as.character(poly_ID), units,
-                              poly_area = st_area(geometry),
+                              poly_area = sf::st_area(geometry),
                               geometry)] %>%
-    st_as_sf(agr = "constant")
+    sf::st_as_sf(agr = "constant")
 
-  # Initialize intersects
-  points <- mutate(points, .point_ID = seq_len(n()))
-  intersects <- copy(points)
-
-  helper_progress_message("(1/", max(3, 1 + iterations),
+  helper_message("(1/", 1 + iterations,
                           ") Tables prepared for analysis.",
                           .type = "close")
 
 
-  ### PROCESS FOR SMALL TABLE ##################################################
+  ### Dispatch to main helper functions ########################################
 
   if (iterations == 1) {
 
-    helper_progress_message(
-      "(2/3) Intersecting points with polygons, using {helper_plan()}.",
-      .type = "progress")
+    helper_message("(2/2) Analyzing points, using {helper_plan()}.")
 
-    # Generate buffers and intersect with polygons
-    intersects <-
-      # Initialize helper fields and drop geometry for the split
-      setDT(intersects)[, .(
-        .point_ID,
-        .point_x = st_coordinates(geometry)[,1],
-        .point_y = st_coordinates(geometry)[,2])] %>%
-      split(by = ".point_ID") %>%
-      helper_table_split(1) %>%
-      future_map(~{
-        .x %>%
-          st_as_sf(coords = c(".point_x", ".point_y"), crs = st_crs(points),
-                   remove = FALSE, agr = "constant") %>%
-          st_buffer(distance, 10) %>%
-          st_intersection(polys)
-      }, .progress = TRUE) %>%
-      rbindlist() %>%
-      st_as_sf()
+    if (!quiet) {
 
-    # Exit early if no intersections are found
-    if (nrow(intersects) == 0) {
-      stop("The points and polys tables do not intersect.")
+      handler_strr("Intersecting row")
+
+      progressr::with_progress({
+        results <- helper_intersect(points, polys, distance, quiet)
+      })
+
+      if (sum(map_int(results, nrow)) == 0) {
+        stop("The input tables do not intersect.")}
+
+      handler_strr("Integrating row")
+
+      progressr::with_progress({
+        results <- helper_integrate(results, pdf, quiet)
+      })
+
+    } else {
+
+      results <- helper_intersect(points, polys, distance, quiet)
+      results <- helper_integrate(results, pdf, quiet)
+
     }
 
-    # Cast multipolygons to polygons
-    intersects <-
-      intersects %>%
-      filter(!st_is(geometry, "POLYGON")) %>%
-      st_cast("POLYGON", warn = FALSE) %>%
-      rbind(filter(intersects, st_is(geometry, "POLYGON")))
+  } else {
 
-    # Store results where there is only one possible option
-    one_choice <- setDT(intersects)[, if (.N == 1) .SD, by = ".point_ID"]
+    # Initialize empty lists
+    points_list <- vector("list", iterations)
+    results_list <- vector("list", iterations)
 
-    intersects <- intersects[, if (.N > 1) .SD, by = ".point_ID"]
+    # Process each batch sequentially
+    for (i in seq_len(iterations)) {
 
+      helper_message("(", i + 1, "/", iterations + 1, ") Analyzing batch ", i,
+        ", using {helper_plan()}.")
 
-    # Only run subseqent steps if there are points with multiple intersects
-    if (nrow(intersects) == 0) {
+      points_list[[i]] <-
+        points %>%
+        slice(((i - 1) * chunk_size + 1):(i * chunk_size))
 
-      one_choice <-
-        one_choice[, .(candidates = list(data.table(poly_ID, probability = 1)),
-                       poly_ID),
-                   by = .point_ID]
+      if (!quiet) {
 
-      results <- one_choice
+        handler_strr("Intersecting row")
 
-    } else {
-
-      # Estimate int_units, transform intersects relative to point coordinates
-      coord_shift <- function(g, x, y) g - c(x, y)
-
-      intersects[, c("int_units", "geometry", ".PID_split") :=
-                   list(as.numeric(units * st_area(geometry) / poly_area),
-                        st_sfc(mapply(coord_shift, geometry, .point_x,
-                                      .point_y, SIMPLIFY = FALSE)),
-                        substr(.point_ID, 1, 3))]
-
-      # Split data for processing
-      data_list <-
-        split(intersects, by = ".PID_split", keep.by = FALSE) %>%
-        helper_table_split()
-
-      helper_progress_message(
-        "(3/3) Analyzing intersections, using {helper_plan()}.",
-        .type = "progress")
-
-      # Do integration
-      intersects <-
-        data_list %>%
-        map(setDT) %>%
-        future_map(raffle_integrate, .progress = helper_progress()) %>%
-        rbindlist()
-
-      # Produce results object
-      results <-
-        intersects[, .(
-          candidates = list(data.table(poly_ID, probability)),
-          poly_ID = base::sample(poly_ID, size = 1, prob = probability)),
-          keyby = .point_ID]
-
-      # Add results from one_choice
-      if (nrow(one_choice) > 0) {
-        one_choice <-
-          one_choice[, .(candidates = list(
-            data.table(poly_ID, probability = 1)), poly_ID), by = .point_ID]
-
-        results <-
-          setorder(rbindlist(list(results, one_choice)), .point_ID)
-        }
-      }
-
-
-    ### PROCESS FOR LARGE TABLE ################################################
-
-    } else {
-
-      # Initialize empty lists
-      intersects_list <- vector("list", iterations)
-      results_list <- vector("list", iterations)
-
-      # Process each batch sequentially
-      for (i in seq_len(iterations)) {
-
-        helper_progress_message(
-          "(", i + 1, "/", iterations + 1, ") Analyzing batch ", i,
-          ", using {helper_plan()}.", .type = "progress")
-
-        intersects_list[[i]] <-
-          intersects %>%
-          slice(((i - 1) * chunk_size + 1):(i * chunk_size))
-
-        # Generate buffers and intersect with polygons
-        intersects_list[[i]] <-
-          # Initialize helper fields
-          setDT(intersects_list[[i]])[, .(
-            .point_ID,
-            .point_x = st_coordinates(geometry)[,1],
-            .point_y = st_coordinates(geometry)[,2])] %>%
-          split(by = ".point_ID") %>%
-          helper_table_split(1) %>%
-          future_map(~{
-            .x %>%
-              st_as_sf(coords = c(".point_x", ".point_y"), crs = st_crs(points),
-                       remove = FALSE, agr = "constant") %>%
-              st_buffer(distance, 10) %>%
-              st_intersection(polys)
-          }, .progress = TRUE) %>%
-          rbindlist() %>%
-          st_as_sf()
-
-        # Exit early if no intersections are found
-        if (nrow(intersects_list[[i]]) == 0) {
-          intersects_list[[i]] <- NULL
-          next
-        }
-
-        # Cast multipolygons to polygons
-        intersects_list[[i]] <-
-          intersects_list[[i]] %>%
-          filter(!st_is(geometry, "POLYGON")) %>%
-          st_cast("POLYGON", warn = FALSE) %>%
-          rbind(filter(intersects_list[[i]], st_is(geometry, "POLYGON")))
-
-        # Store results where there is only one possible option
-        one_choice <-
-          setDT(intersects_list[[i]])[, if (.N == 1) .SD, by = ".point_ID"]
-
-        intersects_list[[i]] <-
-          intersects_list[[i]][, if (.N > 1) .SD, by = ".point_ID"]
-
-        # Only run subseqent steps if there are points with multiple intersects
-        if (nrow(intersects_list[[i]]) == 0) {
-
-          one_choice <-
-            one_choice[, .(candidates = list(
-              data.table(poly_ID, probability = 1)), poly_ID), by = .point_ID]
-
-          results_list[[i]] <- one_choice
-
-        } else {
-
-          # Estimate int_units, transform intersects relative to point coords
-          coord_shift <- function(g, x, y) g - c(x, y)
-
-          intersects_list[[i]][, c("int_units", "geometry", ".PID_split") :=
-                                 list(as.numeric(
-                                   units * st_area(geometry) / poly_area),
-                                   st_sfc(mapply(coord_shift, geometry,
-                                                 .point_x, .point_y,
-                                                 SIMPLIFY = FALSE)),
-                                   substr(.point_ID, 1, 3))]
-
-          # Split data for processing
-          data_list <-
-            split(intersects_list[[i]], by = ".PID_split", keep.by = FALSE) %>%
-            helper_table_split()
-
-          # Do integration
-          intersects_list[[i]] <-
-            data_list %>%
-            map(setDT) %>%
-            future_map(raffle_integrate, .progress = helper_progress()) %>%
-            rbindlist()
-
-          # Produce results object
+        progressr::with_progress({
           results_list[[i]] <-
-            intersects_list[[i]][, .(
-              candidates = list(data.table(poly_ID, probability)),
-              poly_ID = base::sample(poly_ID, size = 1, prob = probability)),
-              keyby = .point_ID]
+            helper_intersect(points_list[[i]], polys, distance, quiet)
+        })
 
-          # Add results from one_choice
-          if (nrow(one_choice) > 0) {
-            one_choice <-
-              one_choice[, .(candidates = list(
-                data.table(poly_ID, probability = 1)), poly_ID), by = .point_ID]
+        handler_strr("Integrating row")
 
-            results_list[[i]] <-
-              setorder(rbindlist(list(results_list[[i]], one_choice)),
-                       .point_ID)
-          }
-        }
+        progressr::with_progress({
+          results_list[[i]] <- helper_integrate(results_list[[i]], pdf, quiet)
+        })
+
+      } else {
+
+        results_list[[i]] <-
+          helper_intersect(points_list[[i]], polys, distance, quiet)
+
+        results_list[[i]] <- helper_integrate(results_list[[i]], pdf, quiet)
+
       }
-
-      # Bind batches together
-      results <-  setorder(rbindlist(results_list), .point_ID)
-
     }
+
+    # Bind batches together
+    results <- setorder(rbindlist(results_list), .point_ID)
+  }
 
 
   ### PROCESS RESULTS AND RETURN OUTPUT ########################################
+
+  ## Process results -----------------------------------------------------------
 
   # Drop diagnostic field if not requested
   if (!diagnostic) results[, candidates := NULL]
@@ -463,11 +327,12 @@ strr_raffle <- function(
   # Join winners to point file and arrange output
   points <-
     points %>%
-    left_join(results, by = ".point_ID") %>%
-    select(-.data$.point_ID) %>%
-    select(-.data$geometry, everything(), .data$geometry)
+    dplyr::left_join(results, by = ".point_ID") %>%
+    dplyr::select(-.data$.point_ID) %>%
+    dplyr::select(-.data$geometry, dplyr::everything(), .data$geometry)
 
-  # Rename poly_ID field in points, but check name duplication first
+
+  ## Rename poly_ID field in points, but check name duplication first ----------
 
   if (poly_ID_flag == "string") {
     points <-
@@ -481,16 +346,205 @@ strr_raffle <- function(
     points <- points %>% rename({{ poly_ID }} := .data$poly_ID)
   }
 
-  helper_progress_message("Analysis complete.", .type = "final")
+  helper_message("Analysis complete.", .type = "final")
 
   return(points)
 }
 
 
+#' Helper function to intersect points and polys
+#'
+#' \code{helper_intersect} intersects points and polys
+#'
+#' @param points,polys,distance,quiet Arguments passed along from the main
+#' function.
+#' @return The output will be a list of two data frames.
+
+helper_intersect <- function(points, polys, distance, quiet) {
+
+  geometry <- .point_ID <- NULL
+
+  ## Define function to be mapped ----------------------------------------------
+
+  intersect_fun <- function(.x) {
+
+    .strr_env$pb(amount = nrow(.x))
+
+    output <-
+      .x %>%
+      sf::st_as_sf(coords = c(".point_x", ".point_y"),
+                   crs = sf::st_crs(points),
+                   remove = FALSE, agr = "constant") %>%
+      sf::st_buffer(distance, 10) %>%
+      sf::st_intersection(polys)
+
+    # Cast multipolygons to polygons
+    if (nrow(output) > 0) {
+      output <-
+        output %>%
+        dplyr::filter(!sf::st_is(geometry, "POLYGON")) %>%
+        sf::st_cast("POLYGON", warn = FALSE) %>%
+        rbind(dplyr::filter(output, sf::st_is(geometry, "POLYGON")))
+    }
+
+    return(output)
+
+  }
+
+  ## Initialize intersects -----------------------------------------------------
+
+  intersects <- copy(points)
+
+
+  ## Prepare intersects for processing -----------------------------------------
+
+  # Initialize helper fields and drop geometry for the split
+  intersects <-
+    setDT(intersects)[, .(.point_ID,
+                          .point_x = sf::st_coordinates(geometry)[,1],
+                          .point_y = sf::st_coordinates(geometry)[,2])] %>%
+    split(by = ".point_ID") %>%
+    helper_table_split(100)
+
+  # Initialize progress bar
+  .strr_env$pb <- progressr::progressor(steps = sum(map_int(intersects, nrow)))
+
+
+  ## Generate buffers and intersect with polygons ------------------------------
+
+  if (requireNamespace("future", quietly = TRUE) &&
+      requireNamespace("furrr", quietly = TRUE)) {
+
+    intersects <- intersects %>% furrr::future_map(intersect_fun)
+
+  } else {
+
+    intersects <- intersects %>% purrr::map(intersect_fun)
+
+  }
+
+
+
+  ## Process results -----------------------------------------------------------
+
+  # Recombine output list
+  intersects <- intersects[map_int(intersects, nrow) > 0]
+  intersects <- data.table::rbindlist(intersects) %>% sf::st_as_sf()
+
+  # Exit early if no intersections are found
+  if (nrow(intersects) == 0) return(list(intersects, intersects))
+
+  # Store results where there is only one possible option
+  one_choice <- setDT(intersects)[, if (.N == 1) .SD, by = ".point_ID"]
+
+  intersects <- intersects[, if (.N > 1) .SD, by = ".point_ID"]
+
+  return(list(one_choice, intersects))
+}
+
+
+#' Helper function to integrate intersects
+#'
+#' \code{helper_integrate} integrates intersects
+#'
+#' @param results,pdf,quiet Arguments passed along from the main function.
+#' @return The output will be a data frame.
+
+helper_integrate <- function(results, pdf, quiet) {
+
+  poly_ID <- .point_ID <- geometry <- poly_area <- .point_x <- .point_y <-
+    probability <- NULL
+
+  one_choice <- results[[1]]
+  intersects <- results[[2]]
+
+  ## Define function to be mapped ----------------------------------------------
+
+  integrate_fun <- function(.x) {
+
+    .strr_env$pb(amount = nrow(.x))
+
+    setDT(.x) %>% helper_raffle_integrate()
+
+  }
+
+
+  ## Exit early if there are no points with multiple intersects ----------------
+
+  if (nrow(intersects) == 0) {
+
+    one_choice <-
+      one_choice[, .(candidates = list(data.table(poly_ID, probability = 1)),
+                     poly_ID), by = .point_ID]
+
+    results <- one_choice
+
+
+  ## Otherwise procede with integration ----------------------------------------
+
+  } else {
+
+    # Estimate int_units, transform intersects relative to point coordinates
+    coord_shift <- function(g, x, y) g - c(x, y)
+
+    intersects[, c("int_units", "geometry", ".PID_split") :=
+                 list(as.numeric(units * sf::st_area(geometry) / poly_area),
+                      sf::st_sfc(mapply(coord_shift, geometry, .point_x,
+                                        .point_y, SIMPLIFY = FALSE)),
+                      substr(.point_ID, 1, 3))]
+
+    # Split data for processing
+    data_list <-
+      split(intersects, by = ".PID_split", keep.by = FALSE) %>%
+      helper_table_split(100)
+
+    # Initialize progress bar
+    .strr_env$pb <- progressr::progressor(steps = sum(map_int(data_list, nrow)))
+
+    # Do integration
+    if (requireNamespace("future", quietly = TRUE) &&
+        requireNamespace("furrr", quietly = TRUE)) {
+
+      intersects <- data_list %>% furrr::future_map(integrate_fun)
+
+    } else {
+
+      intersects <- data_list %>% purrr::map(integrate_fun)
+
+    }
+
+    intersects <- data.table::rbindlist(intersects)
+
+    # Produce results object
+    results <-
+      intersects[, .(
+        candidates = list(data.table(poly_ID, probability)),
+        poly_ID = base::sample(poly_ID, size = 1, prob = probability)),
+        keyby = .point_ID]
+
+    # Add results from one_choice
+    if (nrow(one_choice) > 0) {
+      one_choice <-
+        one_choice[, .(candidates = list(
+          data.table(poly_ID, probability = 1)), poly_ID), by = .point_ID]
+
+      results <-
+        setorder(data.table::rbindlist(list(results, one_choice)), .point_ID)
+    }
+  }
+
+
+  ## Return output -------------------------------------------------------------
+
+  return(results)
+
+}
+
+
 #' Helper function specifying the probability density function
 #'
-#' \code{raffle_pdf} specifies the probability density function which Airbnb
-#' uses to obfuscate listing locations.
+#' \code{raffle_pdf_airbnb} specifies the probability density function which
+#' Airbnb uses to obfuscate listing locations.
 #'
 #' A function which specifies the probability density function which Airbnb
 #' uses to obfuscate listing locations (a radially symmetric normal distribution
@@ -501,35 +555,31 @@ strr_raffle <- function(
 #' @return The output will be a numerical vector of probabilities.
 #' @importFrom stats dnorm
 
-raffle_pdf <- function(x) {
+raffle_pdf_airbnb <- function(x) {
   dnorm(sqrt(x[,1]^2 + x[,2]^2), mean = 100, sd = 50, log = FALSE) *
     (1 / (2 * pi))
 }
 
 
-#' Helper function to integrate raffle_PDF over intersect polygons
+#' Helper function to integrate raffle_pdf_* over intersect polygons
 #'
-#' \code{raffle_integrate} takes raffle_PDF and integrates it over the intersect
-#' polygons using polyCub.
+#' \code{helper_raffle_integrate} takes raffle_pdf_* and integrates it over the
+#' intersect polygons using polyCub.
 #'
-#' A function for integrating raffle_PDF (Airbnb's spatial obfuscation of
-#' listing locations) over the intersect polygons using polyCub. In the future,
-#' other PDFs may be added.
+#' A function for integrating raffle_pdf_* over the intersect polygons using
+#' polyCub. In the future, other PDFs may be added.
 #'
 #' @param intersects A data.table with an sf geometry column.
-#' @return The output will be the input data frame with a `probability` field
+#' @return The output will be the input data.table with a `probability` field
 #' added.
-#' @importFrom methods as
-#' @importFrom polyCub polyCub.midpoint
-#' @importFrom rlang .data
 
-raffle_integrate <- function(intersects) {
+helper_raffle_integrate <- function(intersects) {
 
   .datatable.aware = TRUE
   probability <- geometry <- int_units <- NULL
 
   int_fun <- function(x, y) {
-    polyCub.midpoint(as(x, "Spatial"), raffle_pdf) * y
+    polyCub::polyCub.midpoint(x, raffle_pdf_airbnb) * y
   }
 
   intersects[, probability := mapply(int_fun, geometry, int_units)]

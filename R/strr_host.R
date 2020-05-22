@@ -25,7 +25,7 @@ strr_host <- function(daily, quiet = FALSE) {
 
   ### Error checking and initialization ########################################
 
-  time_1 <- Sys.time()
+  start_time <- Sys.time()
 
 
   ## data.table and future setup

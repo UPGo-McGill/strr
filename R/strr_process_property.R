@@ -51,7 +51,7 @@
 
 strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
 
-  time_1 <- Sys.time()
+  start_time <- Sys.time()
 
 
   ### Error checking and initialization ########################################

@@ -29,7 +29,7 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ### Error checking and initialization ########################################
 
-  time_1 <- Sys.time()
+  start_time <- Sys.time()
 
 
   ## Set up on.exit expression for errors
