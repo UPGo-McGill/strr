@@ -2,6 +2,8 @@
 
 ### Setup ######################################################################
 
+library(dplyr)
+
 context("strr_helpers tests")
 
 data <-
@@ -17,7 +19,7 @@ data <-
 
 data_list <-
   data %>%
-  group_split(a)
+  dplyr::group_split(a)
 
 data_sf <-
   dplyr::tibble(

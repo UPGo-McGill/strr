@@ -18,10 +18,7 @@
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return A compressed daily table, ready for upload to a remote database.
-#' @importFrom data.table month setDT year
-#' @importFrom dplyr %>% arrange as_tibble bind_rows filter group_by group_split
-#' @importFrom dplyr mutate pull select
-#' @importFrom furrr future_map_dfr
+#' @importFrom dplyr %>%
 #' @importFrom rlang .data
 #' @export
 
@@ -32,33 +29,38 @@ strr_compress <- function(data, quiet = FALSE) {
   start_time <- Sys.time()
 
 
-  ## Set up on.exit expression for errors
+  ## Prepare progress reporting ------------------------------------------------
 
-  on.exit({
-    # Flush out any stray multicore processes
-    future_map(1:future::nbrOfWorkers(), ~.x)
-
-    # Restore future global export limit
-    .Options$future.globals.maxSize <- NULL
-
-    # Print \n so error messages don't collide with progress messages
-    if (!quiet) message()
-  })
+  .strr_env$pb <- progressr::progressor(0)
+  steps <- 2
 
 
-  ## Set data.table and future variables
+  ## Prepare data.table and future variables -----------------------------------
 
   .datatable.aware = TRUE
-  property_ID <- start_date <- host_ID <- PID_split <- host_split <- NULL
-  options(future.globals.maxSize = +Inf)
+
+  # Silence R CMD check for data.table fields
+  property_ID <- month <- PID_split <- host_split <- host_ID <- start_date <-
+    NULL
+
+  if (requireNamespace("future", quietly = TRUE) &&
+      requireNamespace("furrr", quietly = TRUE)) {
+
+    options(future.globals.maxSize = +Inf)
+
+    # Set up on.exit expression for errors
+    on.exit({
+      # Flush out any stray multicore processes
+      furrr::future_map(1:future::nbrOfWorkers(), ~.x)
+
+      # Restore future global export limit
+      .Options$future.globals.maxSize <- NULL
+
+    })
+  }
 
 
-  ## Set the number of steps for progress reporting
-
-  steps <- 3
-
-
-  ## Input checking
+  ## Input checking ------------------------------------------------------------
 
   # Check that quiet is a logical
   if (!is.logical(quiet)) {
@@ -68,13 +70,13 @@ strr_compress <- function(data, quiet = FALSE) {
   # Check if table is daily or host
   if (inherits(data, "strr_daily") | names(data)[1] == "property_ID") {
 
-    helper_progress_message("Daily table identified.")
+    helper_message("Daily table identified.")
 
     daily <- TRUE
 
   } else if (inherits(data, "strr_host") | names(data)[1] == "host_ID") {
 
-    helper_progress_message("Host table identified.")
+    helper_message("Host table identified.")
 
     daily <- FALSE
 
@@ -83,62 +85,57 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ### Prepare file for analysis ################################################
 
-  ## Convert to data.table
+  ## Convert to data.table -----------------------------------------------------
 
-  setDT(data)
+  data.table::setDT(data)
 
 
-  ## Store invariant fields for later
+  ## Store invariant fields for later ------------------------------------------
 
   if (daily) {
 
     join_cols <-
       c("host_ID", "listing_type", "housing", "country", "region", "city")
 
-    join_fields <-
-      data[, .SD[1L], by = property_ID,
-           .SDcols = join_cols]
+    join_fields <- data[, .SD[1L], by = property_ID, .SDcols = join_cols]
 
     data[, (join_cols) := NULL]
 
   }
 
 
-  ## If data spans multiple months, produce month/year columns
+  ## If data spans multiple months, produce month/year columns -----------------
 
-  if (year(min(data$date)) != year(max(data$date))) {
+  if (data.table::year(min(data$date)) != data.table::year(max(data$date))) {
 
-    steps <- 4
+    steps <- 3
 
-    helper_progress_message("(1/", steps, ") Adding year and month fields.",
-                            .type = "open")
+    helper_message("(1/", steps, ") Adding year and month fields.",
+                   .type = "open")
 
-    data[, c("month", "year") := list(month(date), year(date))]
+    data[, c("month", "year") := list(data.table::month(date),
+                                      data.table::year(date))]
 
-    helper_progress_message("(1/", steps, ") Year and month fields added.",
-                            .type = "close")
+    helper_message("(1/", steps, ") Year and month fields added.",
+                    .type = "close")
 
-  } else if (month(min(data$date)) != month(max(data$date))) {
+  } else if (data.table::month(min(data$date)) !=
+             data.table::month(max(data$date))) {
 
-    steps <- 4
+    steps <- 3
 
-    helper_progress_message("(1/", steps, ") Adding month field.",
-                            .type = "open")
+    helper_message("(1/", steps, ") Adding month field.", .type = "open")
 
-    data[, month := month(date)]
+    data[, month := data.table::month(date)]
 
-    helper_progress_message("(1/", steps, ") Month field added.",
-                            .type = "close")
+    helper_message("(1/", steps, ") Month field added.", .type = "close")
 
   }
 
 
   ### Split table for processing ###############################################
 
-  ## Split by first three digits of property_ID/host_ID
-
-  helper_progress_message("(", steps - 2, "/", steps,
-                          ") Splitting table for processing.", .type = "open")
+  ## Split by first three digits of property_ID/host_ID ------------------------
 
   if (daily) {
 
@@ -146,9 +143,8 @@ strr_compress <- function(data, quiet = FALSE) {
 
     data_list <-
       split(data, by = "PID_split", keep.by = FALSE) %>%
-      helper_table_split()
+      helper_table_split(20)
 
-    # Use host_ID for host
   } else {
 
     data[, host_split := substr(host_ID, 1, 3)]
@@ -158,64 +154,121 @@ strr_compress <- function(data, quiet = FALSE) {
       helper_table_split()
   }
 
-  helper_progress_message(
-    "(", steps - 2, "/", steps,
-    ") Table split for processing.", .type = "close")
-
 
   ### Compress processed data file #############################################
 
-  helper_progress_message(
-    "(", steps - 1, "/", steps,
-    ") Beginning compression, using {helper_plan()}.",
-    .type = "progress")
+  helper_message("(", steps - 1, "/", steps,
+                 ") Compressing rows, using {helper_plan()}.")
+
+  ## Method for daily tables ---------------------------------------------------
 
   if (daily) {
 
-    compressed <-
-      data_list %>%
-      future_map_dfr(strr_compress_helper,
-                     # Suppress progress bar if !quiet or the plan is remote
-                     .progress = helper_progress()) %>%
-      # The join is faster and less memory-intensive with dplyr than data.table
-      left_join(join_fields, by = "property_ID")
+    if (!quiet) {
+
+      handler_strr("Compressing row")
+
+      progressr::with_progress({
+
+        # Initialize progress bar
+        .strr_env$pb <- progressr::progressor(steps = nrow(data))
+
+        if (requireNamespace("future", quietly = TRUE) &&
+            requireNamespace("furrr", quietly = TRUE)) {
+
+          compressed <-
+            furrr::future_map_dfr(data_list, helper_compress_daily)
+
+        } else compressed <-
+            purrr::map_dfr(data_list, helper_compress_daily)
+
+        })
+
+      } else {
+
+        if (requireNamespace("future", quietly = TRUE) &&
+            requireNamespace("furrr", quietly = TRUE)) {
+
+          compressed <-
+            furrr::future_map_dfr(data_list, helper_compress_daily)
+
+        } else compressed <-
+            purrr::map_dfr(data_list, helper_compress_daily)
+      }
+
+    # The join is faster and less memory-intensive with dplyr than data.table
+    compressed <- dplyr::left_join(compressed, join_fields, by = "property_ID")
+
+  ## Method for host tables ----------------------------------------------------
 
   } else {
 
-    compressed <-
-      data_list %>%
-      future_map_dfr(strr_compress_helper_host,
-                     # Suppress progress bar if !quiet or the plan is remote
-                     .progress = helper_progress())
+    if (!quiet) {
+
+      handler_strr("Compressing row")
+
+      progressr::with_progress({
+
+        # Initialize progress bar
+        .strr_env$pb <- progressr::progressor(steps = nrow(data))
+
+        if (requireNamespace("future", quietly = TRUE) &&
+            requireNamespace("furrr", quietly = TRUE)) {
+
+          compressed <-
+            furrr::future_map_dfr(data_list, helper_compress_host)
+
+        } else compressed <-
+            purrr::map_dfr(data_list, helper_compress_host)
+
+      })
+
+    } else {
+
+      if (requireNamespace("future", quietly = TRUE) &&
+          requireNamespace("furrr", quietly = TRUE)) {
+
+        compressed <-
+          furrr::future_map_dfr(data_list, helper_compress_host)
+
+      } else compressed <-
+          purrr::map_dfr(data_list, helper_compress_host)
+    }
   }
 
 
-  ## Arrange output and set class
+  ### Arrange output and set class #############################################
 
-  helper_progress_message("(", steps, "/", steps,
+  helper_message("(", steps, "/", steps,
                           ") Arranging output table.",
                           .type = "open")
 
-  setDT(compressed)
+  data.table::setDT(compressed)
 
   if (daily) {
-    compressed <- as_tibble(compressed[order(property_ID, start_date)])
+    compressed <- dplyr::as_tibble(compressed[order(property_ID, start_date)])
     class(compressed) <- append(class(compressed), "strr_daily")
     } else {
-      compressed <- as_tibble(compressed[order(host_ID, start_date)])
+      compressed <- dplyr::as_tibble(compressed[order(host_ID, start_date)])
       class(compressed) <- append(class(compressed), "strr_host")
       }
 
-  helper_progress_message("(", steps, "/", steps,
+  helper_message("(", steps, "/", steps,
                           ") Output table arranged.",
                           .type = "close")
 
-  ## Return output
 
-  helper_progress_message("Compression complete.", .type = "final")
+  ### Return output ############################################################
+
+  helper_message("Compression complete.", .type = "final")
 
   # Overwrite previous on.exit call
-  on.exit(.Options$future.globals.maxSize <- NULL)
+  if (requireNamespace("future", quietly = TRUE) &&
+      requireNamespace("furrr", quietly = TRUE)) {
+
+    on.exit(.Options$future.globals.maxSize <- NULL)
+
+  }
 
   return(compressed)
 }
@@ -223,37 +276,59 @@ strr_compress <- function(data, quiet = FALSE) {
 
 #' Helper function to compress daily file
 #'
-#' \code{strr_compress_helper} takes a processed `daily` table and generates a
-#' compressed version.
+#' \code{helper_compress_daily} takes a processed `daily` table and
+#' generates a compressed version.
 #'
 #' A helper function for compressing the processed monthly `daily` table.
 #'
 #' @param data The processed daily table generated through the strr_compress
 #' function.
 #' @return The output will be a compressed daily table.
-#' @importFrom data.table rbindlist setDT setDTthreads
 #' @importFrom rlang .data
 
-strr_compress_helper <- function(data) {
+helper_compress_daily <- function(data) {
+
+  # Iterate progress bar
+  .strr_env$pb(amount = nrow(data))
 
   # Silence R CMD check for data.table fields
   booked_date <- dates <- end_date <- price <- property_ID <- res_ID <-
     start_date <- status <- NULL
 
   # Make sure data.table is single-threaded within the helper
-  threads <- setDTthreads(1)
-  on.exit(setDTthreads(threads))
-  setDT(data)
+  threads <- data.table::setDTthreads(1)
+  on.exit(data.table::setDTthreads(threads))
+  data.table::setDT(data)
 
   # Group data by all columns except date
   data <- data[, .(dates = list(date)), by = setdiff(names(data), "date")]
 
-  one_length <-
-    data[sapply(dates, function(x) {length(x) - length(min(x):max(x))}) == 0,
-         .(property_ID,
-           start_date = as.Date(sapply(dates, min), origin = "1970-01-01"),
-           end_date   = as.Date(sapply(dates, max), origin = "1970-01-01"),
-           status, booked_date, price, res_ID)]
+  # Find groupings with a single date
+  one_length <- data[sapply(dates, function(x) {
+    length(x) - length(min(x):max(x))}) == 0]
+
+  if (nrow(one_length) > 0) {
+
+    one_length <-
+      one_length[, .(
+        property_ID,
+        start_date = as.Date(sapply(dates, min), origin = "1970-01-01"),
+        end_date   = as.Date(sapply(dates, max), origin = "1970-01-01"),
+        status, booked_date, price, res_ID)]
+
+  } else {
+
+    one_length <-
+      data.table::data.table(
+        property_ID = character(),
+        start_date = as.Date(character()),
+        end_date = as.Date(character()),
+        status = character(),
+        booked_date = as.Date(character()),
+        price = integer(),
+        res_ID = integer())
+
+  }
 
   if (nrow(data[sapply(dates, function(x) {
     length(x) - length(min(x):max(x))
@@ -280,13 +355,13 @@ strr_compress_helper <- function(data) {
 
   } else remainder <- one_length[0,]
 
-  rbindlist(list(one_length, remainder))
+  data.table::rbindlist(list(one_length, remainder))
 }
 
 
 #' Helper function to compress host file
 #'
-#' \code{strr_compress_helper_host} takes a processed host table and generates a
+#' \code{helper_compress_host} takes a processed host table and generates a
 #' compressed version.
 #'
 #' A helper function for compressing the processed host summary table.
@@ -294,30 +369,47 @@ strr_compress_helper <- function(data) {
 #' @param data The processed host table generated through the strr_compress
 #' function.
 #' @return The output will be a compressed host table.
-#' @importFrom data.table rbindlist setDT setDTthreads
 #' @importFrom rlang .data
 
-strr_compress_helper_host <- function(data) {
+helper_compress_host <- function(data) {
 
   # Silence R CMD check for data.table fields
   host_ID <- listing_type <- housing <- count <- dates <- start_date <-
     end_date <- NULL
 
   # Make sure data.table is single-threaded within the helper
-  threads <- setDTthreads(1)
-  on.exit(setDTthreads(threads))
-  setDT(data)
+  threads <- data.table::setDTthreads(1)
+  on.exit(data.table::setDTthreads(threads))
+  data.table::setDT(data)
 
   # Group data by all columns except date
   data <- data[, .(dates = list(date)), by = setdiff(names(data), "date")]
 
   # Simple compression for rows with a continuous date range
   one_length <-
-    data[sapply(dates, function(x) {length(x) - length(min(x):max(x))}) == 0,
-         .(host_ID,
-           start_date = as.Date(sapply(dates, min), origin = "1970-01-01"),
-           end_date   = as.Date(sapply(dates, max), origin = "1970-01-01"),
-           listing_type, housing, count)]
+    data[sapply(dates, function(x) {length(x) - length(min(x):max(x))}) == 0,]
+
+  if (nrow(one_length) > 0) {
+
+    one_length <-
+      one_length[, .(
+        host_ID,
+        start_date = as.Date(sapply(dates, min), origin = "1970-01-01"),
+        end_date   = as.Date(sapply(dates, max), origin = "1970-01-01"),
+        listing_type, housing, count)]
+
+  } else {
+
+    one_length <-
+      data.table::data.table(
+        host_ID = character(),
+        start_date = as.Date(character()),
+        end_date = as.Date(character()),
+        listing_type = character(),
+        housing = logical(),
+        count = integer())
+  }
+
 
   # More complex case where rows have a non-continuous date range
   if (nrow(data[sapply(dates, function(x) {
@@ -345,6 +437,6 @@ strr_compress_helper_host <- function(data) {
 
   } else remainder <- one_length[0,]
 
-  rbindlist(list(one_length, remainder))
+  data.table::rbindlist(list(one_length, remainder))
 }
 

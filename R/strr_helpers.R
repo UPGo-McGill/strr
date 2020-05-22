@@ -24,25 +24,27 @@ helper_progress <- function() {
 #' \code{helper_plan} parses the current \code{future::plan} for display in
 #' progress messages.
 #' @return A character string reporting the current plan.
-#' @importFrom future nbrOfWorkers plan
 
 helper_plan <- function() {
 
-  tryCatch({
-    workers_number <-
-      future::nbrOfWorkers()
+  if (requireNamespace("future", quietly = TRUE)) {
 
-    workers_noun <-
-      if_else(workers_number == 1, "process", "processes")
+    tryCatch({
+      workers_number <-
+        future::nbrOfWorkers()
 
-    cluster_type <-
-      if_else("remote" %in% class(future::plan()), "remote", "local")
+      workers_noun <-
+        if_else(workers_number == 1, "process", "processes")
 
-    paste0(workers_number, " ", cluster_type, " ", workers_noun)
+      cluster_type <-
+        if_else("remote" %in% class(future::plan()), "remote", "local")
+
+      paste0(workers_number, " ", cluster_type, " ", workers_noun)
     },
     error = function(e) "1 local process"
-  )
+    )
 
+  } else "1 local process"
 
 }
 
