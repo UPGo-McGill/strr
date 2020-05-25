@@ -18,7 +18,6 @@
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return A compressed daily table, ready for upload to a remote database.
-#' @importFrom dplyr %>%
 #' @importFrom rlang .data
 #' @export
 
@@ -27,6 +26,12 @@ strr_compress <- function(data, quiet = FALSE) {
   ### Error checking and initialization ########################################
 
   start_time <- Sys.time()
+
+
+  ## Define default versions of map_* ------------------------------------------
+
+  map <- purrr::map
+  map_dfr <- purrr::map_dfr
 
 
   ## Prepare progress reporting ------------------------------------------------
@@ -46,12 +51,17 @@ strr_compress <- function(data, quiet = FALSE) {
   if (requireNamespace("future", quietly = TRUE) &&
       requireNamespace("furrr", quietly = TRUE)) {
 
+    # Replace map_* with future_map_*
+    map <- furrr::future_map
+    map_dfr <- furrr::future_map_dfr
+
+    # Remove limit on globals size
     options(future.globals.maxSize = +Inf)
 
     # Set up on.exit expression for errors
     on.exit({
       # Flush out any stray multicore processes
-      furrr::future_map(1:future::nbrOfWorkers(), ~.x)
+      map(1:future::nbrOfWorkers(), ~.x)
 
       # Restore future global export limit
       .Options$future.globals.maxSize <- NULL
@@ -141,17 +151,15 @@ strr_compress <- function(data, quiet = FALSE) {
 
     data[, PID_split := substr(property_ID, 1, 6)]
 
-    data_list <-
-      split(data, by = "PID_split", keep.by = FALSE) %>%
-      helper_table_split(20)
+    data_list <- split(data, by = "PID_split", keep.by = FALSE)
+    data_list <- helper_table_split(data_list)
 
   } else {
 
     data[, host_split := substr(host_ID, 1, 3)]
 
-    data_list <-
-      split(data, by = "host_split", keep.by = FALSE) %>%
-      helper_table_split()
+    data_list <- split(data, by = "host_split", keep.by = FALSE)
+    data_list <- helper_table_split(data_list)
   }
 
 
@@ -170,34 +178,20 @@ strr_compress <- function(data, quiet = FALSE) {
 
       progressr::with_progress({
 
-        # Initialize progress bar
         .strr_env$pb <- progressr::progressor(steps = nrow(data))
-
-        if (requireNamespace("future", quietly = TRUE) &&
-            requireNamespace("furrr", quietly = TRUE)) {
-
-          compressed <-
-            furrr::future_map_dfr(data_list, helper_compress_daily)
-
-        } else compressed <-
-            purrr::map_dfr(data_list, helper_compress_daily)
+        compressed <- map_dfr(data_list, helper_compress_daily)
 
         })
 
       } else {
 
-        if (requireNamespace("future", quietly = TRUE) &&
-            requireNamespace("furrr", quietly = TRUE)) {
+        compressed <- map_dfr(data_list, helper_compress_daily)
 
-          compressed <-
-            furrr::future_map_dfr(data_list, helper_compress_daily)
-
-        } else compressed <-
-            purrr::map_dfr(data_list, helper_compress_daily)
       }
 
     # The join is faster and less memory-intensive with dplyr than data.table
     compressed <- dplyr::left_join(compressed, join_fields, by = "property_ID")
+
 
   ## Method for host tables ----------------------------------------------------
 
@@ -209,30 +203,15 @@ strr_compress <- function(data, quiet = FALSE) {
 
       progressr::with_progress({
 
-        # Initialize progress bar
         .strr_env$pb <- progressr::progressor(steps = nrow(data))
-
-        if (requireNamespace("future", quietly = TRUE) &&
-            requireNamespace("furrr", quietly = TRUE)) {
-
-          compressed <-
-            furrr::future_map_dfr(data_list, helper_compress_host)
-
-        } else compressed <-
-            purrr::map_dfr(data_list, helper_compress_host)
+        compressed <- map_dfr(data_list, helper_compress_host)
 
       })
 
     } else {
 
-      if (requireNamespace("future", quietly = TRUE) &&
-          requireNamespace("furrr", quietly = TRUE)) {
+        compressed <- map_dfr(data_list, helper_compress_host)
 
-        compressed <-
-          furrr::future_map_dfr(data_list, helper_compress_host)
-
-      } else compressed <-
-          purrr::map_dfr(data_list, helper_compress_host)
     }
   }
 
@@ -246,16 +225,19 @@ strr_compress <- function(data, quiet = FALSE) {
   data.table::setDT(compressed)
 
   if (daily) {
+
     compressed <- dplyr::as_tibble(compressed[order(property_ID, start_date)])
     class(compressed) <- append(class(compressed), "strr_daily")
+
     } else {
+
       compressed <- dplyr::as_tibble(compressed[order(host_ID, start_date)])
       class(compressed) <- append(class(compressed), "strr_host")
+
       }
 
-  helper_message("(", steps, "/", steps,
-                          ") Output table arranged.",
-                          .type = "close")
+  helper_message("(", steps, "/", steps, ") Output table arranged.",
+                 .type = "close")
 
 
   ### Return output ############################################################
