@@ -23,9 +23,32 @@
 
 strr_compress <- function(data, quiet = FALSE) {
 
-  ### Error checking and initialization ########################################
+  ### ERROR CHECKING AND INITIALIZATION ########################################
 
   start_time <- Sys.time()
+
+
+  ## Input checking ------------------------------------------------------------
+
+  # Check that quiet is a logical
+  if (!is.logical(quiet)) {
+    stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
+  }
+
+  # Check if table is daily or host
+  if (inherits(data, "strr_daily") | names(data)[1] == "property_ID") {
+
+    helper_message("Daily table identified.")
+
+    daily <- TRUE
+
+  } else if (inherits(data, "strr_host") | names(data)[1] == "host_ID") {
+
+    helper_message("Host table identified.")
+
+    daily <- FALSE
+
+  } else stop("Input table must be of class `strr_daily` or `strr_host`.")
 
 
   ## Define default versions of map_* ------------------------------------------
@@ -64,29 +87,6 @@ strr_compress <- function(data, quiet = FALSE) {
   }
 
 
-  ## Input checking ------------------------------------------------------------
-
-  # Check that quiet is a logical
-  if (!is.logical(quiet)) {
-    stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
-  }
-
-  # Check if table is daily or host
-  if (inherits(data, "strr_daily") | names(data)[1] == "property_ID") {
-
-    helper_message("Daily table identified.")
-
-    daily <- TRUE
-
-  } else if (inherits(data, "strr_host") | names(data)[1] == "host_ID") {
-
-    helper_message("Host table identified.")
-
-    daily <- FALSE
-
-  } else stop("Input table must be of class `strr_daily` or `strr_host`.")
-
-
   ## Prepare progress reporting ------------------------------------------------
 
   # Enable progress bars if quiet == FALSE
@@ -102,7 +102,7 @@ strr_compress <- function(data, quiet = FALSE) {
   steps <- 2
 
 
-  ### Prepare file for analysis ################################################
+  ### PREPARE FILE FOR ANALYSIS ################################################
 
   ## Convert to data.table -----------------------------------------------------
 
@@ -152,7 +152,7 @@ strr_compress <- function(data, quiet = FALSE) {
   }
 
 
-  ### Split table for processing ###############################################
+  ### SPLIT TABLE FOR PROCESSING ###############################################
 
   ## Split by first three digits of property_ID/host_ID ------------------------
 
@@ -172,60 +172,46 @@ strr_compress <- function(data, quiet = FALSE) {
   }
 
 
-  ### Compress processed data file #############################################
+  ### COMPRESS PROCESSED DATA FILE #############################################
 
   helper_message("(", steps - 1, "/", steps,
                  ") Compressing rows, using {helper_plan()}.")
 
-  ## Method for daily tables ---------------------------------------------------
 
-  if (daily) {
+  ## Method with progress ------------------------------------------------------
 
-    if (progress) {
+  if (progress) {
 
-      handler_strr("Compressing row")
+    handler_strr("Compressing row")
 
-      progressr::with_progress({
+    progressr::with_progress({
 
-        .strr_env$pb <- progressr::progressor(steps = nrow(data))
-        compressed <- map_dfr(data_list, helper_compress_daily)
+      .strr_env$pb <- progressr::progressor(steps = nrow(data))
 
-        })
-
-      } else {
-
-        compressed <- map_dfr(data_list, helper_compress_daily)
-
-      }
-
-    # The join is faster and less memory-intensive with dplyr than data.table
-    compressed <- dplyr::left_join(compressed, join_fields, by = "property_ID")
-
-
-  ## Method for host tables ----------------------------------------------------
-
-  } else {
-
-    if (progress) {
-
-      handler_strr("Compressing row")
-
-      progressr::with_progress({
-
-        .strr_env$pb <- progressr::progressor(steps = nrow(data))
-        compressed <- map_dfr(data_list, helper_compress_host)
+      if (daily)  compressed <- map_dfr(data_list, helper_compress_daily)
+      if (!daily) compressed <- map_dfr(data_list, helper_compress_host)
 
       })
 
+
+  ## Method without progress ---------------------------------------------------
+
     } else {
 
-        compressed <- map_dfr(data_list, helper_compress_host)
+      if (daily)  compressed <- map_dfr(data_list, helper_compress_daily)
+      if (!daily) compressed <- map_dfr(data_list, helper_compress_host)
 
-    }
-  }
+      }
 
 
-  ### Arrange output and set class #############################################
+  ## Add other columns to daily file -------------------------------------------
+
+  # The join is faster and less memory-intensive with dplyr than data.table
+  if (daily) compressed <-
+    dplyr::left_join(compressed, join_fields, by = "property_ID")
+
+
+  ### ARRANGE OUTPUT AND SET CLASS #############################################
 
   helper_message("(", steps, "/", steps,
                           ") Arranging output table.",
@@ -249,7 +235,7 @@ strr_compress <- function(data, quiet = FALSE) {
                  .type = "close")
 
 
-  ### Return output ############################################################
+  ### RETURN OUTPUT ############################################################
 
   helper_message("Compression complete.", .type = "final")
 
@@ -321,6 +307,7 @@ helper_compress_daily <- function(data) {
 
   }
 
+  # More complex case where rows have a non-continuous date range
   if (nrow(data[sapply(dates, function(x) {
     length(x) - length(min(x):max(x))
     }) != 0,]) > 0) {
@@ -400,7 +387,6 @@ helper_compress_host <- function(data) {
         housing = logical(),
         count = integer())
   }
-
 
   # More complex case where rows have a non-continuous date range
   if (nrow(data[sapply(dates, function(x) {
