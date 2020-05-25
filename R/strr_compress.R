@@ -34,12 +34,6 @@ strr_compress <- function(data, quiet = FALSE) {
   map_dfr <- purrr::map_dfr
 
 
-  ## Prepare progress reporting ------------------------------------------------
-
-  .strr_env$pb <- progressr::progressor(0)
-  steps <- 2
-
-
   ## Prepare data.table and future variables -----------------------------------
 
   .datatable.aware = TRUE
@@ -91,6 +85,21 @@ strr_compress <- function(data, quiet = FALSE) {
     daily <- FALSE
 
   } else stop("Input table must be of class `strr_daily` or `strr_host`.")
+
+
+  ## Prepare progress reporting ------------------------------------------------
+
+  # Enable progress bars if quiet == FALSE
+  progress <- !quiet
+
+  # Disable progress bars if {progressr} is not installed
+  if (!requireNamespace("progressr", quietly = TRUE)) {
+    progress <- FALSE
+    .strr_env$pb <- function() NULL
+  }
+
+  # Set number of steps for progress reporting
+  steps <- 2
 
 
   ### Prepare file for analysis ################################################
@@ -172,7 +181,7 @@ strr_compress <- function(data, quiet = FALSE) {
 
   if (daily) {
 
-    if (!quiet) {
+    if (progress) {
 
       handler_strr("Compressing row")
 
@@ -197,7 +206,7 @@ strr_compress <- function(data, quiet = FALSE) {
 
   } else {
 
-    if (!quiet) {
+    if (progress) {
 
       handler_strr("Compressing row")
 
