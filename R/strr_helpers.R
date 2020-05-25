@@ -245,13 +245,22 @@ helper_test_field <- function(data, field, arg_name) {
 
 handler_strr <- function(message) {
 
-  progressr::handlers(
-    progressr::handler_progress(
-      format = crayon::silver(crayon::italic(paste0(
-        message,
-        " :current of :total (:tick_rate/s) [:bar] :percent, ETA: :eta"))),
-      show_after = 0
-    ))
+  format_string <- paste0(
+    message, " :current of :total (:tick_rate/s) [:bar] :percent, ETA: :eta")
+
+  if (requireNamespace("crayon", quietly = TRUE)) {
+    progressr::handlers(
+      progressr::handler_progress(
+        format = crayon::silver(crayon::italic(format_string)),
+        show_after = 0
+      ))
+  } else {
+    progressr::handlers(
+      progressr::handler_progress(
+        format = format_string,
+        show_after = 0
+      ))
+  }
 }
 
 
@@ -285,21 +294,32 @@ helper_message <- function(..., .type = "main", .quiet = NULL) {
 
     args <- purrr::map(list(...), ~glue::glue(.x))
 
-    output_time <- crayon::cyan(glue::glue(" ({substr(Sys.time(), 12, 19)})"))
+    output_time <- glue::glue(" ({substr(Sys.time(), 12, 19)})")
 
+    if (requireNamespace("crayon", quietly = TRUE)) {
+      output_time <- crayon::cyan(output_time)
+    }
 
     if (.type == "open") {
 
-      args <- purrr::map(args, crayon::silver$italic)
+      if (requireNamespace("crayon", quietly = TRUE)) {
+        args <- purrr::map(args, crayon::silver$italic)
+      }
 
     } else if (.type == "close") {
 
-      args <- purrr::map(args, crayon::silver)
+      if (requireNamespace("crayon", quietly = TRUE)) {
+        args <- purrr::map(args, crayon::silver)
+      }
+
       args <- c("\r", args, output_time, "\n", sep = "")
 
     } else if (.type == "main") {
 
-      args <- purrr::map(args, crayon::silver)
+      if (requireNamespace("crayon", quietly = TRUE)) {
+        args <- purrr::map(args, crayon::silver)
+      }
+
       args <- c(args, output_time, "\n", sep = "")
 
     } else if (.type == "final") {
@@ -308,12 +328,13 @@ helper_message <- function(..., .type = "main", .quiet = NULL) {
       total_time <- Sys.time() - start_time
       time_final_1 <- substr(total_time, 1, 5)
       time_final_2 <- attr(total_time, 'units')
+      total_time <- glue::glue("Total time: {time_final_1} {time_final_2}.")
 
-      total_time <- crayon::cyan$bold(glue::glue(
-        "Total time: {time_final_1} {time_final_2}."
-      ))
+      if (requireNamespace("crayon", quietly = TRUE)) {
+        total_time <- crayon::cyan$bold(total_time)
+        args <- purrr::map(args, crayon::silver)
+      }
 
-      args <- purrr::map(args, crayon::silver)
       args <- c(args, output_time, "\n", total_time, "\n", sep = "")
 
     }

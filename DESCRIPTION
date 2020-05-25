@@ -2,8 +2,12 @@ Package: strr
 Type: Package
 Title: Tools for Analysis of Short-Term Rental Data
 Version: 0.0.1.9000
-Authors@R: person("David", "Wachsmuth", email = "david.wachsmuth@mcgill.ca",
-  role = c("aut", "cre"))
+Authors@R: 
+    person(given = "David",
+           family = "Wachsmuth",
+           role = c("aut", "cre"),
+           email = "david.wachsmuth@mcgill.ca",
+           comment = c(ORCID = "http://orcid.org/0000-0001-5689-9527"))
 Author: David Wachsmuth
 Maintainer: David Wachsmuth <david.wachsmuth@mcgill.ca>
 Description: Tools for preparing and analyzing data about short-term rentals,
@@ -12,11 +16,10 @@ Description: Tools for preparing and analyzing data about short-term rentals,
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
-URL: https://github.com/dwachsmuth/strr
-BugReports: https://github.com/dwachsmuth/strr/issues
+URL: https://github.com/UPGo-McGill/strr
+BugReports: https://github.com/UPGo-McGill/strr/issues
 Depends: R (>= 3.5.0)
 Imports: 
-    crayon (>= 1.3.4),
     data.table (>= 1.12.2),
     dplyr (>= 0.8),
     furrr (>= 0.1.0),
@@ -32,6 +35,7 @@ Imports:
     stringr (>= 1.4.0),
     tidyr (>= 0.8.3)
 Suggests: 
+    crayon (>= 1.3.4),
     ellipsis (>= 0.3.0),
     testthat (>= 2.1.0)
 RoxygenNote: 7.1.0
