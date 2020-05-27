@@ -13,19 +13,20 @@
 #' `housing` field added, with TRUE or FALSE values indicating if a given
 #' listing is located in housing (TRUE) or in a dedicated tourist accommodation
 #' facility such as a hotel or B&B (FALSE).
-#' @importFrom dplyr %>% if_else
 #' @importFrom rlang .data
 #' @export
 
 strr_housing <- function(property, property_type = property_type) {
 
-  property %>%
-    dplyr::mutate(
-      housing = if_else({{ property_type }} %in% housing_types, TRUE, FALSE),
-      # Add extra logic to catch non-housing option with non-ASCII character
-      housing = if_else(stringr::str_detect({{ property_type }}, "ara/s"),
-                        FALSE, .data$housing),
-      housing = if_else(is.na(.data$housing), TRUE, .data$housing))
-}
+  dplyr::mutate(
+    property,
+    housing =
+      dplyr::if_else({{ property_type }} %in% housing_types, TRUE, FALSE),
+    # Add extra logic to catch non-housing option with non-ASCII character
+    housing = dplyr::if_else(stringr::str_detect({{ property_type }}, "ara/s"),
+                             FALSE, .data$housing),
+    housing = dplyr::if_else(is.na(.data$housing), TRUE, .data$housing))
+
+  }
 
 
