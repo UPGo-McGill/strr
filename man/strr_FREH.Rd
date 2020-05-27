@@ -2,7 +2,7 @@
 % Please edit documentation in R/strr_FREH.R
 \name{strr_FREH}
 \alias{strr_FREH}
-\title{Function to identify frequently rented entire-home (FREH) listings}
+\title{Identify frequently rented entire-home (FREH) listings}
 \usage{
 strr_FREH(
   daily,
@@ -54,9 +54,11 @@ is ignored if `listing_type` is FALSE.}
 to evaluate each listing's activity status. The default is 365 days (one
 year).}
 
-\item{r_cut}{TKTK}
+\item{r_cut}{An integer scalar. The threshold for number of reserved days in
+the last `n_days` which qualifies for "frequently rented".}
 
-\item{ar_cut}{TKTK}
+\item{ar_cut}{An integer scalar. The threshold for number of available or
+reserved days in the last `n_days` which qualifies for "frequently rented".}
 
 \item{quiet}{A logical vector. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}
@@ -76,5 +78,16 @@ which met a given standard of availability and activity over a specified
 time period.
 }
 \details{
-TKTK
+\code{strr_FREH} is named after "frequently rented entire-home" (FREH)
+listings, which it identifies by examining rolling windows of activity to
+find listings with more than a specified number of reserved or available
+nights in a specified time period. By default, the function identifies
+entire-home listings which are available a majority of the year and reserved
+at least 90 nights a year, and reports for each date within the requested
+time range #' whether each entire-home listing satisfies or fails to satisfy
+these criteria.
+
+While the inspiration for the function is identifying FREH listings, all the
+function's parameters can be modified; so, for example, it can instead
+identify all listing types reserved at least once in a month.
 }
