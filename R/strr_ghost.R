@@ -109,7 +109,7 @@ strr_ghost <- function(
     listing_count <- intersects <- housing_units <- geometry <- ghost_ID <-
     subsets <- start <- end <- subset_list <- NULL
 
-  threads <- setDTthreads(future::nbrOfWorkers())
+  threads <- data.table::setDTthreads(future::nbrOfWorkers())
 
   options(future.globals.maxSize = +Inf)
 
@@ -359,7 +359,7 @@ strr_ghost <- function(
                           ") Identifying ghost hostels, using {helper_plan()}.",
                           .type = "progress")
 
-  setDTthreads(1)
+  data.table::setDTthreads(1)
 
   points <-
     points_list %>%
@@ -375,7 +375,7 @@ strr_ghost <- function(
 
   points <- data.table::rbindlist(points)
 
-  setDTthreads(future::nbrOfWorkers())
+  data.table::setDTthreads(future::nbrOfWorkers())
 
   # Error handling for case where no clusters are identified
   if (nrow(points) == 0) return(ghost_empty(crs_points))

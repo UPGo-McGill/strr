@@ -46,7 +46,7 @@ strr_multi <- function(daily, host,
   .datatable.aware = TRUE
   listing_type <- .ML <- NULL
   options(future.globals.maxSize = +Inf)
-  threads <- setDTthreads(future::nbrOfWorkers())
+  threads <- data.table::setDTthreads(future::nbrOfWorkers())
 
   ## Set up on.exit expression for errors
 
@@ -151,7 +151,7 @@ strr_multi <- function(daily, host,
     # Only use future assignment if plan is remote
     if ("remote" %in% class(future::plan())) {
       host %<-% {
-        setDTthreads(future::nbrOfWorkers())
+        data.table::setDTthreads(future::nbrOfWorkers())
         host[, .(count = sum(count)), by = c("host_ID", "date", "listing_type")]
       }
     } else {
@@ -290,7 +290,7 @@ strr_multi <- function(daily, host,
   # Only use future assignment if plan is remote
   if ("remote" %in% class(future::plan())) {
     daily %<-% {
-      setDTthreads(future::nbrOfWorkers())
+      data.table::setDTthreads(future::nbrOfWorkers())
       multi[daily, on = setdiff(names(multi), ".ML")
             ][, .ML := if_else(is.na(.ML), FALSE, .ML)]
     }

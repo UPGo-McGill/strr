@@ -15,39 +15,16 @@
 #' should it return status updates throughout the function (default)?
 #' @return A processed multilisting table, ready for compression with
 #' \code{\link{strr_compress}}.
-#' @importFrom data.table setDT setDTthreads
-#' @importFrom dplyr %>% as_tibble
-#' @importFrom future %<-% nbrOfWorkers
-#' @importFrom rlang .data
 #' @export
 
 strr_host <- function(daily, quiet = FALSE) {
 
-  ### Error checking and initialization ########################################
+  ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
   start_time <- Sys.time()
 
 
-  ## data.table and future setup
-
-  .datatable.aware = TRUE
-  host_ID <- status <- date <- listing_type <- housing <- host_split <- .GRP <-
-    NULL
-  options(future.globals.maxSize = +Inf)
-
-  ## Set up on.exit expression for errors
-
-  on.exit({
-    # Restore future global export limit
-    .Options$future.globals.maxSize <- NULL
-
-    # Print \n so error messages don't collide with progress messages
-    if (!quiet) message()
-  })
-
-
-
-  ## Input checking
+  ## Input checking ------------------------------------------------------------
 
   # Check that table is a data frame
   if (!inherits(daily, "data.frame")) {
@@ -64,71 +41,84 @@ strr_host <- function(daily, quiet = FALSE) {
     stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
   }
 
-  helper_progress_message("Daily table identified.")
+
+  ## Prepare data.table and future variables -----------------------------------
+
+  .datatable.aware = TRUE
+
+  # Silence R CMD check for data.table fields
+  host_ID <- status <- date <- listing_type <- housing <- host_split <- .GRP <-
+    NULL
+
+  if (requireNamespace("future", quietly = TRUE) &&
+      requireNamespace("furrr", quietly = TRUE)) {
+
+    # Remove limit on globals size
+    options(future.globals.maxSize = +Inf)
+
+    # Set data.table threads to match future workers
+    threads <- data.table::setDTthreads(future::nbrOfWorkers())
+
+    # Set up on.exit expression for errors
+    on.exit({
+      # Flush out any stray multicore processes
+      furrr::future_map(1:future::nbrOfWorkers(), ~.x)
+
+      # Restore future global export limit
+      .Options$future.globals.maxSize <- NULL
+
+      # Restore data.table threads
+      data.table::setDTthreads(threads)
+
+    })
+  }
 
 
-  ### Trim daily table #########################################################
+  ### TRIM DAILY TABLE #########################################################
 
-  helper_progress_message("(1/2) Trimming daily table to valid entries.",
-                          .type = "open")
+  helper_message("(1/2) Trimming daily table to valid entries.", .type = "open")
 
-  setDT(daily)
+  data.table::setDT(daily)
 
-  daily <-
-    daily[status != "U" & !is.na(host_ID),
-          .(host_ID, date, listing_type, housing)]
+  daily <- daily[!is.na(host_ID), .(host_ID, date, listing_type, housing)]
 
   # Save nrow for final validity check
   daily_check <- nrow(daily)
 
-  helper_progress_message("(1/2) Daily table trimmed to valid entries.",
-                          .type = "close")
+  helper_message("(1/2) Daily table trimmed to valid entries.", .type = "close")
 
 
-  ### Produce multilisting table ###############################################
+  ### PRODUCE HOST TABLE #######################################################
 
-  helper_progress_message("(2/2) Beginning processing, using {helper_plan()}.",
-                          .type = "progress")
+  helper_message("(2/2) Analyzing rows, using {helper_plan()}.")
 
-  # Only use future assignment if plan is remote
-  if ("remote" %in% class(future::plan())) {
-    host %<-% {
-      setDTthreads(future::nbrOfWorkers())
-
-      daily[,.(count = .N), by = .(host_ID, date, listing_type, housing)] %>%
-        as_tibble()
-    }
-  } else {
-    threads <- setDTthreads(future::nbrOfWorkers())
-
-    host <-
-      daily[,.(count = .N), by = .(host_ID, date, listing_type, housing)] %>%
-      as_tibble()
-
-  }
+  host <- daily[,.(count = .N), by = .(host_ID, date, listing_type, housing)]
+  host <- dplyr::as_tibble(host)
 
 
-  ### Check and return output ##################################################
+  ### CHECK AND RETURN OUTPUT ##################################################
 
-  ## Check validity of output
-
+  # Check validity of output
   if (daily_check != sum(host$count)) {
     stop("The function did not return the correct number of entries. ",
          "This might be because a parallel worker failed to complete its job.")
   }
 
-
-  ## Return output
-
+  # Set class
   class(host) <- append(class(host), "strr_host")
 
-  helper_progress_message("Processing complete.", .type = "final")
-
   # Overwrite previous on.exit call
-  on.exit({
-    .Options$future.globals.maxSize <- NULL
-    setDTthreads(threads)
+  if (requireNamespace("future", quietly = TRUE) &&
+      requireNamespace("furrr", quietly = TRUE)) {
+
+    on.exit({
+      .Options$future.globals.maxSize <- NULL
+      data.table::setDTthreads(threads)
+
     })
+  }
+
+  helper_message("Processing complete.", .type = "final")
 
   return(host)
 }
