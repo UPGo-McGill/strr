@@ -50,6 +50,9 @@ strr_host <- function(daily, quiet = FALSE) {
   host_ID <- status <- date <- listing_type <- housing <- host_split <- .GRP <-
     NULL
 
+  # Default to local analysis
+  remote <- FALSE
+
   if (requireNamespace("future", quietly = TRUE) &&
       requireNamespace("furrr", quietly = TRUE)) {
 
@@ -59,8 +62,15 @@ strr_host <- function(daily, quiet = FALSE) {
     # Set data.table threads to match future workers
     threads <- data.table::setDTthreads(future::nbrOfWorkers())
 
+    # Prepare for remote execution
+    if ("remote" %in% class(future::plan())) {
+      remote <- TRUE
+      `%<-%` <- future::`%<-%`()
+    }
+
     # Set up on.exit expression for errors
     on.exit({
+
       # Flush out any stray multicore processes
       furrr::future_map(1:future::nbrOfWorkers(), ~.x)
 
@@ -69,6 +79,9 @@ strr_host <- function(daily, quiet = FALSE) {
 
       # Restore data.table threads
       data.table::setDTthreads(threads)
+
+      # Print \n so error messages don't collide with progress messages
+      if (!quiet) message()
 
     })
   }
@@ -92,7 +105,15 @@ strr_host <- function(daily, quiet = FALSE) {
 
   helper_message("(2/2) Analyzing rows, using {helper_plan()}.")
 
-  host <- daily[,.(count = .N), by = .(host_ID, date, listing_type, housing)]
+  # Use future assignment if plan is remote
+  if (remote) {
+    host %<-%
+      daily[,.(count = .N), by = .(host_ID, date, listing_type, housing)]
+
+  } else {
+    host <- daily[,.(count = .N), by = .(host_ID, date, listing_type, housing)]
+  }
+
   host <- dplyr::as_tibble(host)
 
 

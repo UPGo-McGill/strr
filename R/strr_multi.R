@@ -25,9 +25,6 @@
 #' @return The output will be the `daily` input table with one additional
 #' logical field (with name taken from the `field_name` argument) indicating
 #' multilisting status.
-#' @importFrom data.table setcolorder setDT
-#' @importFrom dplyr %>% as_tibble if_else rename
-#' @importFrom future %<-%
 #' @importFrom rlang .data
 #' @export
 
@@ -36,30 +33,12 @@ strr_multi <- function(daily, host,
                        combine_housing = TRUE, field_name = multi,
                        quiet = FALSE) {
 
-  ### Error checking and initialization ########################################
+  ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
   start_time <- Sys.time()
 
 
-  ## data.table and future setup
-
-  .datatable.aware = TRUE
-  listing_type <- .ML <- NULL
-  options(future.globals.maxSize = +Inf)
-  threads <- data.table::setDTthreads(future::nbrOfWorkers())
-
-  ## Set up on.exit expression for errors
-
-  on.exit({
-    # Restore future global export limit
-    .Options$future.globals.maxSize <- NULL
-
-    # Print \n so error messages don't collide with progress messages
-    if (!quiet) message()
-  })
-
-
-  ## Input checking
+  ## Input checking ------------------------------------------------------------
 
   # Check that daily is a data frame
   if (!inherits(daily, "data.frame")) {
@@ -95,31 +74,71 @@ strr_multi <- function(daily, host,
   }
 
 
-  ## Check thresholds
+  ## Prepare data.table and future variables -----------------------------------
+
+  .datatable.aware = TRUE
+
+  # Silence R CMD check for data.table fields
+  listing_type <- .ML <- NULL
+
+  # Default to local analysis
+  remote <- FALSE
+
+  if (requireNamespace("future", quietly = TRUE) &&
+      requireNamespace("furrr", quietly = TRUE)) {
+
+    # Remove limit on globals size
+    options(future.globals.maxSize = +Inf)
+
+    # Set data.table threads to match future workers
+    threads <- data.table::setDTthreads(future::nbrOfWorkers())
+
+    # Prepare for remote execution
+    if ("remote" %in% class(future::plan())) {
+      remote <- TRUE
+      `%<-%` <- future::`%<-%`()
+    }
+
+    # Set up on.exit expression for errors
+    on.exit({
+      # Flush out any stray multicore processes
+      furrr::future_map(1:future::nbrOfWorkers(), ~.x)
+
+      # Restore future global export limit
+      .Options$future.globals.maxSize <- NULL
+
+      # Restore data.table threads
+      data.table::setDTthreads(threads)
+
+      # Print \n so error messages don't collide with progress messages
+      if (!quiet) message()
+
+    })
+  }
+
+
+  ### CHECK THRESHOLDS ARGUMENTS ###############################################
 
   # Coerce to integer
   thresholds <- as.integer(thresholds)
 
   # Replace 0 with NA
-  thresholds <- if_else(thresholds == 0, NA_integer_, thresholds)
+  thresholds <- dplyr::if_else(thresholds == 0, NA_integer_, thresholds)
 
   # Calculate steps for progress reporting
   steps <- sum(!is.na(thresholds), combine_housing) + 1
   steps_so_far <- 0
 
-  helper_progress_message("Beginning multilisting analysis.")
 
+  ### PREPARE TABLES ###########################################################
 
-  ### Prepare tables ###########################################################
-
-  setDT(host)
-
-  setDT(daily)
+  data.table::setDT(daily)
+  data.table::setDT(host)
 
   col_names <- names(daily)
 
 
-  ### Extract thresholds from vector ###########################################
+  ### EXTRACT THRESHOLDS FROM VECTOR ###########################################
 
   EH <- PR <- SR <- HR <- NA
 
@@ -130,194 +149,182 @@ strr_multi <- function(daily, host,
     HR <- thresholds[4]
 
   } else{
+
     EH <- thresholds[names(thresholds) %in% c("EH", "Entire home/apt")]
     PR <- thresholds[names(thresholds) %in% c("PR", "Private room")]
     SR <- thresholds[names(thresholds) %in% c("SR", "Shared room")]
     HR <- thresholds[names(thresholds) %in% c("HR", "Hotel room")]
+
   }
 
 
-  ### Possibly combine listings by housing field ###############################
+  ### COMBINE LISTINGS BY HOUSING FIELD ########################################
 
   if (combine_housing) {
 
     steps_so_far <- steps_so_far + 1
 
-    helper_progress_message(
+    helper_message(
       "(", steps_so_far, "/", steps,
       ") Combining housing and non-housing listings, using {helper_plan()}.",
       .type = "open")
 
     # Only use future assignment if plan is remote
-    if ("remote" %in% class(future::plan())) {
-      host %<-% {
-        data.table::setDTthreads(future::nbrOfWorkers())
+    if (remote) {
+      host %<-%
         host[, .(count = sum(count)), by = c("host_ID", "date", "listing_type")]
-      }
+
     } else {
       host <-
         host[, .(count = sum(count)), by = c("host_ID", "date", "listing_type")]
     }
   }
 
-  helper_progress_message(
+  helper_message(
     "(", steps_so_far, "/", steps,
     ") Housing and non-housing listings combined, using {helper_plan()}.",
     .type = "close")
 
 
-  ### Extract subsets and join to daily ########################################
+  ### EXTRACT SUBSETS AND JOIN TO DAILY ########################################
 
-  ## Entire home/apt
+  ## Entire home/apt -----------------------------------------------------------
 
   if (!is.na(EH)) {
 
     steps_so_far <- steps_so_far + 1
 
-    helper_progress_message("(", steps_so_far, "/", steps,
-                            ") Calculating entire-home multilistings.",
-                            .type = "open")
+    helper_message("(", steps_so_far, "/", steps,
+                   ") Calculating entire-home listings", .type = "open")
 
     multi <-
       host[listing_type == "Entire home/apt" & count >= EH
            ][, c(".ML", "count") := list(TRUE, NULL)]
 
-    helper_progress_message(
-      "(", steps_so_far, "/", steps, ") Entire-home multilistings calculated.",
-      .type = "close")
+    helper_message( "(", steps_so_far, "/", steps,
+                    ") Entire-home listings calculated.", .type = "close")
 
     }
 
 
-  ## Private room
+  ## Private room --------------------------------------------------------------
 
   if (!is.na(PR)) {
 
     steps_so_far <- steps_so_far + 1
 
-    helper_progress_message("(", steps_so_far, "/", steps,
-                            ") Calculating private-room multilistings.",
-                            .type = "open")
+    helper_message("(", steps_so_far, "/", steps,
+                   ") Calculating private-room listings.", .type = "open")
 
     if (is.na(EH)) {
-      multi <-
-        host[listing_type == "Private room" & count >= PR
-             ][, c(".ML", "count") := list(TRUE, NULL)]
+      multi <- host[listing_type == "Private room" & count >= PR
+                    ][, c(".ML", "count") := list(TRUE, NULL)]
 
       } else {
-        multi <-
-          rbind(
-            multi,
-            host[listing_type == "Private room" & count >= PR
-                 ][, c(".ML", "count") := list(TRUE, NULL)])
+        multi <- data.table::rbindlist(list(
+          multi, host[listing_type == "Private room" & count >= PR
+                      ][, c(".ML", "count") := list(TRUE, NULL)]))
       }
 
-    helper_progress_message("(", steps_so_far, "/", steps,
-                            ") Private-room multilistings calculated.",
-                            .type = "close")
+    helper_message("(", steps_so_far, "/", steps,
+                   ") Private-room listings calculated.", .type = "close")
     }
 
 
-  ## Shared room
+  ## Shared room ---------------------------------------------------------------
 
   if (!is.na(SR)) {
 
     steps_so_far <- steps_so_far + 1
 
-    helper_progress_message("(", steps_so_far, "/", steps,
-                            ") Calculating shared-room multilistings.",
-                            .type = "open")
+    helper_message("(", steps_so_far, "/", steps,
+                   ") Calculating shared-room multilistings.", .type = "open")
 
     if (is.na(EH) && is.na(PR)) {
-      multi <-
-        host[listing_type == "Shared room" & count >= SR
-             ][, c(".ML", "count") := list(TRUE, NULL)]
+      multi <- host[listing_type == "Shared room" & count >= SR
+                    ][, c(".ML", "count") := list(TRUE, NULL)]
 
     } else {
-      multi <-
-        rbind(
-          multi,
-          host[listing_type == "Shared room" & count >= SR
-               ][, c(".ML", "count") := list(TRUE, NULL)])
+      multi <- data.table::rbindlist(list(
+        multi, host[listing_type == "Shared room" & count >= SR
+                    ][, c(".ML", "count") := list(TRUE, NULL)]))
     }
 
-    helper_progress_message("(", steps_so_far, "/", steps,
-                            ") Shared-room multilistings calculated.",
-                            .type = "close")
+    helper_message("(", steps_so_far, "/", steps,
+                   ") Shared-room multilistings calculated.", .type = "close")
 
     }
 
 
-  ## Hotel room
+  ## Hotel room ----------------------------------------------------------------
 
   if (!is.na(HR)) {
 
     steps_so_far <- steps_so_far + 1
 
-    helper_progress_message("(", steps_so_far, "/", steps,
-                            ") Calculating hotel-room multilistings.",
-                            .type = "open")
+    helper_message("(", steps_so_far, "/", steps,
+                   ") Calculating hotel-room multilistings.", .type = "open")
 
     if (is.na(EH) && is.na(PR) && is.na(SR)) {
-      multi <-
-        host[listing_type == "Hotel room" & count >= HR
-             ][, c(".ML", "count") := list(TRUE, NULL)]
+      multi <- host[listing_type == "Hotel room" & count >= HR
+                    ][, c(".ML", "count") := list(TRUE, NULL)]
 
     } else {
-      multi <-
-        rbind(
-          multi,
-          host[listing_type == "Hotel room" & count >= HR
-               ][, c(".ML", "count") := list(TRUE, NULL)])
+      multi <- data.table::rbindlist(list(
+        multi, host[listing_type == "Hotel room" & count >= HR
+                    ][, c(".ML", "count") := list(TRUE, NULL)]))
     }
 
-    helper_progress_message("(", steps_so_far, "/", steps,
-                            ") Hotel-room multilistings calculated.",
-                            .type = "close")
+    helper_message("(", steps_so_far, "/", steps,
+                   ") Hotel-room multilistings calculated.", .type = "close")
 
     }
 
 
-  ### Join results into daily table ############################################
+  ### JOIN RESULTS INTO DAILY TABLE ############################################
 
   steps_so_far <- steps_so_far + 1
 
-  helper_progress_message(
-    "(", steps_so_far, "/", steps,
-    ") Joining results into daily table, using {helper_plan()}.",
-    .type = "open")
+  helper_message("(", steps_so_far, "/", steps,
+                 ") Joining results into daily table, using {helper_plan()}.",
+                 .type = "open")
 
   # Only use future assignment if plan is remote
-  if ("remote" %in% class(future::plan())) {
-    daily %<-% {
-      data.table::setDTthreads(future::nbrOfWorkers())
-      multi[daily, on = setdiff(names(multi), ".ML")
-            ][, .ML := if_else(is.na(.ML), FALSE, .ML)]
-    }
+  if (remote) {
+    daily %<-% multi[daily, on = setdiff(names(multi), ".ML")
+                     ][, .ML := if_else(is.na(.ML), FALSE, .ML)]
+
   } else {
-    daily <-
-      multi[daily, on = setdiff(names(multi), ".ML")
-            ][, .ML := if_else(is.na(.ML), FALSE, .ML)]
+    daily <- multi[daily, on = setdiff(names(multi), ".ML")
+                   ][, .ML := if_else(is.na(.ML), FALSE, .ML)]
   }
 
-  helper_progress_message(
-    "(", steps_so_far, "/", steps,
-    ") Results joined into daily table, using {helper_plan()}.",
-    .type = "close")
+  helper_message("(", steps_so_far, "/", steps,
+                 ") Results joined into daily table, using {helper_plan()}.",
+                 .type = "close")
 
-  setcolorder(daily, c(col_names, ".ML"))
+  data.table::setcolorder(daily, c(col_names, ".ML"))
 
-  daily <-
-    daily %>%
-    as_tibble() %>%
-    rename({{ field_name }} := .data$.ML)
+  daily <- dplyr::as_tibble(daily)
+  daily  <- dplyr::rename(daily, {{ field_name }} := .data$.ML)
 
   class(daily) <- append(class(daily), "strr_daily")
 
 
-  ### Return output ############################################################
+  ### RETURN OUTPUT ############################################################
 
-  helper_progress_message("Processing complete.", .type = "final")
+  # Overwrite previous on.exit call
+  if (requireNamespace("future", quietly = TRUE) &&
+      requireNamespace("furrr", quietly = TRUE)) {
+
+    on.exit({
+      .Options$future.globals.maxSize <- NULL
+      data.table::setDTthreads(threads)
+
+    })
+  }
+
+  helper_message("Processing complete.", .type = "final")
 
   return(daily)
 
