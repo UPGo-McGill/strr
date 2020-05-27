@@ -93,9 +93,9 @@ strr_principal_res <- function(property, daily, host, FREH, ghost,
 
     pr_table <-
       pr_table %>%
-      left_join(pr_ML, by = "property_ID") %>%
+      dplyr::left_join(pr_ML, by = "property_ID") %>%
       mutate(ML = if_else(is.na(.data$ML), FALSE, .data$ML)) %>%
-      left_join(pr_n, by = "property_ID") %>%
+      dplyr::left_join(pr_n, by = "property_ID") %>%
       group_by(.data$host_ID, .data$listing_type) %>%
       mutate(LFRML = case_when(
         .data$listing_type != "Entire home/apt"       ~ FALSE,
@@ -114,7 +114,7 @@ strr_principal_res <- function(property, daily, host, FREH, ghost,
                .data$LFRML)) %>%
       ungroup() %>%
       select(.data$property_ID, LFRML2 = .data$LFRML) %>%
-      left_join(pr_table, ., by = "property_ID") %>%
+      dplyr::left_join(pr_table, ., by = "property_ID") %>%
       mutate(LFRML = if_else(!is.na(.data$LFRML2), .data$LFRML2, .data$LFRML)
              ) %>%
       select(-.data$LFRML2)
@@ -135,7 +135,7 @@ strr_principal_res <- function(property, daily, host, FREH, ghost,
       filter(.data$date >= start_date, .data$date <= end_date) %>%
       group_by(.data$property_ID) %>%
       summarize(FREH = TRUE) %>%
-      left_join(pr_table, ., by = "property_ID") %>%
+      dplyr::left_join(pr_table, ., by = "property_ID") %>%
       mutate(FREH = if_else(is.na(.data$FREH), FALSE, .data$FREH))
 
     # Add principal_res field
@@ -153,6 +153,6 @@ strr_principal_res <- function(property, daily, host, FREH, ghost,
         TRUE                                 ~ TRUE)) %>%
       select(.data$property_ID, {{ field_name }})
 
-    left_join(property, pr_table, by = "property_ID")
+    dplyr::left_join(property, pr_table, by = "property_ID")
 
   }

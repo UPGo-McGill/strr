@@ -73,7 +73,7 @@
 #'   a list of possible entire-home listing duplicates. `data`: a nested tibble
 #'   of additional variables present in the points object. `geometry`: the
 #'   polygons representing the possible locations of each ghost hostel.
-#' @importFrom data.table setcolorder setkey setDT
+#' @importFrom data.table rbindlist setcolorder setkey setDT
 #' @importFrom dplyr %>% arrange desc filter group_by mutate n pull rename
 #' @importFrom dplyr tibble ungroup
 #' @importFrom furrr future_map
@@ -371,8 +371,9 @@ strr_ghost <- function(
     },
     # Suppress progress bar if !quiet or the plan is remote
     .progress = helper_progress()
-    ) %>%
-    rbindlist()
+    )
+
+  points <- data.table::rbindlist(points)
 
   setDTthreads(future::nbrOfWorkers())
 

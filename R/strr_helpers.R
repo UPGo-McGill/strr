@@ -59,9 +59,6 @@ helper_plan <- function() {
 #' frames or, if the input is a single data frame, the name of a variable
 #' containing nested data frames.
 #' @return A list of data elements.
-#' @importFrom data.table rbindlist
-#' @importFrom future nbrOfWorkers
-#' @importFrom sf st_as_sf
 
 helper_table_split <- function(data_list, multiplier = 10, type = ".list") {
 
@@ -75,7 +72,9 @@ helper_table_split <- function(data_list, multiplier = 10, type = ".list") {
   sf_flag <- inherits(data_list[[1]], "sf")
 
   # Get target number of elements
-  n_elements <- min(length(data_list), multiplier * future::nbrOfWorkers())
+  if (requireNamespace("future", quietly = TRUE)) {
+    n_elements <- min(length(data_list), multiplier * future::nbrOfWorkers())
+  } else n_elements <- min(length(data_list), multiplier)
 
   # Initialize list of index positions
   index_positions <- list()
@@ -86,7 +85,7 @@ helper_table_split <- function(data_list, multiplier = 10, type = ".list") {
     data_list[order(purrr::map_int(data_list, nrow), decreasing = TRUE)]
 
   # Get element nrows
-  nrows <- map_int(data_list, nrow)
+  nrows <- purrr::map_int(data_list, nrow)
 
   # Set initial target nrow
   target_nrow <- sum(nrows) / n_elements
@@ -114,23 +113,22 @@ helper_table_split <- function(data_list, multiplier = 10, type = ".list") {
   if (type != ".list") {
 
     data_list <-
-      map(index_positions, ~table[.x,])
+      purrr::map(index_positions, ~table[.x,])
 
   } else {
     # If table is sf, use do.call to rbind, to preserve geometry column
     if (sf_flag) {
-      data_list <- map(index_positions, ~{
+      data_list <- purrr::map(index_positions, ~{
         do.call(rbind, data_list[.x])
       })
       # Otherwise use faster rbindlist
     } else {
       data_list <-
-        map(index_positions, ~rbindlist(data_list[.x]))
+        map(index_positions, ~data.table::rbindlist(data_list[.x]))
     }
   }
 
-
-  data_list
+  return(data_list)
 }
 
 
@@ -212,30 +210,6 @@ helper_progress_message <- function(..., .type = "main", .quiet = NULL) {
 }
 
 
-#' Helper function to test for a field
-#'
-#' \code{helper_test_field} tests for the presence of a given field in the input
-#' table.
-#' @param data The table to be checked.
-#' @param field The field to be checked.
-#' @param arg_name A character string supplying the underlying argument name for
-#' the field being checked.
-#' @return An error if the table is not present.
-#' @importFrom rlang as_string ensym
-
-helper_test_field <- function(data, field, arg_name) {
-
-  tryCatch(
-    pull(data, {{ field }}),
-    error = function(e) {
-      stop(glue::glue(
-        "The value (`{as_string(ensym(field))}`) supplied to the ",
-        "`{arg_name}` argument is not a valid field in the ",
-        "input table.")
-      )})
-}
-
-
 #' Helper function to set a progress reporting strategy
 #'
 #' \code{handler_strr} sets a progress reporting strategy.
@@ -245,21 +219,24 @@ helper_test_field <- function(data, field, arg_name) {
 
 handler_strr <- function(message) {
 
-  format_string <- paste0(
-    message, " :current of :total (:tick_rate/s) [:bar] :percent, ETA: :eta")
+  if (requireNamespace("progressr", quietly = TRUE)) {
 
-  if (requireNamespace("crayon", quietly = TRUE)) {
-    progressr::handlers(
-      progressr::handler_progress(
-        format = crayon::silver(crayon::italic(format_string)),
-        show_after = 0
-      ))
-  } else {
-    progressr::handlers(
-      progressr::handler_progress(
-        format = format_string,
-        show_after = 0
-      ))
+    format_string <- paste0(
+      message, " :current of :total (:tick_rate/s) [:bar] :percent, ETA: :eta")
+
+    if (requireNamespace("crayon", quietly = TRUE)) {
+      progressr::handlers(
+        progressr::handler_progress(
+          format = crayon::silver(crayon::italic(format_string)),
+          show_after = 0
+        ))
+    } else {
+      progressr::handlers(
+        progressr::handler_progress(
+          format = format_string,
+          show_after = 0
+        ))
+    }
   }
 }
 

@@ -158,7 +158,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   error_date <- stats::na.omit(daily, cols = c("date"), invert = TRUE)
   error_status <- filter(daily, !status %in% c("A", "U", "B", "R"))
 
-  new_error <- distinct(rbindlist(list(error_date, error_status)))
+  new_error <- distinct(data.table::rbindlist(list(error_date, error_status)))
 
   if (nrow(new_error) > 0) {
     daily <-

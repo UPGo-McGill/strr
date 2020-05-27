@@ -285,7 +285,7 @@ strr_raffle <- function(
 
       points_list[[i]] <-
         points %>%
-        slice(((i - 1) * chunk_size + 1):(i * chunk_size))
+        dplyr::slice(((i - 1) * chunk_size + 1):(i * chunk_size))
 
       if (!quiet) {
 
@@ -339,7 +339,7 @@ strr_raffle <- function(
       points %>% rename(poly_ID_new = poly_ID, poly_ID = .data$poly_ID_temp)
   } else if (poly_ID_flag == "symbol") {
     # Append "_new" to the poly_ID argument, then rename
-    new_name <- paste0(rlang::as_string(ensym(poly_ID)), "_new")
+    new_name <- paste0(rlang::as_string(rlang::ensym(poly_ID)), "_new")
     points <- points %>% rename(!! new_name := .data$poly_ID)
   } else if (poly_ID_flag == "none") {
     # Rename "poly_ID" to the argument passed to poly_ID
