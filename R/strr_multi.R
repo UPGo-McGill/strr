@@ -1,9 +1,11 @@
-#' Function to identify STR multilistings
+#' Identify STR multilistings
 #'
 #' \code{strr_multi} takes a daily table and a host table and identifies which
 #' listings in the daily table are multilistings on each date.
 #'
-#' TKTK explanation
+#' The function summarizes the listings operated by a given host on a given date
+#' to determine if the listings are "multilistings"--i.e. more listings operated
+#' by a single host than is consistent with the host being a home sharer.
 #'
 #' @param daily A data frame of daily STR activity in standard UPGo format.
 #' @param host A data frame of STR host activity in standard UPGo format.
@@ -11,9 +13,14 @@
 #' multilisting status for each listing type. If the vector is unnamed, the
 #' options will be read in the order "Entire home/apt", "Private room",
 #' "Shared room", "Hotel room". If the vector is named, using the full listing
-#' type names or acronyms ("EH", "PR", "SR", "HR"), the values can be presented
-#' in any order. An NA or 0 value means that multilisting calculations will not
-#' be performed for that listing type.
+#' type names ("Entire home/apt", "Private room", "Shared room", "Hotel room")
+#' or acronyms ("EH", "PR", "SR", "HR"), the values can be presented in any
+#' order. An NA or 0 value means that multilisting calculations will not be
+#' performed for that listing type.
+#' @param combine_listing_type A logical scalar. Should multilisting status for
+#' one listing type (e.g. "Entire home/apt") confer multilisting status on the
+#' other listing types operated by a host on a given day, regardless of whether
+#' the other listing types exceeded the multilisting threshold (default)?
 #' @param combine_housing A logical scalar. Should housing and non-housing
 #' listings be combined for the purposes of establishing multilisting status
 #' (default)?
@@ -30,6 +37,7 @@
 
 strr_multi <- function(daily, host,
                        thresholds = c(EH = 2L, PR = 3L, SR = NA, HR = NA),
+                       combine_listing_type = TRUE,
                        combine_housing = TRUE, field_name = multi,
                        quiet = FALSE) {
 
@@ -40,37 +48,20 @@ strr_multi <- function(daily, host,
 
   ## Input checking ------------------------------------------------------------
 
-  # Check that daily is a data frame
-  if (!inherits(daily, "data.frame")) {
-    stop("The object supplied to the `daily` argument must be a data frame.")
-  }
+  helper_check_daily()
+  helper_check_host()
+  helper_check_quiet()
 
-  # Check that daily is of class strr_daily
-  if (!inherits(daily, "strr_daily") & names(daily)[1] != "property_ID") {
-    stop("The object supplied to the `daily` argument ",
-         "must be of class `strr_daily`.")
-  }
-
-  # Check that host is a data frame
-  if (!inherits(host, "data.frame")) {
-    stop("The object supplied to the `host` argument must be a data frame.")
-  }
-
-  # Check that host is of class strr_host
-  if (!inherits(host, "strr_host") & names(host)[1] != "host_ID") {
-    stop("The object supplied to the `host` argument ",
-         "must be of class `strr_host`.")
+  # Check that combine_listing_type is a logical
+  if (!is.logical(combine_listing_type)) {
+    stop("The argument `combine_listing_type` ",
+         "must be a logical value (TRUE or FALSE).")
   }
 
   # Check that combine_housing is a logical
   if (!is.logical(combine_housing)) {
     stop("The argument `combine_housing` ",
          "must be a logical value (TRUE or FALSE).")
-  }
-
-  # Check that quiet is a logical
-  if (!is.logical(quiet)) {
-    stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
   }
 
 
@@ -119,8 +110,8 @@ strr_multi <- function(daily, host,
 
   ### CHECK THRESHOLDS ARGUMENTS ###############################################
 
-  # Coerce to integer
-  thresholds <- as.integer(thresholds)
+  # Store names
+  thresholds_names <- names(thresholds)
 
   # Replace 0 with NA
   thresholds <- dplyr::if_else(thresholds == 0, NA_integer_, thresholds)
@@ -142,7 +133,7 @@ strr_multi <- function(daily, host,
 
   EH <- PR <- SR <- HR <- NA
 
-  if (is.null(names(thresholds))) {
+  if (is.null(thresholds_names)) {
     EH <- thresholds[1]
     PR <- thresholds[2]
     SR <- thresholds[3]
@@ -150,10 +141,10 @@ strr_multi <- function(daily, host,
 
   } else{
 
-    EH <- thresholds[names(thresholds) %in% c("EH", "Entire home/apt")]
-    PR <- thresholds[names(thresholds) %in% c("PR", "Private room")]
-    SR <- thresholds[names(thresholds) %in% c("SR", "Shared room")]
-    HR <- thresholds[names(thresholds) %in% c("HR", "Hotel room")]
+    EH <- thresholds[thresholds_names %in% c("EH", "Entire home/apt")]
+    PR <- thresholds[thresholds_names %in% c("PR", "Private room")]
+    SR <- thresholds[thresholds_names %in% c("SR", "Shared room")]
+    HR <- thresholds[thresholds_names %in% c("HR", "Hotel room")]
 
   }
 
@@ -289,19 +280,41 @@ strr_multi <- function(daily, host,
                  ") Joining results into daily table, using {helper_plan()}.",
                  .type = "open")
 
-  # Only use future assignment if plan is remote
+  # Establish columns to join on
+  join_cols <- setdiff(names(multi), ".ML")
+
+
+  ## Merge results if combine_listing_type == TRUE -----------------------------
+
+  if (combine_listing_type) {
+
+    multi <-
+      multi[, .(.ML = sum(.ML)), by = c("host_ID", "date")
+            ][,.ML := as.logical(.ML)]
+
+    join_cols <- setdiff(names(multi), c(".ML", "listing_type"))
+
+  }
+
+
+  ## Perform join --------------------------------------------------------------
+
+  # Use future assignment if plan is remote
   if (remote) {
-    daily %<-% multi[daily, on = setdiff(names(multi), ".ML")
+    daily %<-% multi[daily, on = join_cols
                      ][, .ML := if_else(is.na(.ML), FALSE, .ML)]
 
   } else {
-    daily <- multi[daily, on = setdiff(names(multi), ".ML")
+    daily <- multi[daily, on = join_cols
                    ][, .ML := if_else(is.na(.ML), FALSE, .ML)]
   }
 
   helper_message("(", steps_so_far, "/", steps,
                  ") Results joined into daily table, using {helper_plan()}.",
                  .type = "close")
+
+
+  ## Clean up ------------------------------------------------------------------
 
   data.table::setcolorder(daily, c(col_names, ".ML"))
 

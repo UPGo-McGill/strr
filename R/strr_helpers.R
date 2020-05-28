@@ -331,7 +331,9 @@ helper_message <- function(..., .type = "main", .quiet = NULL) {
 
 helper_check_data <- function() {
 
-  data <- get("data", envir = parent.frame(n = 1))
+  tryCatch({data <- get("data", envir = parent.frame(n = 1))},
+           error = function(e) stop("The argument `data` is missing.",
+                                    call. = FALSE))
 
   # Check that daily is a data frame
   if (!inherits(data, "data.frame")) {
@@ -366,7 +368,9 @@ helper_check_data <- function() {
 
 helper_check_daily <- function(...) {
 
-  daily <- get("daily", envir = parent.frame(n = 1))
+  tryCatch({daily <- get("daily", envir = parent.frame(n = 1))},
+           error = function(e) stop("The argument `daily` is missing.",
+                                    call. = FALSE))
 
   if (requireNamespace("ellipsis", quietly = TRUE)) {
     ellipsis::check_dots_unnamed()
@@ -409,7 +413,9 @@ helper_check_daily <- function(...) {
 
 helper_check_host <- function() {
 
-  host <- get("host", envir = parent.frame(n = 1))
+  tryCatch({host <- get("host", envir = parent.frame(n = 1))},
+           error = function(e) stop("The argument `host` is missing.",
+                                    call. = FALSE))
 
   # Check that host is a data frame
   if (!inherits(host, "data.frame")) {
@@ -418,7 +424,7 @@ helper_check_host <- function() {
   }
 
   # Check that host is strr_host
-  if (!inherits(host, "strr_host") && names(host)[1] != "property_ID") {
+  if (!inherits(host, "strr_host") && names(host)[1] != "host_ID") {
     stop("Input table must be of class `strr_host`.", call. = FALSE)
   }
 }
@@ -432,7 +438,9 @@ helper_check_host <- function() {
 
 helper_check_property <- function() {
 
-  property <- get("property", envir = parent.frame(n = 1))
+  tryCatch({property <- get("property", envir = parent.frame(n = 1))},
+           error = function(e) stop("The argument `property` is missing.",
+                                    call. = FALSE))
 
   # Check that property is a data frame
   if (!inherits(property, "data.frame")) {

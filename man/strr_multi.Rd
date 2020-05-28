@@ -2,12 +2,13 @@
 % Please edit documentation in R/strr_multi.R
 \name{strr_multi}
 \alias{strr_multi}
-\title{Function to identify STR multilistings}
+\title{Identify STR multilistings}
 \usage{
 strr_multi(
   daily,
   host,
   thresholds = c(EH = 2L, PR = 3L, SR = NA, HR = NA),
+  combine_listing_type = TRUE,
   combine_housing = TRUE,
   field_name = multi,
   quiet = FALSE
@@ -22,9 +23,15 @@ strr_multi(
 multilisting status for each listing type. If the vector is unnamed, the
 options will be read in the order "Entire home/apt", "Private room",
 "Shared room", "Hotel room". If the vector is named, using the full listing
-type names or acronyms ("EH", "PR", "SR", "HR"), the values can be presented
-in any order. An NA or 0 value means that multilisting calculations will not
-be performed for that listing type.}
+type names ("Entire home/apt", "Private room", "Shared room", "Hotel room")
+or acronyms ("EH", "PR", "SR", "HR"), the values can be presented in any
+order. An NA or 0 value means that multilisting calculations will not be
+performed for that listing type.}
+
+\item{combine_listing_type}{A logical scalar. Should multilisting status for
+one listing type (e.g. "Entire home/apt") confer multilisting status on the
+other listing types operated by a host on a given day, regardless of whether
+the other listing types exceeded the multilisting threshold (default)?}
 
 \item{combine_housing}{A logical scalar. Should housing and non-housing
 listings be combined for the purposes of establishing multilisting status
@@ -47,5 +54,7 @@ multilisting status.
 listings in the daily table are multilistings on each date.
 }
 \details{
-TKTK explanation
+The function summarizes the listings operated by a given host on a given date
+to determine if the listings are "multilistings"--i.e. more listings operated
+by a single host than is consistent with the host being a home sharer.
 }

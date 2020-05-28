@@ -53,32 +53,16 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   ## Input checking ------------------------------------------------------------
 
-  helper_check_daily(daily)
-
-  # Check that daily and property are present and are data frames
-  if (missing(daily)) {
-    stop("The argument `daily` is missing.")
-  }
-
-  if (missing(property)) {
-    stop("The argument `property` is missing.")
-  }
-
-  if (!inherits(daily, "data.frame")) {
-    stop("The object supplied to the `daily` argument must be a data frame.")
-  }
-
-  if (!inherits(property, "data.frame")) {
-    stop("The object supplied to the `property` argument must be a data frame.")
-  }
+  helper_check_daily()
+  helper_check_property()
+  helper_check_quiet()
 
 
-  start_time <- Sys.time()
 
   # Print \n on exit so error messages don't collide with progress messages
   on.exit(if (!quiet) message())
 
-  helper_progress_message("Beginning processing.")
+  helper_message("Beginning processing.")
 
 
   ### Error checking and initialization ########################################
@@ -88,11 +72,6 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   count <- created <- dif <- full_count <- high <- low <-  price <-
     property_ID <- scraped <- status <- NULL
 
-  ## Check that quiet is a logical
-
-  if (!is.logical(quiet)) {
-    stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
-  }
 
 
 

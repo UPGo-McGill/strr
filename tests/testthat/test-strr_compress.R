@@ -28,7 +28,7 @@ daily <-
          region = c(rep("Ontario", 20), rep("Quebec", 10)),
          city = NA)
 
-multi <-
+host <-
   dplyr::tibble(host_ID = c(rep("ab-1", 20), rep("ab-2", 10)),
          date = as.Date(c(
            "2018-04-01", "2018-04-02", "2018-04-03", "2018-04-04",
@@ -51,8 +51,8 @@ multi <-
 test_that("function completes with no errors", {
   # Daily file
   expect_equal(nrow(strr_compress(daily)), 6)
-  # ML file
-  expect_equal(nrow(strr_compress(multi)), 7)
+  # Host file
+  expect_equal(nrow(strr_compress(host)), 7)
 })
 
 test_that("function sets correct start/end dates", {

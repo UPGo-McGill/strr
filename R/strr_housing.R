@@ -18,6 +18,8 @@
 
 strr_housing <- function(property, property_type = property_type) {
 
+  helper_check_property()
+
   dplyr::mutate(
     property,
     housing =
