@@ -7,7 +7,7 @@
 #' geometries. The function makes use of a pair of fields specifying longitude
 #' and latitude, and has the option to specify a destination CRS.
 #'
-#' @param data A property table in standard UPGo format.
+#' @param property A property table in standard UPGo format.
 #' @param CRS The EPSG code or proj4string character vector specifying a
 #' coordinate reference system into which to transform the table. The default
 #' is unprojected WGS 84 (EPSG 4326).
@@ -19,8 +19,10 @@
 #' geometry field and all other fields returned unaltered.
 #' @export
 
-strr_as_sf <- function(data, CRS = 4326, longitude = "longitude",
+strr_as_sf <- function(property, CRS = 4326, longitude = "longitude",
                        latitude = "latitude") {
+
+  helper_check_property()
 
   data <- sf::st_as_sf(data, coords = c(longitude, latitude), crs = 4326)
   data <- sf::st_transform(data, CRS)

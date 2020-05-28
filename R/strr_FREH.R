@@ -70,26 +70,9 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
 
   ## Input checking ------------------------------------------------------------
 
+  helper_check_daily(rlang::ensyms(property_ID, date, status))
+
   # start_date and end_date checked below during type conversion
-
-  # Check that daily fields exist
-  tryCatch(
-    dplyr::pull(daily, {{ property_ID }}),
-    error = function(e) {
-      stop("The value of `property_ID` is not a valid field in the input table."
-      )})
-
-  tryCatch(
-    dplyr::pull(daily, {{ date }}),
-    error = function(e) {
-      stop("The value of `date` is not a valid field in the input table."
-      )})
-
-  tryCatch(
-    dplyr::pull(daily, {{ status }}),
-    error = function(e) {
-      stop("The value of `status` is not a valid field in the input table."
-      )})
 
   # Check that status_types arguments are plausible
   if (length(status_types) != 2) {
@@ -153,10 +136,7 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
          ">= than `r_cut`.")
   }
 
-  # Check that quiet is a logical
-  if (!is.logical(quiet)) {
-    stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
-  }
+  helper_check_quiet()
 
 
   ## Prepare data.table and future variables -----------------------------------

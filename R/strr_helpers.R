@@ -321,3 +321,150 @@ helper_message <- function(..., .type = "main", .quiet = NULL) {
   }
 }
 
+
+#' Helper function to check a data frame
+#'
+#' \code{helper_check_data} checks a data frame and verifies that is either
+#' strr_daily or strr_host.
+#' @return A logical scalar "daily" indicating if the table is strr_daily or
+#' strr_host, or an error if the check fails.
+
+helper_check_data <- function() {
+
+  data <- get("data", envir = parent.frame(n = 1))
+
+  # Check that daily is a data frame
+  if (!inherits(data, "data.frame")) {
+    stop("The object supplied to the `data` argument must be a data frame.",
+         call. = FALSE)
+  }
+
+  # Check if table is daily or host
+  if (inherits(data, "strr_daily") | names(data)[1] == "property_ID") {
+
+    daily <- TRUE
+
+  } else if (inherits(data, "strr_host") | names(data)[1] == "host_ID") {
+
+    daily <- FALSE
+
+  } else stop("Input table must be of class `strr_daily` or `strr_host`.",
+              call. = FALSE)
+
+  return(daily)
+}
+
+
+#' Helper function to check an strr_daily data frame
+#'
+#' \code{helper_check_daily} checks a data frame and verifies that is strr_daily
+#' class, and optionally verifies the presence of specified fields in the data
+#' frame.
+#' @param ... Field names to be passed as quoted symbol names (with
+#' `rlang::ensym`).
+#' @return An error if the check fails.
+
+helper_check_daily <- function(...) {
+
+  daily <- get("daily", envir = parent.frame(n = 1))
+
+  if (requireNamespace("ellipsis", quietly = TRUE)) {
+    ellipsis::check_dots_unnamed()
+  }
+
+  # Check that daily is a data frame
+  if (!inherits(daily, "data.frame")) {
+    stop("The object supplied to the `daily` argument must be a data frame.",
+         call. = FALSE)
+  }
+
+  # Check that daily is strr_daily
+  if (!inherits(daily, "strr_daily") && names(daily)[1] != "property_ID") {
+    stop("Input table must be of class `strr_daily`.", call. = FALSE)
+  }
+
+  ## Check field arguments if any are supplied ---------------------------------
+
+  if (length(list(...)) > 0) {
+    purrr::map(..., ~{
+      tryCatch({
+        dplyr::pull(daily, !! .x)
+      }, error = function(e) {
+        stop(glue::glue(
+          "{rlang::as_string(.x)}` is not a valid field in the input table."),
+          call. = FALSE)
+      })
+    })
+  }
+
+  return(NULL)
+}
+
+
+#' Helper function to check a host data frame
+#'
+#' \code{helper_check_host} checks a data frame and verifies that is strr_host
+#' class.
+#' @return An error if the check fails.
+
+helper_check_host <- function() {
+
+  host <- get("host", envir = parent.frame(n = 1))
+
+  # Check that host is a data frame
+  if (!inherits(host, "data.frame")) {
+    stop("The object supplied to the `host` argument must be a data frame.",
+         call. = FALSE)
+  }
+
+  # Check that host is strr_host
+  if (!inherits(host, "strr_host") && names(host)[1] != "property_ID") {
+    stop("Input table must be of class `strr_host`.", call. = FALSE)
+  }
+}
+
+
+#' Helper function to check a property data frame
+#'
+#' \code{helper_check_property} checks a data frame and verifies that is
+#' strr_property class.
+#' @return An error if the check fails.
+
+helper_check_property <- function() {
+
+  property <- get("property", envir = parent.frame(n = 1))
+
+  # Check that property is a data frame
+  if (!inherits(property, "data.frame")) {
+    stop("The object supplied to the `property` argument must be a data frame.",
+         call. = FALSE)
+  }
+
+  # Check that property is strr_property
+  if (!inherits(property, "strr_property") &&
+      names(property)[1] != "property_ID") {
+    stop("Input table must be of class `strr_property`.", call. = FALSE)
+  }
+}
+
+
+#' Helper function to check a `quiet` argument
+#'
+#' \code{helper_check_quiet} checks a `quiet` argument and verifies that it is
+#' a logical scalar.
+#' @return An error if the check fails.
+
+helper_check_quiet <- function() {
+
+  quiet <- get("quiet", envir = parent.frame(n = 1))
+
+  # Check that quiet is a logical
+  if (!is.logical(quiet)) {
+    stop("The argument `quiet` must be a logical value (TRUE or FALSE).",
+         call. = FALSE)
+  }
+
+}
+
+
+

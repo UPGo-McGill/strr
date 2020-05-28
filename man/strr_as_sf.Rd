@@ -4,10 +4,15 @@
 \alias{strr_as_sf}
 \title{Function to convert property tables to sf objects}
 \usage{
-strr_as_sf(data, CRS = 4326, longitude = "longitude", latitude = "latitude")
+strr_as_sf(
+  property,
+  CRS = 4326,
+  longitude = "longitude",
+  latitude = "latitude"
+)
 }
 \arguments{
-\item{data}{A property table in standard UPGo format.}
+\item{property}{A property table in standard UPGo format.}
 
 \item{CRS}{The EPSG code or proj4string character vector specifying a
 coordinate reference system into which to transform the table. The default

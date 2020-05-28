@@ -40,13 +40,38 @@
 #' identifying corrupt or otherwise invalid row entries; 4) a missing_rows table
 #' identifying property_IDs with missing dates in between their first and last
 #' date entries, and therefore potentially missing data.
-#' @importFrom data.table setDT setnames
-#' @importFrom dplyr %>% anti_join as_tibble distinct filter inner_join select
 #' @importFrom rlang .data
 #' @export
 
 strr_process_daily <- function(daily, property, keep_cols = FALSE,
                                quiet = FALSE) {
+
+  ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
+
+  start_time <- Sys.time()
+
+
+  ## Input checking ------------------------------------------------------------
+
+  helper_check_daily(daily)
+
+  # Check that daily and property are present and are data frames
+  if (missing(daily)) {
+    stop("The argument `daily` is missing.")
+  }
+
+  if (missing(property)) {
+    stop("The argument `property` is missing.")
+  }
+
+  if (!inherits(daily, "data.frame")) {
+    stop("The object supplied to the `daily` argument must be a data frame.")
+  }
+
+  if (!inherits(property, "data.frame")) {
+    stop("The object supplied to the `property` argument must be a data frame.")
+  }
+
 
   start_time <- Sys.time()
 
@@ -69,23 +94,6 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
     stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
   }
 
-  ## Check that daily and property are present and are data frames
-
-  if (missing(daily)) {
-    stop("The argument `daily` is missing.")
-  }
-
-  if (missing(property)) {
-    stop("The argument `property` is missing.")
-  }
-
-  if (!inherits(daily, "data.frame")) {
-    stop("The object supplied to the `daily` argument must be a data frame.")
-  }
-
-  if (!inherits(property, "data.frame")) {
-    stop("The object supplied to the `property` argument must be a data frame.")
-  }
 
 
   ## Check number of fields and rename
@@ -124,7 +132,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   error <-
     daily %>%
-    anti_join(property, by = "property_ID")
+    dplyr::anti_join(property, by = "property_ID")
 
   helper_progress_message("(1/6) Rows missing from property file identified.",
                           .type = "close")
@@ -138,7 +146,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   daily <-
     daily %>%
-    inner_join(select(property, prop_cols), by = "property_ID")
+    dplyr::inner_join(select(property, prop_cols), by = "property_ID")
 
   helper_progress_message("(2/6) Listing data joined into daily file.",
                           .type = "close")
@@ -164,7 +172,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
     daily <-
       daily %>%
       # Do join by all fields
-      anti_join(new_error, by = names(daily))
+      dplyr::anti_join(new_error, by = names(daily))
 
     setDT(daily)
 

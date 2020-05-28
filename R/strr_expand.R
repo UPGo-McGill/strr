@@ -27,17 +27,9 @@ strr_expand <- function(data, quiet = FALSE) {
 
   ## Input checking ------------------------------------------------------------
 
-  # Check that quiet is a logical
-  if (!is.logical(quiet)) {
-    stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
-  }
+  daily <- helper_check_data()
 
-  # Check if table is daily or host
-  if (inherits(data, "strr_daily") | names(data)[1] == "property_ID") {
-    daily <- TRUE
-  } else if (inherits(data, "strr_host") | names(data)[1] == "host_ID") {
-    daily <- FALSE
-  } else stop("Input table must be of class `strr_daily` or `strr_host`.")
+  helper_check_quiet()
 
 
   ## Check for maximum size ----------------------------------------------------

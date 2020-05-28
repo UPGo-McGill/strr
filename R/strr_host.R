@@ -26,20 +26,8 @@ strr_host <- function(daily, quiet = FALSE) {
 
   ## Input checking ------------------------------------------------------------
 
-  # Check that table is a data frame
-  if (!inherits(daily, "data.frame")) {
-    stop("The object supplied to the `daily` argument must be a data frame.")
-  }
-
-  # Check that table is daily
-  if (!inherits(daily, "strr_daily") & names(daily)[1] != "property_ID") {
-    stop("Input table must be of class `strr_daily`.")
-  }
-
-  # Check that quiet is a logical
-  if (!is.logical(quiet)) {
-    stop("The argument `quiet` must be a logical value (TRUE or FALSE).")
-  }
+  helper_check_daily()
+  helper_check_quiet()
 
 
   ## Prepare data.table and future variables -----------------------------------
