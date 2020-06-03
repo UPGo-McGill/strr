@@ -40,7 +40,6 @@
 #' @return The output will be the `property` input table with one additional
 #' logical field (with name taken from the `field_name` argument) indicating
 #' principal residence status.
-#' @importFrom dplyr count filter group_by mutate summarize tibble
 #' @importFrom rlang .data
 
 strr_principal_res <- function(property, daily, host, FREH, ghost,
@@ -68,81 +67,81 @@ strr_principal_res <- function(property, daily, host, FREH, ghost,
 
   ### Set up table #############################################################
 
-    pr_table <- tibble(property_ID = property$property_ID,
+    pr_table <- dplyr::tibble(property_ID = property$property_ID,
                        listing_type = property$listing_type,
                        host_ID = property$host_ID,
                        housing = property$housing)
 
     pr_ML <-
       daily %>%
-      group_by(.data$property_ID) %>%
-      summarize(ML = if_else(
+      dplyr::group_by(.data$property_ID) %>%
+      dplyr::summarize(ML = if_else(
         sum(.data$ML * (.data$date >= start_date)) +
           sum(.data$ML * (.data$date <= end_date)) > 0,
         TRUE, FALSE))
 
     pr_n <-
       daily %>%
-      filter(.data$status %in% c("R", "A"),
+      dplyr::filter(.data$status %in% c("R", "A"),
              .data$date >= start_date,
              .data$date <= end_date) %>%
-      count(.data$property_ID, .data$status) %>%
-      group_by(.data$property_ID) %>%
-      summarize(n_available = sum(.data$n),
+      dplyr::count(.data$property_ID, .data$status) %>%
+      dplyr::group_by(.data$property_ID) %>%
+      dplyr::summarize(n_available = sum(.data$n),
                 n_reserved = sum(.data$n[.data$status == "R"]))
 
     pr_table <-
       pr_table %>%
       dplyr::left_join(pr_ML, by = "property_ID") %>%
-      mutate(ML = if_else(is.na(.data$ML), FALSE, .data$ML)) %>%
+      dplyr::mutate(ML = dplyr::if_else(is.na(.data$ML), FALSE, .data$ML)) %>%
       dplyr::left_join(pr_n, by = "property_ID") %>%
-      group_by(.data$host_ID, .data$listing_type) %>%
-      mutate(LFRML = case_when(
+      dplyr::group_by(.data$host_ID, .data$listing_type) %>%
+      dplyr::mutate(LFRML = dplyr::case_when(
         .data$listing_type != "Entire home/apt"       ~ FALSE,
         .data$ML == FALSE                             ~ FALSE,
         .data$n_available == min(.data$n_available)   ~ TRUE,
         TRUE                                          ~ FALSE)) %>%
-      ungroup()
+      dplyr::ungroup()
 
     pr_table <-
       pr_table %>%
-      filter(.data$LFRML == TRUE) %>%
-      group_by(.data$host_ID) %>%
-      mutate(prob = sample(0:10000, n(), replace = TRUE),
-             LFRML = if_else(
+      dplyr::filter(.data$LFRML == TRUE) %>%
+      dplyr::group_by(.data$host_ID) %>%
+      dplyr::mutate(prob = sample(0:10000, dplyr::n(), replace = TRUE),
+             LFRML = dplyr::if_else(
                sum(.data$LFRML) > 1 & .data$prob != max(.data$prob), FALSE,
                .data$LFRML)) %>%
-      ungroup() %>%
-      select(.data$property_ID, LFRML2 = .data$LFRML) %>%
+      dplyr::ungroup() %>%
+      dplyr::select(.data$property_ID, LFRML2 = .data$LFRML) %>%
       dplyr::left_join(pr_table, ., by = "property_ID") %>%
-      mutate(LFRML = if_else(!is.na(.data$LFRML2), .data$LFRML2, .data$LFRML)
+      dplyr::mutate(LFRML = dplyr::if_else(!is.na(.data$LFRML2), .data$LFRML2, .data$LFRML)
              ) %>%
-      select(-.data$LFRML2)
+      dplyr::select(-.data$LFRML2)
 
     GH_list <-
       ghost %>%
-      filter(.data$date >= start_date, .data$date <= end_date) %>%
-      pull(.data$property_IDs) %>%
+      dplyr::filter(.data$date >= start_date, .data$date <= end_date) %>%
+      dplyr::pull(.data$property_IDs) %>%
       unlist() %>%
       unique()
 
     pr_table <-
       pr_table %>%
-      mutate(GH = if_else(.data$property_ID %in% GH_list, TRUE, FALSE))
+      dplyr::mutate(GH = dplyr::if_else(.data$property_ID %in% GH_list, TRUE, FALSE))
 
     pr_table <-
       FREH %>%
-      filter(.data$date >= start_date, .data$date <= end_date) %>%
-      group_by(.data$property_ID) %>%
-      summarize(FREH = TRUE) %>%
+      dplyr::filter(.data$date >= start_date, .data$date <= end_date) %>%
+      dplyr::group_by(.data$property_ID) %>%
+      dplyr::summarize(FREH = TRUE) %>%
       dplyr::left_join(pr_table, ., by = "property_ID") %>%
-      mutate(FREH = if_else(is.na(.data$FREH), FALSE, .data$FREH))
+      dplyr::mutate(FREH = dplyr::if_else(is.na(.data$FREH), FALSE, .data$FREH))
 
     # Add principal_res field
 
     pr_table <-
       pr_table %>%
-      mutate({{ field_name }} := case_when(
+      dplyr::mutate({{ field_name }} := dplyr::case_when(
         .data$housing == FALSE               ~ FALSE,
         .data$GH == TRUE                     ~ FALSE,
         .data$listing_type == "Shared room"  ~ TRUE,
@@ -151,7 +150,7 @@ strr_principal_res <- function(property, daily, host, FREH, ghost,
         .data$LFRML == TRUE                  ~ TRUE,
         .data$ML == TRUE                     ~ FALSE,
         TRUE                                 ~ TRUE)) %>%
-      select(.data$property_ID, {{ field_name }})
+      dplyr::select(.data$property_ID, {{ field_name }})
 
     dplyr::left_join(property, pr_table, by = "property_ID")
 

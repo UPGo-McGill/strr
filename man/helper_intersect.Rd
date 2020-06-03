@@ -2,17 +2,17 @@
 % Please edit documentation in R/strr_raffle.R
 \name{helper_intersect}
 \alias{helper_intersect}
-\title{Helper function to intersect points and polys}
+\title{Helper function to intersect property and polys}
 \usage{
-helper_intersect(points, polys, distance, quiet)
+helper_intersect(property, polys, distance, quiet)
 }
 \arguments{
-\item{points, polys, distance, quiet}{Arguments passed along from the main
+\item{property, polys, distance, quiet}{Arguments passed along from the main
 function.}
 }
 \value{
 The output will be a list of two data frames.
 }
 \description{
-\code{helper_intersect} intersects points and polys
+\code{helper_intersect} intersects property and polys
 }

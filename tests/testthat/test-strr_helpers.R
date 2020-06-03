@@ -32,14 +32,13 @@ data_sf <-
     b = 1:1000,
     lon = 1:1000,
     lat = 1001:2000
-  ) %>% sf::st_as_sf(coords = c("lon", "lat"))
+  )
 
 data_list_sf <-
   data_sf %>%
-  group_split(a)
+  group_split(a) %>%
+  map(sf::st_as_sf, coords = c("lon", "lat"))
 
-
-typeof(data_sf)
 
 ### Tests ######################################################################
 

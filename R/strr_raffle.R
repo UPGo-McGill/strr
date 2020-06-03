@@ -11,7 +11,7 @@
 #' of information about possible listing locations--either population or housing
 #' densities.
 #'
-#' @param points An sf or sp point-geometry object, in a projected coordinate
+#' @param property An sf or sp point-geometry object, in a projected coordinate
 #'   system. If the data frame does not have spatial attributes, an attempt will
 #'   be made to convert it to sf using \code{\link{strr_as_sf}}. The result will
 #'   be transformed into the CRS of `polys`.
@@ -37,11 +37,11 @@
 #'   associated probabilities be appended to the function output?
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
-#' @return The output will be the input points object with a new field
+#' @return The output will be the input property object with a new field
 #'   appended, which specifies which polygon from the `polys` object was
 #'   probabilistically assigned to the listing, and which takes the name of the
 #'   field identified in the `poly_ID` argument. (If there was already a field
-#'   with that name in the `points` object, the new field will have "_new"
+#'   with that name in the `property` object, the new field will have "_new"
 #'   appended to its name.) If diagnostic == TRUE, a `candidates` field will
 #'   also be appended, which lists the possible polygons for each point, along
 #'   with their probabilities.
@@ -51,7 +51,7 @@
 #' @export
 
 strr_raffle <- function(
-  points, polys, poly_ID, units, distance = 200, seed = NULL, pdf = "airbnb",
+  property, polys, poly_ID, units, distance = 200, seed = NULL, pdf = "airbnb",
   diagnostic = FALSE, quiet = FALSE) {
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
@@ -124,29 +124,29 @@ strr_raffle <- function(
 
   ## Handle spatial attributes -------------------------------------------------
 
-  # Convert points and polys from sp
-  if (inherits(points, "Spatial")) {
-    points <- sf::st_as_sf(points)
+  # Convert property and polys from sp
+  if (inherits(property, "Spatial")) {
+    property <- sf::st_as_sf(property)
   }
   if (inherits(polys, "Spatial")) {
     polys <- sf::st_as_sf(polys)
   }
 
-  # Check that points is sf, and convert to sf if possible
-  if (!inherits(points, "sf")) {
+  # Check that property is sf, and convert to sf if possible
+  if (!inherits(property, "sf")) {
     tryCatch({
-      points <- strr_as_sf(points, sf::st_crs(polys))
+      property <- strr_as_sf(property, sf::st_crs(polys))
       helper_message("Input table converted to sf.")
       },
     error = function(e) {
-      stop(paste0("The object `points` must be of class sf or sp, ",
+      stop(paste0("The object `property` must be of class sf or sp, ",
                   "or must be convertable to sf using strr_as_sf."))
     })
   }
 
-  # Check that points and polys are sf
-  if (inherits(points, "sf") == FALSE) {
-    stop(paste0("The object `points` must be of class sf or sp, ",
+  # Check that property and polys are sf
+  if (inherits(property, "sf") == FALSE) {
+    stop(paste0("The object `property` must be of class sf or sp, ",
                 "or must be convertable to sf using strr_as_sf."))
   }
   if (inherits(polys, "sf") == FALSE) {
@@ -157,13 +157,13 @@ strr_raffle <- function(
   ## Check that polys fields exist ---------------------------------------------
 
   tryCatch(
-    pull(polys, {{ poly_ID }}),
+    dplyr::pull(polys, {{ poly_ID }}),
     error = function(e) stop(
       "The value of `poly_ID` is not a valid field in the `polys` input table."
       ))
 
   tryCatch(
-    pull(polys, {{ units }}),
+    dplyr::pull(polys, {{ units }}),
     error = function(e) stop(
       "The value of `units` is not a valid field in the `polys` input table."
       ))
@@ -178,27 +178,27 @@ strr_raffle <- function(
 
   ### SET BATCH PROCESSING STRATEGY ############################################
 
-  if (nrow(points) > chunk_size) {
+  if (nrow(property) > chunk_size) {
 
-    iterations <- ceiling(nrow(points) / chunk_size)
+    iterations <- ceiling(nrow(property) / chunk_size)
 
     helper_message("Raffling point locations in ", iterations, " batches.")
   }
 
 
-  ### PREPARE POINTS AND POLYS TABLES ##########################################
+  ### PREPARE PROPERTY AND POLYS TABLES ########################################
 
   helper_message("(1/", 1 + iterations, ") Preparing tables for analysis.",
                  .type = "open")
 
 
-  ## Process points ------------------------------------------------------------
+  ## Process property ----------------------------------------------------------
 
-  # Transform points CRS to match polys
-  points <- sf::st_transform(points, sf::st_crs(polys))
+  # Transform property CRS to match polys
+  property <- sf::st_transform(property, sf::st_crs(polys))
 
   # Add .point_ID field for subsequent use
-  points <- dplyr::mutate(points, .point_ID = seq_len(dplyr::n()))
+  property <- dplyr::mutate(property, .point_ID = seq_len(dplyr::n()))
 
 
   ## Process polys -------------------------------------------------------------
@@ -206,16 +206,16 @@ strr_raffle <- function(
   # Set poly_ID_flag to avoid future name collision with poly_ID
   poly_ID_flag <-
     dplyr::case_when(
-      tryCatch({dplyr::select(points, poly_ID); TRUE},
+      tryCatch({dplyr::select(property, poly_ID); TRUE},
                error = function(e) FALSE)  ~ "string",
-      tryCatch({dplyr::select(points, {{ poly_ID }}); TRUE},
+      tryCatch({dplyr::select(property, {{ poly_ID }}); TRUE},
                error = function(e) FALSE)  ~ "symbol",
       TRUE ~ "none"
     )
 
-  # Rename points$poly_ID if it exists
+  # Rename property$poly_ID if it exists
   if (poly_ID_flag == "string") {
-    points <- dplyr::rename(points, poly_ID_temp = .data$poly_ID)
+    property <- dplyr::rename(property, poly_ID_temp = .data$poly_ID)
   }
 
   # Rename polys fields for data.table
@@ -231,7 +231,7 @@ strr_raffle <- function(
 
   # Clean up polys and initialize poly_area field
   polys <-
-    setDT(polys)[units > 0, .(poly_ID = as.character(poly_ID), units,
+    data.table::setDT(polys)[units > 0, .(poly_ID = as.character(poly_ID), units,
                               poly_area = sf::st_area(geometry),
                               geometry)] %>%
     sf::st_as_sf(agr = "constant")
@@ -245,17 +245,17 @@ strr_raffle <- function(
 
   if (iterations == 1) {
 
-    helper_message("(2/2) Analyzing points, using {helper_plan()}.")
+    helper_message("(2/2) Analyzing rows, using {helper_plan()}.")
 
     if (!quiet) {
 
       handler_strr("Intersecting row")
 
       progressr::with_progress({
-        results <- helper_intersect(points, polys, distance, quiet)
+        results <- helper_intersect(property, polys, distance, quiet)
       })
 
-      if (sum(map_int(results, nrow)) == 0) {
+      if (sum(purrr::map_int(results, nrow)) == 0) {
         stop("The input tables do not intersect.")}
 
       handler_strr("Integrating row")
@@ -266,7 +266,7 @@ strr_raffle <- function(
 
     } else {
 
-      results <- helper_intersect(points, polys, distance, quiet)
+      results <- helper_intersect(property, polys, distance, quiet)
       results <- helper_integrate(results, pdf, quiet)
 
     }
@@ -274,7 +274,7 @@ strr_raffle <- function(
   } else {
 
     # Initialize empty lists
-    points_list <- vector("list", iterations)
+    property_list <- vector("list", iterations)
     results_list <- vector("list", iterations)
 
     # Process each batch sequentially
@@ -283,8 +283,8 @@ strr_raffle <- function(
       helper_message("(", i + 1, "/", iterations + 1, ") Analyzing batch ", i,
         ", using {helper_plan()}.")
 
-      points_list[[i]] <-
-        points %>%
+      property_list[[i]] <-
+        property %>%
         dplyr::slice(((i - 1) * chunk_size + 1):(i * chunk_size))
 
       if (!quiet) {
@@ -293,7 +293,7 @@ strr_raffle <- function(
 
         progressr::with_progress({
           results_list[[i]] <-
-            helper_intersect(points_list[[i]], polys, distance, quiet)
+            helper_intersect(property_list[[i]], polys, distance, quiet)
         })
 
         handler_strr("Integrating row")
@@ -305,7 +305,7 @@ strr_raffle <- function(
       } else {
 
         results_list[[i]] <-
-          helper_intersect(points_list[[i]], polys, distance, quiet)
+          helper_intersect(property_list[[i]], polys, distance, quiet)
 
         results_list[[i]] <- helper_integrate(results_list[[i]], pdf, quiet)
 
@@ -313,7 +313,8 @@ strr_raffle <- function(
     }
 
     # Bind batches together
-    results <- setorder(rbindlist(results_list), .point_ID)
+    results <-
+      data.table::setorder(data.table::rbindlist(results_list), .point_ID)
   }
 
 
@@ -325,55 +326,56 @@ strr_raffle <- function(
   if (!diagnostic) results[, candidates := NULL]
 
   # Join winners to point file and arrange output
-  points <-
-    points %>%
+  property <-
+    property %>%
     dplyr::left_join(results, by = ".point_ID") %>%
     dplyr::select(-.data$.point_ID) %>%
     dplyr::select(-.data$geometry, dplyr::everything(), .data$geometry)
 
 
-  ## Rename poly_ID field in points, but check name duplication first ----------
+  ## Rename poly_ID field in property, but check name duplication first --------
 
   if (poly_ID_flag == "string") {
-    points <-
-      points %>% rename(poly_ID_new = poly_ID, poly_ID = .data$poly_ID_temp)
+    property <-
+      property %>% dplyr::rename(poly_ID_new = poly_ID,
+                                 poly_ID = .data$poly_ID_temp)
   } else if (poly_ID_flag == "symbol") {
     # Append "_new" to the poly_ID argument, then rename
     new_name <- paste0(rlang::as_string(rlang::ensym(poly_ID)), "_new")
-    points <- points %>% rename(!! new_name := .data$poly_ID)
+    property <- property %>% dplyr::rename(!! new_name := .data$poly_ID)
   } else if (poly_ID_flag == "none") {
     # Rename "poly_ID" to the argument passed to poly_ID
-    points <- points %>% rename({{ poly_ID }} := .data$poly_ID)
+    property <- property %>% dplyr::rename({{ poly_ID }} := .data$poly_ID)
   }
 
   helper_message("Analysis complete.", .type = "final")
 
-  return(points)
+  return(property)
 }
 
 
-#' Helper function to intersect points and polys
+#' Helper function to intersect property and polys
 #'
-#' \code{helper_intersect} intersects points and polys
+#' \code{helper_intersect} intersects property and polys
 #'
-#' @param points,polys,distance,quiet Arguments passed along from the main
+#' @param property,polys,distance,quiet Arguments passed along from the main
 #' function.
 #' @return The output will be a list of two data frames.
 
-helper_intersect <- function(points, polys, distance, quiet) {
+helper_intersect <- function(property, polys, distance, quiet) {
 
   geometry <- .point_ID <- NULL
 
   ## Define function to be mapped ----------------------------------------------
 
-  intersect_fun <- function(.x) {
+  intersect_fun <- function(x) {
 
-    .strr_env$pb(amount = nrow(.x))
+    .strr_env$pb(amount = nrow(x))
 
     output <-
-      .x %>%
+      x %>%
       sf::st_as_sf(coords = c(".point_x", ".point_y"),
-                   crs = sf::st_crs(points),
+                   crs = sf::st_crs(property),
                    remove = FALSE, agr = "constant") %>%
       sf::st_buffer(distance, 10) %>%
       sf::st_intersection(polys)
@@ -383,6 +385,7 @@ helper_intersect <- function(points, polys, distance, quiet) {
       output <-
         output %>%
         dplyr::filter(!sf::st_is(geometry, "POLYGON")) %>%
+        sf::st_cast("MULTIPOLYGON", warn = FALSE) %>%
         sf::st_cast("POLYGON", warn = FALSE) %>%
         rbind(dplyr::filter(output, sf::st_is(geometry, "POLYGON")))
     }
@@ -393,21 +396,22 @@ helper_intersect <- function(points, polys, distance, quiet) {
 
   ## Initialize intersects -----------------------------------------------------
 
-  intersects <- copy(points)
+  intersects <- copy(property)
 
 
   ## Prepare intersects for processing -----------------------------------------
 
   # Initialize helper fields and drop geometry for the split
   intersects <-
-    setDT(intersects)[, .(.point_ID,
+    data.table::setDT(intersects)[, .(.point_ID,
                           .point_x = sf::st_coordinates(geometry)[,1],
                           .point_y = sf::st_coordinates(geometry)[,2])] %>%
     split(by = ".point_ID") %>%
     helper_table_split(100)
 
   # Initialize progress bar
-  .strr_env$pb <- progressr::progressor(steps = sum(map_int(intersects, nrow)))
+  .strr_env$pb <-
+    progressr::progressor(steps = sum(purrr::map_int(intersects, nrow)))
 
 
   ## Generate buffers and intersect with polygons ------------------------------
@@ -428,7 +432,7 @@ helper_intersect <- function(points, polys, distance, quiet) {
   ## Process results -----------------------------------------------------------
 
   # Recombine output list
-  intersects <- intersects[map_int(intersects, nrow) > 0]
+  intersects <- intersects[purrr::map_int(intersects, nrow) > 0]
   intersects <- data.table::rbindlist(intersects) %>% sf::st_as_sf()
 
   # Exit early if no intersections are found
@@ -464,7 +468,7 @@ helper_integrate <- function(results, pdf, quiet) {
 
     .strr_env$pb(amount = nrow(.x))
 
-    setDT(.x) %>% helper_raffle_integrate()
+    data.table::setDT(.x) %>% helper_raffle_integrate()
 
   }
 
@@ -499,7 +503,7 @@ helper_integrate <- function(results, pdf, quiet) {
       helper_table_split(100)
 
     # Initialize progress bar
-    .strr_env$pb <- progressr::progressor(steps = sum(map_int(data_list, nrow)))
+    .strr_env$pb <- progressr::progressor(steps = sum(purrr::map_int(data_list, nrow)))
 
     # Do integration
     if (requireNamespace("future", quietly = TRUE) &&
@@ -553,10 +557,9 @@ helper_integrate <- function(results, pdf, quiet) {
 #'
 #' @param x An st_coordinates object, converted to sp.
 #' @return The output will be a numerical vector of probabilities.
-#' @importFrom stats dnorm
 
 raffle_pdf_airbnb <- function(x) {
-  dnorm(sqrt(x[,1]^2 + x[,2]^2), mean = 100, sd = 50, log = FALSE) *
+  stats::dnorm(sqrt(x[,1]^2 + x[,2]^2), mean = 100, sd = 50, log = FALSE) *
     (1 / (2 * pi))
 }
 

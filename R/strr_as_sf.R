@@ -24,9 +24,10 @@ strr_as_sf <- function(property, CRS = 4326, longitude = "longitude",
 
   helper_check_property()
 
-  data <- sf::st_as_sf(data, coords = c(longitude, latitude), crs = 4326)
-  data <- sf::st_transform(data, CRS)
-  data <- sf::st_set_agr(data, "constant")
+  property <- sf::st_as_sf(property, coords = c(longitude, latitude),
+                           crs = 4326)
+  property <- sf::st_transform(property, CRS)
+  property <- sf::st_set_agr(property, "constant")
 
-  data
+  property
 }

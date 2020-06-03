@@ -73,15 +73,7 @@
 #'   a list of possible entire-home listing duplicates. `data`: a nested tibble
 #'   of additional variables present in the points object. `geometry`: the
 #'   polygons representing the possible locations of each ghost hostel.
-#' @importFrom data.table rbindlist setcolorder setkey setDT
-#' @importFrom dplyr %>% arrange desc filter group_by mutate n pull rename
-#' @importFrom dplyr tibble ungroup
-#' @importFrom furrr future_map
-#' @importFrom methods is
-#' @importFrom purrr map map2 map_dbl map_int map_lgl
 #' @importFrom rlang .data
-#' @importFrom sf st_as_sf st_as_sfc st_crs st_point st_sf st_transform
-#' @importFrom tidyr nest unnest
 #' @export
 
 strr_ghost <- function(
@@ -131,12 +123,12 @@ strr_ghost <- function(
   ## Handle spatial attributes
 
   # Convert points from sp
-  if (is(points, "Spatial")) {
-    points <- st_as_sf(points)
+  if (methods::is(points, "Spatial")) {
+    points <- sf::st_as_sf(points)
   }
 
   # Check that points is sf, and convert to sf if possible
-  if (!is(points, "sf")) {
+  if (!methods::is(points, "sf")) {
     tryCatch({
       points <- strr_as_sf(points, 3857)
       helper_progress_message("Converting input table to sf.")
@@ -148,31 +140,31 @@ strr_ghost <- function(
   }
 
   # Store CRS for later
-  crs_points <- st_crs(points)
+  crs_points <- sf::st_crs(points)
 
 
   ## Check that points fields exist
 
   tryCatch(
-    pull(points, {{ property_ID }}),
+    dplyr::pull(points, {{ property_ID }}),
     error = function(e) {
       stop("The value of `property_ID` is not a valid field in the input table."
       )})
 
   tryCatch(
-    pull(points, {{ host_ID }}),
+    dplyr::pull(points, {{ host_ID }}),
     error = function(e) {
       stop("The value of `host_ID` is not a valid field in the input table."
       )})
 
   tryCatch(
-    pull(points, {{ created }}),
+    dplyr::pull(points, {{ created }}),
     error = function(e) {
       stop("The value of `created` is not a valid field in the input table."
       )})
 
   tryCatch(
-    pull(points, {{ scraped }}),
+    dplyr::pull(points, {{ scraped }}),
     error = function(e) {
       stop("The value of `scraped` is not a valid field in the input table."
       )})
@@ -184,7 +176,7 @@ strr_ghost <- function(
     tryCatch(
       {
         # If listing_type is a field in points, set lt_flag = TRUE
-        pull(points, {{ listing_type }})
+        dplyr::pull(points, {{ listing_type }})
         TRUE
       },
       error = function(e) {
@@ -206,14 +198,14 @@ strr_ghost <- function(
 
   if (lt_flag) {
 
-    if (points %>% filter({{ listing_type }} == private_room) %>% nrow() == 0) {
+    if (points %>% dplyr::filter({{ listing_type }} == private_room) %>% nrow() == 0) {
       warning(paste0("The supplied argument to `private_room` returns no ",
                      "matches in the input table. Are you sure the argument ",
                      "is correct?"))
     }
 
     if (EH_check &&
-        points %>% filter({{ listing_type }} == entire_home) %>% nrow() == 0) {
+        points %>% dplyr::filter({{ listing_type }} == entire_home) %>% nrow() == 0) {
       warning(paste0("The supplied argument to `entire_home` returns no ",
                      "matches in the input table. Are you sure the argument ",
                      "is correct?"))
@@ -225,11 +217,11 @@ strr_ghost <- function(
   if (multi_date) {
 
     # Check if created and scraped are dates
-    if (!is(pull(points, {{ created }}), "Date")) {
+    if (!methods::is(dplyr::pull(points, {{ created }}), "Date")) {
       stop("The `created` field must be of class 'Date'")
     }
 
-    if (!is(pull(points, {{ scraped }}), "Date")) {
+    if (!methods::is(dplyr::pull(points, {{ scraped }}), "Date")) {
       stop("The `scraped` field must be of class 'Date'")
     }
 
@@ -237,7 +229,7 @@ strr_ghost <- function(
     if (missing(start_date)) {
       start_date <-
         points %>%
-        pull({{ created }}) %>%
+        dplyr::pull({{ created }}) %>%
         min(na.rm = TRUE)
     } else {
       start_date <- tryCatch(as.Date(start_date), error = function(e) {
@@ -248,7 +240,7 @@ strr_ghost <- function(
     if (missing(end_date)) {
       end_date <-
         points %>%
-        pull({{ scraped }}) %>%
+        dplyr::pull({{ scraped }}) %>%
         max(na.rm = TRUE)
     } else {
       end_date <- tryCatch(as.Date(end_date), error = function(e) {
@@ -268,15 +260,15 @@ strr_ghost <- function(
   # Rename fields for easier processing with future and data.table packages
   points <-
     points %>%
-    rename(property_ID = {{ property_ID }},
+    dplyr::rename(property_ID = {{ property_ID }},
            host_ID = {{ host_ID }},
            created = {{ created}},
            scraped = {{ scraped }})
 
-  if (lt_flag) points <- points %>% rename(listing_type = {{ listing_type }})
+  if (lt_flag) points <- points %>% dplyr::rename(listing_type = {{ listing_type }})
 
   # Convert to data.table
-  setDT(points)
+  data.table::setDT(points)
 
   # Remove invalid listings
   points <- points[!is.na(host_ID)]
@@ -398,9 +390,9 @@ strr_ghost <- function(
   # Generate geometry column for ghost table
   ghost_geom <-
     points$intersects %>%
-    map(~{.x$geometry}) %>%
+    purrr::map(~{.x$geometry}) %>%
     do.call(rbind, .) %>%
-    st_as_sfc()
+    sf::st_as_sfc()
 
 
   ## Create ghost table
@@ -414,7 +406,7 @@ strr_ghost <- function(
   points <- points[!duplicated(points$property_IDs)]
 
   # Arrange table
-  setkey(points, host_ID)
+  data.table::setkey(points, host_ID)
 
   # Create ghost_ID
   points[, ghost_ID := seq_len(.N)]
@@ -425,14 +417,14 @@ strr_ghost <- function(
                data, geometry)]
 
   # Convert to sf and reattach CRS
-  points <- st_as_sf(points, crs = crs_points)
+  points <- sf::st_as_sf(points, crs = crs_points)
 
 
   ## Calculate dates if multi_date == TRUE
 
   if (multi_date) {
 
-    setDT(points)
+    data.table::setDT(points)
 
     # Calculate date ranges
     points[, c("start", "end") := list(
@@ -445,7 +437,7 @@ strr_ghost <- function(
     # Identify subsets
 
     points[, subsets := lapply(property_IDs, function(y) {
-      which(map_lgl(points$property_IDs, ~all(.x %in% y)))
+      which(purrr::map_lgl(points$property_IDs, ~all(.x %in% y)))
     })]
 
     points[, subsets := mapply(function(x, y) y[y != x], ghost_ID, subsets,
@@ -467,25 +459,25 @@ strr_ghost <- function(
                             ") Checking for possible entire-home duplicates.",
                             .type = "open")
 
-    setDT(points)
+    data.table::setDT(points)
 
     EH_buffers <-
-      copy(EH_points)[, geometry := st_buffer(geometry, distance)] %>%
-      st_as_sf() %>%
-      st_transform(crs_points) %>%
-      rename(EH_property_ID = property_ID)
+      copy(EH_points)[, geometry := sf::st_buffer(geometry, distance)] %>%
+      sf::st_as_sf() %>%
+      sf::st_transform(crs_points) %>%
+      dplyr::rename(EH_property_ID = property_ID)
 
     EH_gm_fun <- function(x, y) {
-      gm <- st_sf(geometry = st_sfc(list(x)), crs = crs_points,
+      gm <- sf::st_sf(geometry = sf::st_sfc(list(x)), crs = crs_points,
                   agr = "constant")
       EH_host <- sf::st_set_agr(EH_buffers[EH_buffers$host_ID == y,],
                                 "constant")
-      st_intersection(gm, EH_host) %>% pull(.data$EH_property_ID)
+      sf::st_intersection(gm, EH_host) %>% dplyr::pull(.data$EH_property_ID)
     }
 
     points[, EH_check := mapply(EH_gm_fun, geometry, host_ID, SIMPLIFY = TRUE)]
 
-    setcolorder(points, c(setdiff(names(points), "geometry"), "geometry"))
+    data.table::setcolorder(points, c(setdiff(names(points), "geometry"), "geometry"))
 
     helper_progress_message("(", steps, "/", steps,
                             ") Possible entire-home duplicates detected.",
@@ -516,7 +508,7 @@ strr_ghost <- function(
     # Rejoin info from points
     ghost_points <- points[ghost_points, on = "ghost_ID"]
     ghost_points[, c("start", "end") := NULL]
-    setcolorder(ghost_points, c("ghost_ID", "date"))
+    data.table::setcolorder(ghost_points, c("ghost_ID", "date"))
 
     # Remove rows from ghost_points which are subsets of other rows
 
@@ -530,7 +522,7 @@ strr_ghost <- function(
 
     ghost_points[, c("subset_list", "subsets") := NULL]
 
-    setcolorder(ghost_points, c("ghost_ID", "date", "host_ID", "listing_count",
+    data.table::setcolorder(ghost_points, c("ghost_ID", "date", "host_ID", "listing_count",
                                 "housing_units", "property_IDs"))
 
   } else ghost_points <- points
@@ -538,9 +530,9 @@ strr_ghost <- function(
   # Convert to sf tibble and rename fields to match input fields
   ghost_points <-
     ghost_points %>%
-    as_tibble() %>%
-    st_as_sf() %>%
-    rename({{ host_ID }} := .data$host_ID)
+    dplyr::as_tibble() %>%
+    sf::st_as_sf() %>%
+    dplyr::rename({{ host_ID }} := .data$host_ID)
 
 
   ### RETURN OUTPUT ############################################################
@@ -568,11 +560,7 @@ strr_ghost <- function(
 #'   be considered a ghost hostel.
 #' @return The output will be the `points` object, rearranged with one row per
 #'   cluster and with a new `predicates` field.
-#' @importFrom dplyr %>% filter mutate
-#' @importFrom purrr map map2 reduce
 #' @importFrom rlang .data
-#' @importFrom sf st_buffer st_intersects
-#' @importFrom tidyr unnest
 
 ghost_cluster <- function(points, distance, min_listings) {
 
@@ -580,17 +568,17 @@ ghost_cluster <- function(points, distance, min_listings) {
 
   # Create intersect predicate lists
   points[, predicates := lapply(data, function(x) {
-    st_intersects(st_buffer(st_as_sf(x), distance))
+    sf::st_intersects(sf::st_buffer(sf::st_as_sf(x), distance))
   })]
 
   # Extra list around lapply is needed to force embedded list where nrow == 1
   points[, predicates := list(lapply(predicates, function(pred) {
-    map(seq_along(pred), ~{
+    purrr::map(seq_along(pred), ~{
       # Merge lists with common elements
       reduce(pred, function(x, y) if (any(y %in% x)) unique(c(x, y)) else x,
       .init = pred[[.]]) # Compile lists starting at each position
     }) %>%
-      map(sort) %>%
+      purrr::map(sort) %>%
       unique() # Remove duplicate lists
   }))]
 
@@ -601,13 +589,13 @@ ghost_cluster <- function(points, distance, min_listings) {
   # Use predicates to split points into clusters with length >= min_listings
   points <- points[lapply(predicates, length) > 0]
 
-  pred_fun <- function(x, y) map(y, ~x[.,])
+  pred_fun <- function(x, y) purrr::map(y, ~x[.,])
 
   points[, data := list(mapply(pred_fun, data, predicates, SIMPLIFY = FALSE))]
 
   # Exit function early if points table is empty
   if (nrow(points) == 0) {
-    return(data.table(host_ID = character(), data = list()))
+    return(data.table::data.table(host_ID = character(), data = list()))
   }
 
   # Unnest data
@@ -633,11 +621,7 @@ ghost_cluster <- function(points, distance, min_listings) {
 #' @param n A numeric scalar. The number of points to attempt to find a set of
 #'   combinations for
 #' @return The output will be a matrix of possible intersection combinations.
-#' @importFrom dplyr %>% as_tibble
-#' @importFrom purrr map map_dbl
 #' @importFrom rlang .data
-#' @importFrom sf st_centroid st_distance st_union
-#' @importFrom utils combn
 
 ghost_combine <- function(buffers, predicates, n) {
 
@@ -646,13 +630,13 @@ ghost_combine <- function(buffers, predicates, n) {
   valid_pr2 <- valid_pr
   invalid_pr <- which(tabulate(unlist(valid_pr)) < n)
   if (length(invalid_pr) > 0) {
-    valid_pr <- map(predicates[-invalid_pr], ~{.[!(. %in% invalid_pr)]})
+    valid_pr <- purrr::map(predicates[-invalid_pr], ~{.[!(. %in% invalid_pr)]})
   }
 
   while (!identical(valid_pr, valid_pr2)) {
     valid_pr2 <- valid_pr
     invalid_pr <- unique(c(invalid_pr, which(tabulate(unlist(valid_pr)) < n)))
-    valid_pr <- map(predicates[-invalid_pr], ~{.[!(. %in% invalid_pr)]})
+    valid_pr <- purrr::map(predicates[-invalid_pr], ~{.[!(. %in% invalid_pr)]})
     if (length(valid_pr) < n) break
   }
 
@@ -660,15 +644,15 @@ ghost_combine <- function(buffers, predicates, n) {
   if (length(valid_pr) < n) return(matrix(nrow = 0, ncol = 0))
 
   # Identify sets to generate combinations from
-  combinations <- map(valid_pr, function(x){
-    x[map(valid_pr, ~which(x %in% .)) %>%
+  combinations <- purrr::map(valid_pr, function(x){
+    x[purrr::map(valid_pr, ~which(x %in% .)) %>%
         unlist() %>%
         tabulate() >= n]
   }) %>%
     unique()
 
   # Test if reducer will be necessary to avoid too many combinations
-  while(sum(map_dbl(combinations, ~{
+  while(sum(purrr::map_dbl(combinations, ~{
     factorial(length(.)) / {factorial(n) * factorial(length(.) - n)}
   })) > 100000) {
 
@@ -679,29 +663,29 @@ ghost_combine <- function(buffers, predicates, n) {
 
     centroid <-
       valid_bf %>%
-      st_centroid() %>%
-      st_union() %>%
-      st_centroid()
+      sf::st_centroid() %>%
+      sf::st_union() %>%
+      sf::st_centroid()
 
     # Identify furthest point
     to_remove <-
-      which(buffers$property_ID == valid_bf[which.max(st_distance(
-        st_centroid(valid_bf), centroid)),]$property_ID)
+      which(buffers$property_ID == valid_bf[which.max(sf::st_distance(
+        sf::st_centroid(valid_bf), centroid)),]$property_ID)
 
     # Remove furthest point from predicate list
     invalid_pr <- c(invalid_pr, to_remove)
 
     # Repeat previous steps to generate new combinations
-    valid_pr <- map(predicates[-invalid_pr], ~{.[!(. %in% invalid_pr)]})
+    valid_pr <- purrr::map(predicates[-invalid_pr], ~{.[!(. %in% invalid_pr)]})
     while (!identical(valid_pr, valid_pr2)) {
       valid_pr2 <- valid_pr
       invalid_pr <- unique(c(invalid_pr, which(tabulate(unlist(valid_pr)) < n)))
-      valid_pr <- map(predicates[-invalid_pr], ~{.[!(. %in% invalid_pr)]})
+      valid_pr <- purrr::map(predicates[-invalid_pr], ~{.[!(. %in% invalid_pr)]})
       if (length(valid_pr) < n) break
     }
     if (length(valid_pr) < n) return(matrix(nrow = 0, ncol = 0))
-    combinations <- map(valid_pr, function(x){
-      x[map(valid_pr, ~which(x %in% .)) %>%
+    combinations <- purrr::map(valid_pr, function(x){
+      x[purrr::map(valid_pr, ~which(x %in% .)) %>%
           unlist() %>%
           tabulate() >= n]
     }) %>%
@@ -710,7 +694,7 @@ ghost_combine <- function(buffers, predicates, n) {
 
   # Generate combinations from valid buffers and discard duplicates
   combinations <-
-    map(combinations, combn, n) %>%
+    purrr::map(combinations, utils::combn, n) %>%
     do.call(cbind, .) %>%
     unique(MARGIN = 2)
 
@@ -721,7 +705,7 @@ ghost_combine <- function(buffers, predicates, n) {
     colSums() >= n]
 
   # Convert combinations matrix to tibble for future steps
-  combinations <- suppressWarnings(as_tibble(combinations))
+  combinations <- suppressWarnings(dplyr::as_tibble(combinations))
 
   combinations
 }
@@ -736,12 +720,11 @@ ghost_combine <- function(buffers, predicates, n) {
 #' @param x A buffer.
 #' @param y A buffer.
 #' @return The output will be an intersect polygon.
-#' @importFrom rlang .data done
-#' @importFrom sf st_intersection
+#' @importFrom rlang .data
 
 ghost_intersect_with_done <- function(x, y) {
-  result <- st_intersection(x, y)
-  if (nrow(result) == 0) done(result) else result
+  result <- sf::st_intersection(x, y)
+  if (nrow(result) == 0) rlang::done(result) else result
 }
 
 
@@ -757,11 +740,7 @@ ghost_intersect_with_done <- function(x, y) {
 #' @param min_listings A numeric scalar. The minimum number of listings to
 #'   be considered a ghost hostel.
 #' @return The output will be an intersect polygon.
-#' @importFrom data.table setDF
-#' @importFrom dplyr %>% as_tibble distinct mutate
-#' @importFrom purrr map reduce
 #' @importFrom rlang .data
-#' @importFrom sf st_agr<- st_as_sf st_intersects st_is
 
 ghost_stepwise_intersect <- function(buffers, min_listings) {
 
@@ -769,7 +748,7 @@ ghost_stepwise_intersect <- function(buffers, min_listings) {
   if (nrow(buffers) == 0) return(buffers)
 
   # Build predicates and h_score
-  predicates <- st_intersects(buffers)
+  predicates <- sf::st_intersects(buffers)
   matrix <-
     matrix(c(sort(lengths(predicates), decreasing = TRUE),
              seq_along(predicates)),
@@ -777,7 +756,7 @@ ghost_stepwise_intersect <- function(buffers, min_listings) {
   h_score <- max(matrix[matrix[,2] >= matrix[,1],1])
 
   # Set up variables
-  st_agr(buffers) <- "constant"
+  sf::st_agr(buffers) <- "constant"
   n <- h_score # Get working number of rows for combinations
   cols <- ncol(buffers) - 1 # Get total columns for clean-up
 
@@ -802,19 +781,19 @@ ghost_stepwise_intersect <- function(buffers, min_listings) {
 
     # Try all combinations for a given n
     intersect_output <-
-      map(combinations, function(x, n) {
+      purrr::map(combinations, function(x, n) {
         intersect <- suppressWarnings(
-          split(st_as_sf(setDF(buffers[x,])), seq_len(nrow(buffers[x,]))) %>%
-            reduce(ghost_intersect_with_done))
+          split(sf::st_as_sf(data.table::setDF(buffers[x,])), seq_len(nrow(buffers[x,]))) %>%
+            purrr::reduce(ghost_intersect_with_done))
         intersect <- intersect[, 1:cols]
-        mutate(intersect, n.overlaps = n, origins = list(x))
+        dplyr::mutate(intersect, n.overlaps = n, origins = list(x))
       }, n = n)
 
     # Discard null results and rbind to single sf tibble
     intersect_output <-
-      intersect_output[map(intersect_output, nrow) > 0] %>%
+      intersect_output[purrr::map(intersect_output, nrow) > 0] %>%
       do.call(rbind, .) %>%
-      as_tibble()
+      dplyr::as_tibble()
 
     # Conditional to decide if the while-loop should continue
     if (nrow(intersect_output) == 0) {
@@ -823,10 +802,10 @@ ghost_stepwise_intersect <- function(buffers, min_listings) {
     } else {
       intersect_output <-
         intersect_output %>%
-        st_as_sf() %>%
-        distinct(.data$geometry, .keep_all = TRUE)
+        sf::st_as_sf() %>%
+        dplyr::distinct(.data$geometry, .keep_all = TRUE)
 
-      if (any(st_is(intersect_output, "POLYGON") == FALSE)) {
+      if (any(sf::st_is(intersect_output, "POLYGON") == FALSE)) {
         stop("Invalid geometry produced.")
       }
 
@@ -852,21 +831,18 @@ ghost_stepwise_intersect <- function(buffers, min_listings) {
 #'   be considered a ghost hostel.
 #' @return The output will be `points`, trimmed to valid ghost hostel locations
 #'   and with additional fields added.
-#' @importFrom dplyr %>% filter mutate
-#' @importFrom purrr map map2
 #' @importFrom rlang .data
-#' @importFrom sf st_area st_buffer
 
 ghost_intersect <- function(points, distance, min_listings) {
 
   buffers <- data <- intersects <- property_IDs <- NULL
 
   # Prepare buffers
-  points[, buffers := lapply(data, function(x) st_buffer(st_as_sf(x),
+  points[, buffers := lapply(data, function(x) sf::st_buffer(sf::st_as_sf(x),
                                                          dist = distance))]
 
   # Create intersects using ghost_stepwise_intersect
-  points[, intersects := map(buffers, ghost_stepwise_intersect,
+  points[, intersects := purrr::map(buffers, ghost_stepwise_intersect,
                              min_listings)]
 
   # Remove empty clusters
@@ -875,11 +851,11 @@ ghost_intersect <- function(points, distance, min_listings) {
   # Choose intersect with max area
   points[lapply(intersects, nrow) > 1,
          intersects := lapply(intersects,
-                              function(x) x[which.max(st_area(x)),])]
+                              function(x) x[which.max(sf::st_area(x)),])]
 
   # Add $property_IDs field
-  data_PIDs <- map(points$data, `$`, "property_ID")
-  int_origs <- map(points$intersects, `$`, "origins")
+  data_PIDs <- purrr::map(points$data, `$`, "property_ID")
+  int_origs <- purrr::map(points$intersects, `$`, "origins")
 
   points[, property_IDs := mapply(function(x, y) y[x[[1]]], int_origs,
                                   data_PIDs, SIMPLIFY = FALSE)]
@@ -899,8 +875,6 @@ ghost_intersect <- function(points, distance, min_listings) {
 #' @param min_listings A numeric scalar. The minimum number of listings to
 #'   be considered a ghost hostel.
 #' @return The output will be a set of new candidate `points`.
-#' @importFrom dplyr %>% filter mutate select
-#' @importFrom purrr map_int map2
 #' @importFrom rlang .data
 
 ghost_identify_leftovers <- function(points, min_listings) {
@@ -936,8 +910,6 @@ ghost_identify_leftovers <- function(points, min_listings) {
 #'   be considered a ghost hostel.
 #' @return The output will be the `points` file with additional ghost hostels
 #'   added.
-#' @importFrom dplyr %>% filter mutate
-#' @importFrom purrr map_int map2
 #' @importFrom rlang .data
 
 ghost_intersect_leftovers <- function(points, distance, min_listings) {
@@ -983,18 +955,16 @@ ghost_intersect_leftovers <- function(points, distance, min_listings) {
 #' hostels.
 #'
 #' @param crs_points The CRS of the points table.
-#' @importFrom dplyr %>% mutate tibble
-#' @importFrom sf st_as_sf st_sfc
 #' @importFrom rlang .data
 
 ghost_empty <- function(crs_points) {
-  tibble(ghost_ID = integer(),
+  dplyr::tibble(ghost_ID = integer(),
          date = as.Date(x = integer(), origin = "1970-01-01"),
          host_ID = character(),
          listing_count = integer(),
          housing_units = integer(),
          property_IDs = list(),
          data = list(),
-         geometry = st_sfc()) %>%
-    st_as_sf(crs = crs_points)
+         geometry = sf::st_sfc()) %>%
+    sf::st_as_sf(crs = crs_points)
 }

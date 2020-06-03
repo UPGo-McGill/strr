@@ -70,7 +70,7 @@ strr_multi <- function(daily, host,
   .datatable.aware = TRUE
 
   # Silence R CMD check for data.table fields
-  listing_type <- .ML <- NULL
+  listing_type <- .ML <- count <- NULL
 
   # Default to local analysis
   remote <- FALSE

@@ -124,7 +124,7 @@ helper_table_split <- function(data_list, multiplier = 10, type = ".list") {
       # Otherwise use faster rbindlist
     } else {
       data_list <-
-        map(index_positions, ~data.table::rbindlist(data_list[.x]))
+        purrr::map(index_positions, ~data.table::rbindlist(data_list[.x]))
     }
   }
 
@@ -434,13 +434,19 @@ helper_check_host <- function() {
 #'
 #' \code{helper_check_property} checks a data frame and verifies that is
 #' strr_property class.
+#' @param ... Field names to be passed as quoted symbol names (with
+#' `rlang::ensym`).
 #' @return An error if the check fails.
 
-helper_check_property <- function() {
+helper_check_property <- function(...) {
 
   tryCatch({property <- get("property", envir = parent.frame(n = 1))},
            error = function(e) stop("The argument `property` is missing.",
                                     call. = FALSE))
+
+  if (requireNamespace("ellipsis", quietly = TRUE)) {
+    ellipsis::check_dots_unnamed()
+  }
 
   # Check that property is a data frame
   if (!inherits(property, "data.frame")) {
@@ -453,7 +459,25 @@ helper_check_property <- function() {
       names(property)[1] != "property_ID") {
     stop("Input table must be of class `strr_property`.", call. = FALSE)
   }
+
+  ## Check field arguments if any are supplied ---------------------------------
+
+  if (length(list(...)) > 0) {
+    purrr::map(..., ~{
+      tryCatch({
+        dplyr::pull(property, !! .x)
+      }, error = function(e) {
+        stop(glue::glue(
+          "{rlang::as_string(.x)}` is not a valid field in the input table."),
+          call. = FALSE)
+      })
+    })
+  }
+
+  return(NULL)
 }
+
+
 
 
 #' Helper function to check a `quiet` argument

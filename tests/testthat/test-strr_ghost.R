@@ -33,14 +33,14 @@ points <- dplyr::tibble(
     rep("Private room", 3), "Entire home/apt",
     rep("Private room", 3), "Entire home/apt"
     ),
-  geometry = st_sfc(
-    st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)),
-    st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)),
-    st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)),
-    st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)),
-    st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(1, 1)), st_point(c(300, 1)),
+  geometry = sf::st_sfc(
+    sf::st_point(c(1, 1)), sf::st_point(c(1, 1)), sf::st_point(c(1, 1)),
+    sf::st_point(c(1, 1)), sf::st_point(c(1, 1)), sf::st_point(c(1, 1)), sf::st_point(c(1, 1)),
+    sf::st_point(c(1, 1)), sf::st_point(c(1, 1)), sf::st_point(c(1, 1)), sf::st_point(c(1, 1)),
+    sf::st_point(c(1, 1)), sf::st_point(c(1, 1)), sf::st_point(c(1, 1)), sf::st_point(c(1, 1)),
+    sf::st_point(c(1, 1)), sf::st_point(c(1, 1)), sf::st_point(c(1, 1)), sf::st_point(c(300, 1)),
     crs = 32617)
-  ) %>% st_as_sf()
+  ) %>% sf::st_as_sf()
 
 
 ### Tests ######################################################################
@@ -66,11 +66,11 @@ test_that("cores/distance/min_listings flags are correctly handled", {
 
 test_that("handling of sf/sp classes is correct", {
   # No sf or sp
-  expect_error(strr_ghost(st_drop_geometry(points)))
+  expect_error(strr_ghost(sf::st_drop_geometry(points)))
   # Convert sp
   ### TEST FOR sp CONVERSION TKTK
   # CRS handling
-  expect_equal(st_crs(points), st_crs(strr_ghost(points)))
+  expect_equal(sf::st_crs(points), sf::st_crs(strr_ghost(points)))
 })
 
 
@@ -99,14 +99,14 @@ test_that("listing_type is correctly handled", {
   # listing_type = listing_type
   expect_equal({
     strr_ghost(points, quiet = TRUE) %>%
-      filter(host_ID == "listing_type", date == "2019-04-01") %>%
-      pull(listing_count)
+      dplyr::filter(host_ID == "listing_type", date == "2019-04-01") %>%
+      dplyr::pull(listing_count)
   }, 3)
   # listing_type = FALSE
   expect_equal({
     strr_ghost(points, listing_type = FALSE, quiet = TRUE) %>%
-      filter(host_ID == "listing_type", date == "2019-04-01") %>%
-      pull(listing_count)
+      dplyr::filter(host_ID == "listing_type", date == "2019-04-01") %>%
+      dplyr::pull(listing_count)
     }, 4)
 })
 
@@ -126,32 +126,32 @@ test_that("multi_date produces the expected outputs", {
   # 4 to 3 with early date
   expect_equal({
     strr_ghost(points) %>%
-      filter(date == "2016-01-01", host_ID == "4 to 3") %>%
+      dplyr::filter(date == "2016-01-01", host_ID == "4 to 3") %>%
       nrow()}, 0)
   # 4 to 3 with late date
   expect_equal({
     strr_ghost(points) %>%
-      filter(date == "2019-03-01", host_ID == "4 to 3") %>%
-      pull(listing_count)}, 3)
+      dplyr::filter(date == "2019-03-01", host_ID == "4 to 3") %>%
+      dplyr::pull(listing_count)}, 3)
   # 4 to 3 with multi_date = FALSE
   expect_equal({
     strr_ghost(points, multi_date = FALSE) %>%
-      filter(host_ID == "4 to 3") %>%
-      pull(listing_count)}, 4)
+      dplyr::filter(host_ID == "4 to 3") %>%
+      dplyr::pull(listing_count)}, 4)
 })
 
 test_that("EH_check works correctly", {
   # Valid EH point is included
   expect_equal({
     strr_ghost(points, EH_check = TRUE) %>%
-      filter(host_ID == "EH_check TRUE", date == "2018-02-01") %>%
-      pull(EH_check) %>% unlist()
+      dplyr::filter(host_ID == "EH_check TRUE", date == "2018-02-01") %>%
+      dplyr::pull(EH_check) %>% unlist()
     }, 15)
   # Invalid EH point is excluded
   expect_equal({
     strr_ghost(points, EH_check = TRUE) %>%
-      filter(host_ID == "EH_check FALSE", date == "2018-02-01") %>%
-      pull(EH_check) %>% length()
+      dplyr::filter(host_ID == "EH_check FALSE", date == "2018-02-01") %>%
+      dplyr::pull(EH_check) %>% length()
     }, 0)
 })
 
@@ -168,7 +168,7 @@ test_that("Non-default field names are passed through", {
   #   }, "PID")
   # Renamed host_ID shows up in output
   expect_equal({
-    points %>% rename(HID = host_ID) %>%
+    points %>% dplyr::rename(HID = host_ID) %>%
       strr_ghost(host_ID = HID) %>%
       names() %>%
       `[`(3)

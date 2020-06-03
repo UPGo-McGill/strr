@@ -18,7 +18,7 @@
 
 strr_housing <- function(property, property_type = property_type) {
 
-  helper_check_property()
+  helper_check_property(rlang::ensyms(property_type))
 
   dplyr::mutate(
     property,

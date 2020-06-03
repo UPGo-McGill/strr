@@ -5,7 +5,7 @@
 \title{Raffle to assign STR listings to administrative units for spatial analysis}
 \usage{
 strr_raffle(
-  points,
+  property,
   polys,
   poly_ID,
   units,
@@ -17,7 +17,7 @@ strr_raffle(
 )
 }
 \arguments{
-\item{points}{An sf or sp point-geometry object, in a projected coordinate
+\item{property}{An sf or sp point-geometry object, in a projected coordinate
 system. If the data frame does not have spatial attributes, an attempt will
 be made to convert it to sf using \code{\link{strr_as_sf}}. The result will
 be transformed into the CRS of `polys`.}
@@ -53,11 +53,11 @@ associated probabilities be appended to the function output?}
 it return status updates throughout the function (default)?}
 }
 \value{
-The output will be the input points object with a new field
+The output will be the input property object with a new field
   appended, which specifies which polygon from the `polys` object was
   probabilistically assigned to the listing, and which takes the name of the
   field identified in the `poly_ID` argument. (If there was already a field
-  with that name in the `points` object, the new field will have "_new"
+  with that name in the `property` object, the new field will have "_new"
   appended to its name.) If diagnostic == TRUE, a `candidates` field will
   also be appended, which lists the possible polygons for each point, along
   with their probabilities.

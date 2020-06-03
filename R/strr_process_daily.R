@@ -145,7 +145,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   error_date <- stats::na.omit(daily, cols = c("date"), invert = TRUE)
   error_status <- filter(daily, !status %in% c("A", "U", "B", "R"))
 
-  new_error <- distinct(data.table::rbindlist(list(error_date, error_status)))
+  new_error <- dplyr::distinct(data.table::rbindlist(list(error_date, error_status)))
 
   if (nrow(new_error) > 0) {
     daily <-
@@ -166,7 +166,7 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   dup_rows <- nrow(error)
 
   # Discard duplicates
-  error <- distinct(error)
+  error <- dplyr::distinct(error)
 
   # Save number of duplicate rows for subsequent error checking
   dup_rows <- dup_rows - nrow(error)

@@ -4,7 +4,11 @@
 \alias{helper_check_property}
 \title{Helper function to check a property data frame}
 \usage{
-helper_check_property()
+helper_check_property(...)
+}
+\arguments{
+\item{...}{Field names to be passed as quoted symbol names (with
+`rlang::ensym`).}
 }
 \value{
 An error if the check fails.
