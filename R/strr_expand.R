@@ -213,11 +213,11 @@ strr_expand <- function(data, quiet = FALSE) {
 
   ### SET CLASS OF OUTPUT ######################################################
 
-  if (daily) {
-    class(data) <- append(class(data), "strr_daily")
-  } else {
-    class(data) <- append(class(data), "strr_host")
-  }
+  # if (daily) {
+  #   class(data) <- append(class(data), "strr_daily")
+  # } else {
+  #   class(data) <- append(class(data), "strr_host")
+  # }
 
 
   ### OUTPUT DATA FRAME ########################################################

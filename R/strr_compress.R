@@ -209,12 +209,12 @@ strr_compress <- function(data, quiet = FALSE) {
   if (daily) {
 
     compressed <- dplyr::as_tibble(compressed[order(property_ID, start_date)])
-    class(compressed) <- append(class(compressed), "strr_daily")
+    # class(compressed) <- append(class(compressed), "strr_daily")
 
     } else {
 
       compressed <- dplyr::as_tibble(compressed[order(host_ID, start_date)])
-      class(compressed) <- append(class(compressed), "strr_host")
+      # class(compressed) <- append(class(compressed), "strr_host")
 
       }
 
