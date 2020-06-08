@@ -145,6 +145,7 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
 
   ## Produce table with one row per distinct combination of user info ----------
 
+  rm(..keep_cols)
   keep_cols <- c("user_ID", "date", "member_since", "user_name", "user_country",
                  "user_region", "user_city", "description", "school", "work")
 
