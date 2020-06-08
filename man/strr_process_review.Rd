@@ -7,8 +7,7 @@
 strr_process_review(review, property, latest_user, max_id = 0, quiet = FALSE)
 }
 \arguments{
-\item{review}{An unprocessed property data frame in the raw AirDNA format,
-with either 36 or 56 fields.}
+\item{review}{TKTK}
 
 \item{property}{TKTK}
 

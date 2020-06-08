@@ -6,8 +6,7 @@
 #' A function for cleaning raw review tables from AirDNA and preparing them
 #' for subsequent analysis or upload in the UPGo format.
 #'
-#' @param review An unprocessed property data frame in the raw AirDNA format,
-#' with either 36 or 56 fields.
+#' @param review TKTK
 #' @param property TKTK
 #' @param latest_user TKTK
 #' @param max_id The highest review_ID currently in use. New review_IDs will be
@@ -37,7 +36,6 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
   ## Define default versions of map_* ------------------------------------------
 
   map <- purrr::map
-  map_dfr <- purrr::map_dfr
 
 
   ## Prepare data.table and future variables -----------------------------------
@@ -54,7 +52,6 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
 
     # Replace map_* with future_map_*
     map <- furrr::future_map
-    map_dfr <- furrr::future_map_dfr
 
     # Remove limit on globals size
     options(future.globals.maxSize = +Inf)
@@ -145,7 +142,7 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
 
   ## Produce table with one row per distinct combination of user info ----------
 
-  rm(..keep_cols)
+  rm(..keep_cols) # Silence data.table warning about variable in calling scope
   keep_cols <- c("user_ID", "date", "member_since", "user_name", "user_country",
                  "user_region", "user_city", "description", "school", "work")
 
@@ -172,18 +169,18 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
 
   if (progress) {
 
-    handler_strr("Analyzing duplicates: row")
+    # handler_strr("Analyzing duplicates: row")
 
-    progressr::with_progress({
+    # progressr::with_progress({
 
       # Initialize progress bar
-      .strr_env$pb <- progressr::progressor(steps = nrow(review_user))
+      # .strr_env$pb <- progressr::progressor(steps = nrow(review_user))
 
       data_list <- map(data_list, ~{
-        .strr_env$pb(amount = nrow(.x))
+        # .strr_env$pb(amount = nrow(.x))
         unique(.x, by = setdiff(keep_cols, "date"))[date >= start_date]
         })
-    })
+    # })
 
   } else {
 
@@ -200,19 +197,19 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
 
   if (progress) {
 
-    handler_strr("Adding new entries to latest_user: row")
+    # handler_strr("Adding new entries to latest_user: row")
 
-    progressr::with_progress({
+    # progressr::with_progress({
 
       # Initialize progress bar
-      .strr_env$pb <-
-        progressr::progressor(steps = sum(sapply(data_list, nrow)))
+      # .strr_env$pb <-
+        # progressr::progressor(steps = sum(sapply(data_list, nrow)))
 
       new_user <- map(data_list, ~{
-        .strr_env$pb(amount = nrow(.x))
+        # .strr_env$pb(amount = nrow(.x))
         .x[, .SD[.N], by = user_ID]
       })
-    })
+    # })
 
   } else {
 
