@@ -478,6 +478,53 @@ helper_check_property <- function(...) {
 }
 
 
+#' Helper function to check a review data frame
+#'
+#' \code{helper_check_review} checks a data frame and verifies that is
+#' strr_review class.
+#' @param ... Field names to be passed as quoted symbol names (with
+#' `rlang::ensym`).
+#' @return An error if the check fails.
+
+helper_check_review <- function(...) {
+
+  tryCatch({review <- get("review", envir = parent.frame(n = 1))},
+           error = function(e) stop("The argument `review` is missing.",
+                                    call. = FALSE))
+
+  if (requireNamespace("ellipsis", quietly = TRUE)) {
+    ellipsis::check_dots_unnamed()
+  }
+
+  # Check that review is a data frame
+  if (!inherits(review, "data.frame")) {
+    stop("The object supplied to the `review` argument must be a data frame.",
+         call. = FALSE)
+  }
+
+  # Check that review is strr_review
+  if (!inherits(review, "strr_review") &&
+      names(review)[1] != "review_ID") {
+    stop("Input table must be of class `strr_review`.", call. = FALSE)
+  }
+
+  ## Check field arguments if any are supplied ---------------------------------
+
+  if (length(list(...)) > 0) {
+    purrr::map(..., ~{
+      tryCatch({
+        dplyr::pull(review, !! .x)
+      }, error = function(e) {
+        stop(glue::glue(
+          "{rlang::as_string(.x)}` is not a valid field in the input table."),
+          call. = FALSE)
+      })
+    })
+  }
+
+  return(NULL)
+}
+
 
 
 #' Helper function to check a `quiet` argument

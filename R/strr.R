@@ -98,6 +98,82 @@ not_housing_types <- c(
   "Windmill", "Yacht", "Yurt"
 )
 
+country_list <-
+  c("Afghanistan", "\u00c5land Islands", "Albania", "Algeria",
+    "American Samoa", "Andorra", "Angola", "Anguilla", "Antigua and Barbuda",
+    "Argentina", "Armenia", "Aruba", "Australia", "Austria", "Azerbaijan",
+    "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium",
+    "Belize", "Benin", "Bermuda", "Bhutan", "Bolivia",
+    "Bonaire, Sint Eustatius and Saba", "Bosnia and Herzegovina", "Botswana",
+    "Brazil", "British Virgin Islands", "Brunei", "Bulgaria", "Burkina Faso",
+    "Burundi", "Cambodia", "Cameroon", "Canada", "Cape Verde",
+    "Cayman Islands", "Central African Republic", "Chad", "Chile", "China",
+    "Christmas Island", "Cocos (Keeling) Islands", "Colombia", "Comoros",
+    "Congo", "Cook Islands", "Costa Rica", "Croatia", "Cuba", "Cura\u00e7ao",
+    "Cyprus", "Czech Republic", "Democratic Republic of the Congo", "Denmark",
+    "Djibouti", "Dominica", "Dominican Republic", "East Timor", "Ecuador",
+    "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia",
+    "Ethiopia", "Falkland Islands (Malvinas)", "Faroe Islands", "Fiji",
+    "Finland", "France", "French Guiana", "French Polynesia", "Gabon",
+    "Gambia", "Georgia", "Germany", "Ghana", "Gibraltar", "Greece",
+    "Greenland", "Grenada", "Guadeloupe", "Guam", "Guatemala", "Guernsey",
+    "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hong Kong",
+    "Hungary", "Iceland", "India", "Indonesia", "Iraq", "Ireland",
+    "Isle of Man", "Israel", "Italy", "Ivory Coast", "Jamaica", "Japan",
+    "Jersey", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kosovo", "Kuwait",
+    "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya",
+    "Liechtenstein", "Lithuania", "Luxembourg", "Macau", "Macedonia",
+    "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta",
+    "Marshall Islands", "Martinique", "Mauritania", "Mauritius", "Mayotte",
+    "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro",
+    "Montserrat", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru",
+    "Nepal", "Netherlands", "New Caledonia", "New Zealand", "Nicaragua",
+    "Niger", "Nigeria", "Niue", "Norfolk Island", "Northern Mariana Islands",
+    "Norway", "Oman", "Pakistan", "Palau", "Palestinian Territories",
+    "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines",
+    "Pitcairn Islands", "Poland", "Portugal", "Puerto Rico", "Qatar",
+    "R\u00e9union", "Romania", "Russia", "Rwanda", "Saint Barth\u00e9lemy",
+    "Saint Helena", "Saint Kitts and Nevis", "Saint Lucia", "Saint Martin",
+    "Saint Pierre and Miquelon", "Saint Vincent and the Grenadines", "Samoa",
+    "San Marino", "S\u00e3o Tom\u00e9 and Pr\u00edncipe", "Saudi Arabia",
+    "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore",
+    "Sint Maarten", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
+    "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka",
+    "Sudan", "Suriname", "Svalbard and Jan Mayen", "Swaziland", "Sweden",
+    "Switzerland", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Togo",
+    "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan",
+    "Turks and Caicos Islands", "Tuvalu", "U.S. Virgin Islands", "Uganda",
+    "Ukraine", "United Arab Emirates", "United Kingdom", "United States",
+    "Uruguay", "Uzbekistan", "Vanuatu", "Venezuela", "Vietnam",
+    "Wallis and Futuna", "Yemen", "Zambia", "Zimbabwe"
+  )
+
+country_match <-
+  dplyr::tibble(
+    country = country_list,
+    code =
+      c("AF", "AX", "AL", "DZ", "AS", "AD", "AN", "AI", "AG", "AR", "AM", "AW",
+        "AU", "AT", "AZ", "BS", "BH", "BD", "BB", "BY", "BE", "BZ", "BJ", "BM",
+        "BT", "BO", "BQ", "BA", "BW", "BR", "VG", "BN", "BG", "BF", "BI", "KH",
+        "CM", "CA", "CV", "KY", "CF", "TD", "CL", "CN", "CX", "CC", "CO", "KM",
+        "CG", "CK", "CR", "HR", "CU", "CW", "CY", "CZ", "CD", "DK", "DJ", "DM",
+        "DO", "TL", "EC", "EG", "SV", "GQ", "ER", "EE", "ET", "FK", "FO", "FJ",
+        "FI", "FR", "GF", "PF", "GA", "GM", "GE", "DE", "GH", "GI", "GR", "GL",
+        "GD", "GP", "GU", "GT", "GG", "GN", "GW", "GY", "HT", "HN", "HK", "HU",
+        "IS", "IN", "ID", "IR", "IE", "IM", "IL", "IT", "CI", "JM", "JP", "JE",
+        "JO", "KZ", "KE", "KI", "XK", "KW", "KG", "LA", "LV", "LB", "LS", "LR",
+        "LY", "LI", "LT", "LU", "MO", "MK", "MG", "MW", "MY", "MV", "ML", "MT",
+        "MH", "MQ", "MR", "MU", "YT", "MX", "FM", "MD", "MC", "MN", "ME", "MS",
+        "MA", "MZ", "MM", "NA", "NR", "NP", "NL", "NC", "NZ", "NI", "NE", "NG",
+        "NU", "NF", "MP", "NO", "OM", "PK", "PW", "PS", "PA", "PG", "PY", "PE",
+        "PH", "PN", "PL", "PT", "PR", "QA", "RE", "RO", "RU", "RW", "BL", "SH",
+        "KN", "LC", "MF", "PM", "VC", "WS", "SM", "ST", "SA", "SN", "RS", "SC",
+        "SL", "SG", "SX", "SK", "SI", "SB", "SO", "ZA", "KR", "SS", "ES", "LK",
+        "SD", "SR", "SJ", "SZ", "SE", "CH", "TW", "TJ", "TZ", "TH", "TG", "TO",
+        "TT", "TN", "TR", "TM", "TC", "TV", "VI", "UG", "UA", "AE", "GB", "US",
+        "UY", "UZ", "VU", "VE", "VN", "WF", "YE", "ZM", "ZW")
+  )
+
 
 ### Quiet R CMD check ##########################################################
 

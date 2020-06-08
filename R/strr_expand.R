@@ -1,4 +1,4 @@
-#' Function to expand compressed STR tables
+#' Expand compressed STR tables
 #'
 #' \code{strr_expand} takes an STR file compressed in the UPGo DB format and
 #' expands it to a one-row-per-date format.
@@ -235,7 +235,7 @@ strr_expand <- function(data, quiet = FALSE) {
 
 #' Helper function to expand compressed STR tables
 #'
-#' \code{strr_expand_helper} performs the daily/host table expansion within
+#' \code{helper_expand} performs the daily/host table expansion within
 #' \code{\link{strr_expand}}.
 #'#'
 #' @param data A table in compressed UPGo DB format (e.g. created by running
