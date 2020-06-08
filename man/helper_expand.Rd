@@ -19,7 +19,7 @@ A table with one row per date and all other fields returned
 unaltered.
 }
 \description{
-\code{strr_expand_helper} performs the daily/host table expansion within
+\code{helper_expand} performs the daily/host table expansion within
 \code{\link{strr_expand}}.
 #'
 }

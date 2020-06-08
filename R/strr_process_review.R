@@ -140,7 +140,7 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
 
   ### CREATE REVIEW_USER #######################################################
 
-  helper_message("(2/4) Creating review_user table.", .type = "open")
+  helper_message("(2/4) Creating review_user table, using {helper_plan()}")
 
 
   ## Produce table with one row per distinct combination of user info ----------
@@ -171,7 +171,7 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
 
   if (progress) {
 
-    handler_strr("Analyzing row")
+    handler_strr("Analyzing duplicates: row")
 
     progressr::with_progress({
 
@@ -199,7 +199,7 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
 
   if (progress) {
 
-    handler_strr("Analyzing row")
+    handler_strr("Adding new entries to latest_user: row")
 
     progressr::with_progress({
 
@@ -228,8 +228,6 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
   latest_user <- latest_user[!user_ID %in% new_user$user_ID]
 
   latest_user <- data.table::rbindlist(list(latest_user, new_user))
-
-  helper_message("(2/4) Review_user table created.", .type = "close")
 
 
   ### CREATE REVIEW TEXT #######################################################

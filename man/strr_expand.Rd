@@ -2,7 +2,7 @@
 % Please edit documentation in R/strr_expand.R
 \name{strr_expand}
 \alias{strr_expand}
-\title{Function to expand compressed STR tables}
+\title{Expand compressed STR tables}
 \usage{
 strr_expand(data, quiet = FALSE)
 }
