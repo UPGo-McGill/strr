@@ -13,7 +13,6 @@
 #' `housing` field added, with TRUE or FALSE values indicating if a given
 #' listing is located in housing (TRUE) or in a dedicated tourist accommodation
 #' facility such as a hotel or B&B (FALSE).
-#' @importFrom rlang .data
 #' @export
 
 strr_housing <- function(property, property_type = property_type) {

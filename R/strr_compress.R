@@ -18,7 +18,6 @@
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return A compressed daily table, ready for upload to a remote database.
-#' @importFrom rlang .data
 #' @export
 
 strr_compress <- function(data, quiet = FALSE) {

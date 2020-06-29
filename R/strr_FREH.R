@@ -53,7 +53,6 @@
 #'   `FREH`: A logical scalar indicating whether, on a given date, the given
 #'   listing exceeded the `r_cut` and `ar_cut` thresholds over the number of
 #'   days specified by `n_days`.
-#' @importFrom rlang .data
 #' @export
 
 strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,

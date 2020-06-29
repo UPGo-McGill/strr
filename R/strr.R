@@ -1,3 +1,14 @@
+### Imports and global variables ###############################################
+
+#' @importFrom rlang .data
+
+.datatable.aware = TRUE
+
+if (getRversion() >= "2.15.1") {
+  utils::globalVariables(c(".", ".I", ".N", ".SD"))
+}
+
+
 ### Environment and variables ##################################################
 
 .strr_env <- rlang::env()
@@ -174,9 +185,3 @@ country_match <-
         "UY", "UZ", "VU", "VE", "VN", "WF", "YE", "ZM", "ZW")
   )
 
-
-### Quiet R CMD check ##########################################################
-
-if(getRversion() >= "2.15.1") {
-  utils::globalVariables(c(".", ".I", ".N", ".SD"))
-  }

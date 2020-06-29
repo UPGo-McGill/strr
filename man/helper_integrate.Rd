@@ -4,10 +4,10 @@
 \alias{helper_integrate}
 \title{Helper function to integrate intersects}
 \usage{
-helper_integrate(results, pdf, quiet)
+helper_integrate(result, pdf, quiet)
 }
 \arguments{
-\item{results, pdf, quiet}{Arguments passed along from the main function.}
+\item{result, pdf, quiet}{Arguments passed along from the main function.}
 }
 \value{
 The output will be a data frame.

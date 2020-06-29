@@ -54,13 +54,13 @@ it return status updates throughout the function (default)?}
 }
 \value{
 The output will be the input property object with a new field
-  appended, which specifies which polygon from the `polys` object was
-  probabilistically assigned to the listing, and which takes the name of the
-  field identified in the `poly_ID` argument. (If there was already a field
-  with that name in the `property` object, the new field will have "_new"
-  appended to its name.) If diagnostic == TRUE, a `candidates` field will
-  also be appended, which lists the possible polygons for each point, along
-  with their probabilities.
+appended, which specifies which polygon from the `polys` object was
+probabilistically assigned to the listing, and which takes the name of the
+field identified in the `poly_ID` argument. (If there was already a field
+with that name in the `property` object, the new field will have "_new"
+appended to its name.) If diagnostic == TRUE, a `candidates` field will
+also be appended, which lists the possible polygons for each point, along
+with their probabilities.
 }
 \description{
 \code{strr_raffle} takes reported STR listing locations and assigns the

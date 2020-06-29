@@ -22,5 +22,25 @@
 
   }
 
+}
+
+
+.onLoad <- function(libname, pkgname) {
+
+  if (requireNamespace("future", quietly = TRUE)) {
+
+    .strr_env$globals_max_size <- options(future.globals.maxSize = +Inf)
+
+  }
+
+}
+
+.onUnload <- function(libname, pkgname) {
+
+  if (requireNamespace("future", quietly = TRUE)) {
+
+    options(future.globals.maxSize = .strr_env$globals_max_size)
+
+  }
 
 }

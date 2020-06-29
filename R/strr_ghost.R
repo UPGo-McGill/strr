@@ -73,7 +73,6 @@
 #'   a list of possible entire-home listing duplicates. `data`: a nested tibble
 #'   of additional variables present in the points object. `geometry`: the
 #'   polygons representing the possible locations of each ghost hostel.
-#' @importFrom rlang .data
 #' @export
 
 strr_ghost <- function(
