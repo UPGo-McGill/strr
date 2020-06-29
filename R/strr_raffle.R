@@ -222,7 +222,7 @@ strr_raffle <- function(
 
     with_progress2({
       .strr_env$pb <- progressor2(steps = sum(sapply(result, nrow)))
-      result <- helper_integrate(result, pdf, quiet)
+      suppressMessages({result <- helper_integrate(result, pdf, quiet)})
       })
 
   } else {
