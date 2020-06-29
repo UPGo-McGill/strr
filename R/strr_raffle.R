@@ -426,9 +426,6 @@ helper_integrate <- function(result, pdf, quiet) {
     data_list <- split(intersects, by = ".PID_split", keep.by = FALSE)
     data_list <- helper_table_split(data_list, 100)
 
-    # Initialize progress bar
-    .strr_env$pb <- progressor2(steps = sum(purrr::map_int(data_list, nrow)))
-
     # Do integration
     intersects <- par_lapply(data_list, integrate_fun)
     intersects <- data.table::rbindlist(intersects)
