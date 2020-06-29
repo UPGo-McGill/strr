@@ -221,7 +221,7 @@ strr_raffle <- function(
     handler_strr("Integrating row")
 
     with_progress2({
-      .strr_env$pb <- progressor2(steps = sum(lengths(result)))
+      .strr_env$pb <- progressor2(steps = sum(sapply(result, nrow)))
       result <- helper_integrate(result, pdf, quiet)
       })
 
@@ -252,7 +252,7 @@ strr_raffle <- function(
       handler_strr("Integrating row")
 
       with_progress2({
-        .strr_env$pb <- progressor2(steps = sum(lengths(result_list[[i]])))
+        .strr_env$pb <- progressor2(steps = sum(sapply(result_list[[i]], nrow)))
         result_list[[i]] <- helper_integrate(result_list[[i]], pdf, quiet)
         })
     }
