@@ -37,55 +37,10 @@ strr_compress <- function(data, quiet = FALSE) {
     } else helper_message("Host table identified.")
 
 
-  ## Define default versions of map_* ------------------------------------------
+  ## Silence R CMD check for data.table fields ---------------------------------
 
-  map <- purrr::map
-  map_dfr <- purrr::map_dfr
-
-
-  ## Prepare data.table and future variables -----------------------------------
-
-  .datatable.aware = TRUE
-
-  # Silence R CMD check for data.table fields
   property_ID <- month <- PID_split <- host_split <- host_ID <- start_date <-
     NULL
-
-  if (requireNamespace("future", quietly = TRUE) &&
-      requireNamespace("furrr", quietly = TRUE)) {
-
-    # Replace map_* with future_map_*
-    map <- furrr::future_map
-    map_dfr <- furrr::future_map_dfr
-
-    # Remove limit on globals size
-    options(future.globals.maxSize = +Inf)
-
-    # Set up on.exit expression for errors
-    on.exit({
-      # Flush out any stray multicore processes
-      map(1:future::nbrOfWorkers(), ~.x)
-
-      # Restore future global export limit
-      .Options$future.globals.maxSize <- NULL
-
-    })
-  }
-
-
-  ## Prepare progress reporting ------------------------------------------------
-
-  # Enable progress bars if quiet == FALSE
-  progress <- !quiet
-
-  # Disable progress bars if {progressr} is not installed
-  if (!requireNamespace("progressr", quietly = TRUE)) {
-    progress <- FALSE
-    .strr_env$pb <- function() NULL
-  }
-
-  # Set number of steps for progress reporting
-  steps <- 2
 
 
   ### PREPARE FILE FOR ANALYSIS ################################################
@@ -110,6 +65,8 @@ strr_compress <- function(data, quiet = FALSE) {
 
 
   ## If data spans multiple months, produce month/year columns -----------------
+
+  steps <- 2
 
   if (data.table::year(min(data$date)) != data.table::year(max(data$date))) {
 
@@ -163,34 +120,21 @@ strr_compress <- function(data, quiet = FALSE) {
   helper_message("(", steps - 1, "/", steps,
                  ") Compressing rows, using {helper_plan()}.")
 
+  handler_strr("Compressing row")
 
-  ## Method with progress ------------------------------------------------------
+  with_progress2({
 
-  if (progress) {
+    .strr_env$pb <- progressor2(steps = nrow(data))
 
-    handler_strr("Compressing row")
+    if (daily)  compressed <- par_lapply(data_list, helper_compress_daily)
+    if (!daily) compressed <- par_lapply(data_list, helper_compress_host)
 
-    progressr::with_progress({
-
-      .strr_env$pb <- progressr::progressor(steps = nrow(data))
-
-      if (daily)  compressed <- map_dfr(data_list, helper_compress_daily)
-      if (!daily) compressed <- map_dfr(data_list, helper_compress_host)
-
-      })
+    })
 
 
-  ## Method without progress ---------------------------------------------------
+  ## Rbind and add other columns -----------------------------------------------
 
-    } else {
-
-      if (daily)  compressed <- map_dfr(data_list, helper_compress_daily)
-      if (!daily) compressed <- map_dfr(data_list, helper_compress_host)
-
-      }
-
-
-  ## Add other columns to daily file -------------------------------------------
+  compressed <- data.table::rbindlist(compressed)
 
   # The join is faster and less memory-intensive with dplyr than data.table
   if (daily) compressed <-
@@ -199,21 +143,18 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ### ARRANGE OUTPUT AND SET CLASS #############################################
 
-  helper_message("(", steps, "/", steps,
-                          ") Arranging output table.",
-                          .type = "open")
+  helper_message("(", steps, "/", steps, ") Arranging output table.",
+                 .type = "open")
 
   data.table::setDT(compressed)
 
   if (daily) {
 
     compressed <- dplyr::as_tibble(compressed[order(property_ID, start_date)])
-    # class(compressed) <- append(class(compressed), "strr_daily")
 
     } else {
 
       compressed <- dplyr::as_tibble(compressed[order(host_ID, start_date)])
-      # class(compressed) <- append(class(compressed), "strr_host")
 
       }
 
@@ -224,14 +165,6 @@ strr_compress <- function(data, quiet = FALSE) {
   ### RETURN OUTPUT ############################################################
 
   helper_message("Compression complete.", .type = "final")
-
-  # Overwrite previous on.exit call
-  if (requireNamespace("future", quietly = TRUE) &&
-      requireNamespace("furrr", quietly = TRUE)) {
-
-    on.exit(.Options$future.globals.maxSize <- NULL)
-
-  }
 
   return(compressed)
 }
@@ -302,9 +235,9 @@ helper_compress_daily <- function(data) {
       data[sapply(dates, function(x) {length(x) - length(min(x):max(x))}) != 0,
            .(property_ID,
              start_date = lapply(dates,
-                                 function (x) {x[which(diff(c(0, x)) > 1)]}),
+                                 function(x) {x[which(diff(c(0, x)) > 1)]}),
              end_date = lapply(dates,
-                               function (x) {x[which(diff(c(x, 30000)) > 1)]}),
+                               function(x) {x[which(diff(c(x, 30000)) > 1)]}),
              status, booked_date, price, res_ID)]
 
     remainder <-
@@ -383,9 +316,9 @@ helper_compress_host <- function(data) {
       data[sapply(dates, function(x) {length(x) - length(min(x):max(x))}) != 0,
            .(host_ID,
              start_date = lapply(dates,
-                                 function (x) {x[which(diff(c(0, x)) > 1)]}),
+                                 function(x) {x[which(diff(c(0, x)) > 1)]}),
              end_date = lapply(dates,
-                               function (x) {x[which(diff(c(x, 30000)) > 1)]}),
+                               function(x) {x[which(diff(c(x, 30000)) > 1)]}),
              listing_type, housing, count)]
 
     remainder <-
