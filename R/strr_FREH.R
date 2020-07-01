@@ -19,10 +19,11 @@
 #'
 #' @param daily A data frame of daily STR activity in standard UPGo format.
 #' @param start_date A character string of format YYYY-MM-DD indicating the
-#'   first date for which to return output. If NULL (default), all dates will
-#'   be used.
+#'   first date for which to return output. If NULL (default), the earliest date
+#'   present in `daily` will be used.
 #' @param end_date A character string of format YYYY-MM-DD indicating the last
-#'   date for which to run the analysis.
+#'   date for which to run the analysis. If NULL (default), the latest date
+#'   present in `daily` will be used.
 #' @param property_ID The name of a character or numeric variable in the `daily`
 #'   table which uniquely identifies STR listings.
 #' @param date The name of a date variable in the `daily` table.
@@ -55,9 +56,9 @@
 #'   days specified by `n_days`.
 #' @export
 
-strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
-                      date = date, status = status, status_types = c("R", "A"),
-                      listing_type = listing_type,
+strr_FREH <- function(daily, start_date = NULL, end_date = NULL,
+                      property_ID = property_ID, date = date, status = status,
+                      status_types = c("R", "A"), listing_type = listing_type,
                       entire_home = "Entire home/apt", n_days = 365, r_cut = 90,
                       ar_cut = 183, quiet = FALSE) {
 
@@ -70,21 +71,27 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
   ## Input checking ------------------------------------------------------------
 
   helper_check_daily(rlang::ensyms(property_ID, date, status))
+  helper_check_quiet()
 
-  # start_date and end_date checked below during type conversion
+  n_days <- floor(n_days)
+  r_cut <- floor(r_cut)
+  ar_cut <- floor(ar_cut)
+
+  stopifnot(exprs = {
+    length(status_types) == 2
+    n_days > 0
+    r_cut > 0 && r_cut <= n_days
+    ar_cut > 0 && ar_cut <= n_days && ar_cut >= r_cut
+    })
 
   # Check that status_types arguments are plausible
-  if (length(status_types) != 2) {
-    stop("The `status_type` argument must be a vector of length 2.")
-  }
-
-  if (nrow(dplyr::filter(daily, {{ status }} == status_types[1])) == 0) {
+  if (nrow(dplyr::filter(daily, {{status}} == status_types[1])) == 0) {
     warning(paste0("The first supplied argument to `status_types` returns no ",
                    "matches in the input table. Are you sure the argument ",
                    "is correct?"))
   }
 
-  if (nrow(dplyr::filter(daily, {{ status }} == status_types[2])) == 0) {
+  if (nrow(dplyr::filter(daily, {{status}} == status_types[2])) == 0) {
     warning(paste0("The second supplied argument to `status_types` returns no ",
                    "matches in the input table. Are you sure the argument ",
                    "is correct?"))
@@ -94,7 +101,7 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
   lt_flag <-
     tryCatch({
       # If listing_type is a field in points, set lt_flag = TRUE
-      dplyr::pull(daily, {{ listing_type }})
+      dplyr::pull(daily, {{listing_type}})
       TRUE},
       error = function(e) {tryCatch({
         # If listing_type == FALSE, set lt_flag = FALSE
@@ -109,83 +116,28 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
 
   # Check entire_home argument
   if (lt_flag) {
-    if (nrow(dplyr::filter(daily, {{ listing_type }} == entire_home)) == 0) {
+    if (nrow(dplyr::filter(daily, {{listing_type}} == entire_home)) == 0) {
       warning(paste0("The supplied argument to `entire_home` returns no ",
                      "matches in the input table. Are you sure the argument ",
                      "is correct?"))
     }
   }
 
-  # Check that n_days is an integer > 0
-  n_days <- floor(n_days)
-  if (n_days <= 0) {
-    stop("The argument `n_days` must be a positive integer.")
-  }
 
-  # Check that r_cut is an integer > 0 and <= n_days
-  r_cut <- floor(r_cut)
-  if (r_cut <= 0 | r_cut > n_days) {
-    stop("The argument `r_cut` must be a positive integer <= `n_days`.")
-  }
-
-  # Check that ar_cut is an integer > 0, <= n_days and >= r_cut
-  ar_cut <- floor(ar_cut)
-  if (ar_cut <= 0 | ar_cut > n_days | ar_cut < r_cut) {
-    stop("The argument `ar_cut` must be a positive integer <= `n_days` and ",
-         ">= than `r_cut`.")
-  }
-
-  helper_check_quiet()
-
-
-  ## Prepare data.table and future variables -----------------------------------
-
-  .datatable.aware = TRUE
+  ## Prepare data.table options ------------------------------------------------
 
   # Silence R CMD check for data.table fields
   R <- AR <- NULL
 
-  if (requireNamespace("future", quietly = TRUE) &&
-      requireNamespace("furrr", quietly = TRUE)) {
+  # Make sure data.table is single-threaded within the helper
+  threads <- data.table::setDTthreads(1)
 
-    # Replace map_* with future_map_*
-    map <- furrr::future_map
-    map_dfr <-
-      function(.x, .f) furrr::future_map_dfr(
-        .x, .f, .options = furrr::future_options(
-          globals = c("start_date", "end_date", "daily", "ar_cut", "r_cut")))
+  # Set up on.exit expression for errors
+  on.exit({
 
-    # Remove limit on globals size
-    options(future.globals.maxSize = +Inf)
-
-    # Make sure data.table is single-threaded within the helper
-    threads <- data.table::setDTthreads(1)
-
-    # Set up on.exit expression for errors
-    on.exit({
-      # Flush out any stray multicore processes
-      map(1:future::nbrOfWorkers(), ~.x)
-
-      # Restore future global export limit
-      .Options$future.globals.maxSize <- NULL
-
-      # Restore data.table threads
-      data.table::setDTthreads(threads)
-
+    # Restore data.table threads
+    data.table::setDTthreads(threads)
     })
-  }
-
-
-  ## Prepare progress reporting ------------------------------------------------
-
-  # Enable progress bars if quiet == FALSE
-  progress <- !quiet
-
-  # Disable progress bars if {progressr} is not installed
-  if (!requireNamespace("progressr", quietly = TRUE)) {
-    progress <- FALSE
-    .strr_env$pb <- function() NULL
-  }
 
 
   ### PREPARE TABLE FOR ANALYSIS ###############################################
@@ -200,7 +152,7 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
   ## Wrangle dates -------------------------------------------------------------
 
   if (missing(start_date)) {
-    start_date <- min(dplyr::pull(daily, {{ date }}), na.rm = TRUE)
+    start_date <- min(dplyr::pull(daily, {{date}}), na.rm = TRUE)
   } else {
     start_date <- tryCatch(as.Date(start_date), error = function(e) {
       stop(paste0('The value of `start_date`` ("', start_date,
@@ -208,7 +160,7 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
     })}
 
   if (missing(end_date)) {
-    end_date <- max(dplyr::pull(daily, {{ date }}), na.rm = TRUE)
+    end_date <- max(dplyr::pull(daily, {{date}}), na.rm = TRUE)
   } else {
     end_date <- tryCatch(as.Date(end_date), error = function(e) {
       stop(paste0('The value of `end_date` ("', end_date,
@@ -219,9 +171,9 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
   ## Rename fields to make data.table functions work ---------------------------
 
   daily <- dplyr::rename(daily,
-                         property_ID = {{ property_ID }},
-                         date = {{ date }},
-                         status = {{ status }})
+                         property_ID = {{property_ID}},
+                         date = {{date}},
+                         status = {{status}})
 
 
   ## Filter daily file and select necessary columns ----------------------------
@@ -230,7 +182,7 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
 
   if (lt_flag) {
 
-    daily <- dplyr::rename(daily, listing_type = {{ listing_type }})
+    daily <- dplyr::rename(daily, listing_type = {{listing_type}})
     daily <- daily[listing_type == entire_home]
 
   }
@@ -249,7 +201,8 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
 
   ## Function to be iterated over ----------------------------------------------
 
-  date_fun <- function(.x) {
+  date_fun <- function(.x, ...) {
+    .strr_env$pb()
     daily <- daily[date >= .x - 364 & date <= .x]
     daily[, AR := .N, by = "property_ID"]
     daily[, R := sum(status == "R"), by = "property_ID"]
@@ -262,22 +215,19 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
 
   ## Run function --------------------------------------------------------------
 
-  if (progress) {
+  handler_strr("Analyzing date")
 
-    handler_strr("Analyzing date")
-
-    progressr::with_progress({
+  with_progress2({
 
       # Initialize progress bar
-      .strr_env$pb <- progressr::progressor(along = start_date:end_date)
+      .strr_env$pb <- progressor2(along = start_date:end_date)
 
       daily <-
-        map_dfr(start_date:end_date, ~{
-          .strr_env$pb()
-          date_fun(.x)})
-    })
+        par_lapply(start_date:end_date, date_fun, future.globals =
+                     c("start_date", "end_date", "daily", "ar_cut", "r_cut"))
 
-  } else daily <- map_dfr(start_date:end_date, date_fun)
+      daily <- data.table::rbindlist(daily)
+    })
 
 
   ### ARRANGE TABLE THEN RENAME FIELDS TO MATCH INPUT FIELDS ###################
@@ -286,8 +236,10 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
 
   data.table::setorderv(daily, c("property_ID", "date"))
 
-  daily <- dplyr::rename(daily, {{ property_ID }} := .data$property_ID,
-                         {{ date }} := .data$date)
+  daily <- dplyr::rename(daily,
+                         {{property_ID}} := .data$property_ID,
+                         {{date}} := .data$date)
+
   daily <- dplyr::as_tibble(daily)
 
   helper_message("(2/2) Output arranged.", .type = "close")
@@ -296,21 +248,6 @@ strr_FREH <- function(daily, start_date, end_date, property_ID = property_ID,
   ### RETURN OUTPUT ############################################################
 
   helper_message("Analysis complete.", .type = "final")
-
-  if (requireNamespace("future", quietly = TRUE) &&
-      requireNamespace("furrr", quietly = TRUE)) {
-
-    # Set up on.exit expression for errors
-    on.exit({
-
-      # Restore future global export limit
-      .Options$future.globals.maxSize <- NULL
-
-      # Restore data.table threads
-      data.table::setDTthreads(threads)
-
-    })
-  }
 
   return(daily)
 

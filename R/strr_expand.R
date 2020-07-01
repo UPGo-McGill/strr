@@ -28,7 +28,6 @@ strr_expand <- function(data, quiet = FALSE) {
   ## Input checking ------------------------------------------------------------
 
   daily <- helper_check_data()
-
   helper_check_quiet()
 
 
@@ -42,41 +41,12 @@ strr_expand <- function(data, quiet = FALSE) {
   }
 
 
-  ## Prepare data.table and future variables -----------------------------------
+  ## Silence R CMD check for data.table fields ---------------------------------
 
-  .datatable.aware = TRUE
-
-  # Silence R CMD check for data.table fields
   property_ID <- start_date <- end_date <- col_split <- host_ID <- NULL
 
-  if (requireNamespace("future", quietly = TRUE) &&
-      requireNamespace("furrr", quietly = TRUE)) {
 
-    # Remove limit on globals size
-    options(future.globals.maxSize = +Inf)
-
-    # Set up on.exit expression for errors
-    on.exit({
-      # Flush out any stray multicore processes
-      furrr::future_map(1:future::nbrOfWorkers(), ~.x)
-
-      # Restore future global export limit
-      .Options$future.globals.maxSize <- NULL
-
-    })
-  }
-
-
-  ## Prepare batches and progress reporting ------------------------------------
-
-  # Enable progress bars if quiet == FALSE
-  progress <- !quiet
-
-  # Disable progress bars if {progressr} is not installed
-  if (!requireNamespace("progressr", quietly = TRUE)) {
-    progress <- FALSE
-    .strr_env$pb <- function() NULL
-  }
+  ## Prepare batches -----------------------------------------------------------
 
   chunk_size <- 1e7
   iterations <- 1
@@ -125,20 +95,15 @@ strr_expand <- function(data, quiet = FALSE) {
 
     helper_message("(1/2) Expanding table, using {helper_plan()}.")
 
-    if (progress) {
+    handler_strr("Expanding row")
 
-      handler_strr("Expanding row")
+    with_progress2({
 
-      progressr::with_progress({
-
-        # Initialize progress bar
-        .strr_env$pb <- progressr::progressor(steps = nrow(data))
-
-        data <- helper_expand(data, daily)
+      # Initialize progress bar
+      .strr_env$pb <- progressor2(steps = nrow(data))
+      data <- helper_expand(data, daily)
 
       })
-
-    } else data <- helper_expand(data, daily)
 
 
   ### PROCESS FOR LARGE TABLE ##################################################
@@ -157,21 +122,16 @@ strr_expand <- function(data, quiet = FALSE) {
       range_1 <- (i - 1) * chunk_size + 1
       range_2 <- min(i * chunk_size, nrow(data))
 
-      if (progress) {
+      handler_strr("Expanding row")
 
-        handler_strr("Expanding row")
+      with_progress2({
 
-        progressr::with_progress({
+        # Initialize progress bar
+        .strr_env$pb <- progressor2(steps = nrow(data[range_1:range_2]))
 
-          # Initialize progress bar
-          .strr_env$pb <-
-            progressr::progressor(steps = nrow(data[range_1:range_2]))
-
-          data_list[[i]] <- helper_expand(data[range_1:range_2], daily)
+        data_list[[i]] <- helper_expand(data[range_1:range_2], daily)
 
         })
-
-      } else data_list[[i]] <- helper_expand(data[range_1:range_2], daily)
 
     }
 
@@ -251,31 +211,16 @@ helper_expand <- function(data, daily_flag) {
 
   ### INITIALIZE OBJECTS #######################################################
 
-  .datatable.aware = TRUE
-
   property_ID <- start_date <- end_date <- col_split <- host_ID <- NULL
 
   data.table::setDT(data)
 
 
-  ## Define map_* --------------------------------------------------------------
-
-  if (requireNamespace("future", quietly = TRUE) &&
-      requireNamespace("furrr", quietly = TRUE)) {
-
-    map_dfr <- furrr::future_map_dfr
-
-  } else map_dfr <- purrr::map_dfr
-
-
-  ### DEFINE FUNCTION TO BE MAPPED #############################################
+  ### DEFINE FUNCTION TO BE ITERATED WITH ######################################
 
   expand_fun <- function(.x) {
 
-    # Iterate progress bar
-    if (requireNamespace("progressr", quietly = TRUE)) {
-      .strr_env$pb(amount = nrow(.x))
-    }
+    .strr_env$pb(amount = nrow(.x))
 
     data.table::setDT(.x)
 
@@ -288,6 +233,7 @@ helper_expand <- function(data, daily_flag) {
          ][, c("nrow", "start_date", "end_date") := NULL]
 
     .x[, date := as.Date(date, origin = "1970-01-01")]
+
   }
 
 
@@ -301,9 +247,8 @@ helper_expand <- function(data, daily_flag) {
     data[, col_split := substr(host_ID, 1, 3)]
   }
 
-  data_list <-
-    split(data, by = "col_split", keep.by = FALSE) %>%
-    helper_table_split()
+  data_list <- split(data, by = "col_split", keep.by = FALSE)
+  data_list <- helper_table_split(data_list)
 
 
   ### EXPAND TABLE #############################################################
@@ -312,7 +257,8 @@ helper_expand <- function(data, daily_flag) {
   threads <- data.table::setDTthreads(1)
 
   # Run function
-  data <- map_dfr(data_list, expand_fun)
+  data <- par_lapply(data_list, expand_fun)
+  data <- data.table::rbindlist(data)
 
   # Restore DT threads
   data.table::setDTthreads(threads)

@@ -6,8 +6,8 @@
 \usage{
 strr_FREH(
   daily,
-  start_date,
-  end_date,
+  start_date = NULL,
+  end_date = NULL,
   property_ID = property_ID,
   date = date,
   status = status,
@@ -24,11 +24,12 @@ strr_FREH(
 \item{daily}{A data frame of daily STR activity in standard UPGo format.}
 
 \item{start_date}{A character string of format YYYY-MM-DD indicating the
-first date for which to return output. If NULL (default), all dates will
-be used.}
+first date for which to return output. If NULL (default), the earliest date
+present in `daily` will be used.}
 
 \item{end_date}{A character string of format YYYY-MM-DD indicating the last
-date for which to run the analysis.}
+date for which to run the analysis. If NULL (default), the latest date
+present in `daily` will be used.}
 
 \item{property_ID}{The name of a character or numeric variable in the `daily`
 table which uniquely identifies STR listings.}

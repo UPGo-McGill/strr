@@ -544,6 +544,3 @@ helper_check_quiet <- function() {
   }
 
 }
-
-
-

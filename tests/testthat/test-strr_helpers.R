@@ -57,7 +57,7 @@ test_that("helper_table_split works with sf tables", {
 
 
 
-# test_that("helper_table_split correctly exists its while-loop", {
+# test_that("helper_table_split correctly exits its while-loop", {
 #   # Initial multiplier is ok
 #   map(1:1000, ~{tibble(id = .x, value = 1)}) %>%
 #     helper_table_split() %>%
