@@ -234,14 +234,8 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
 
   ### Return output ############################################################
 
-  ## Set classes of outputs
-
   daily <- as_tibble(daily)
-  class(daily) <- append(class(daily), "strr_daily")
-
   daily_inactive <- as_tibble(daily_inactive)
-  class(daily_inactive) <- append(class(daily_inactive), "strr_daily")
-
   error <- as_tibble(error)
   missing_rows <- as_tibble(missing_rows)
 
