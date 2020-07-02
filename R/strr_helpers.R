@@ -342,11 +342,13 @@ helper_check_data <- function() {
   }
 
   # Check if table is daily or host
-  if (inherits(data, "strr_daily") | names(data)[1] == "property_ID") {
+  if (inherits(data, "strr_daily") | names(data)[1] %in% c("property_ID",
+                                                           "Property ID")) {
 
     daily <- TRUE
 
-  } else if (inherits(data, "strr_host") | names(data)[1] == "host_ID") {
+  } else if (inherits(data, "strr_host") | names(data)[1] %in% c("host_ID",
+                                                                 "Host ID")) {
 
     daily <- FALSE
 
@@ -383,7 +385,8 @@ helper_check_daily <- function(...) {
   }
 
   # Check that daily is strr_daily
-  if (!inherits(daily, "strr_daily") && names(daily)[1] != "property_ID") {
+  if (!inherits(daily, "strr_daily") &&
+      !names(daily)[1] %in% c("property_ID", "Property ID")) {
     stop("Input table must be of class `strr_daily`.", call. = FALSE)
   }
 
