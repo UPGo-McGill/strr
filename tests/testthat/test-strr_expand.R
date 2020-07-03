@@ -77,7 +77,7 @@ test_that("the quiet flag suppresses all messages", {
 })
 
 test_that("batches work", {
-  skip_if_not(isTRUE(as.logical(Sys.getenv("CI"))) | run_all_tests)
+  skip_if_not(isTRUE(as.logical(Sys.getenv("TESTCOV"))) | run_all_tests)
   expect_equal(nrow(
     strr_expand(
       data.table::rbindlist(replicate(1800000, daily, simplify = FALSE))
@@ -92,7 +92,7 @@ test_that("batches work", {
 })
 
 test_that("enormous tables are flagged", {
-  skip_if_not(isTRUE(as.logical(Sys.getenv("CI"))) | run_all_tests)
+  skip_if_not(isTRUE(as.logical(Sys.getenv("TESTCOV"))) | run_all_tests)
   expect_error(
     strr_expand(
       data.table::rbindlist(replicate(50000001, daily_enormous,

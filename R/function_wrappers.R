@@ -43,8 +43,8 @@ par_lapply <-
 
       } else {
 
-        warning("Please install the `future.apply` package to enable ",
-                "parallel processing.", call. = FALSE, immediate. = TRUE)
+        message("Please install the `future.apply` package to enable ",
+                "parallel processing.")
 
         lapply
 
@@ -64,8 +64,8 @@ par_mapply <-
 
     } else {
 
-      warning("Please install the `future.apply` package to enable ",
-              "parallel processing.", call. = FALSE, immediate. = TRUE)
+      message("Please install the `future.apply` package to enable ",
+              "parallel processing.")
 
       mapply
 

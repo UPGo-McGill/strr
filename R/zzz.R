@@ -1,10 +1,11 @@
 .onAttach <- function(libname, pkgname) {
 
   if (!requireNamespace("future", quietly = TRUE) ||
-      !requireNamespace("furrr",  quietly = TRUE)) {
+      !requireNamespace("future.apply",  quietly = TRUE)) {
 
-    packageStartupMessage("Install the {future} and {furrr} packages to ",
-                          "enable multithreaded processing.")
+    packageStartupMessage(
+      "Install the {future} and {future.apply} packages to enable ",
+      "multithreaded processing.")
 
   }
 

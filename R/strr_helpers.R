@@ -221,21 +221,29 @@ handler_strr <- function(message) {
 
   if (requireNamespace("progressr", quietly = TRUE)) {
 
-    format_string <- paste0(
-      message, " :current of :total (:tick_rate/s) [:bar] :percent, ETA: :eta")
+    if (!requireNamespace("progress", quietly = TRUE)) {
 
-    if (requireNamespace("crayon", quietly = TRUE)) {
-      progressr::handlers(
-        progressr::handler_progress(
-          format = crayon::silver(crayon::italic(format_string)),
-          show_after = 0
-        ))
+      progressr::handlers("txtprogressbar")
+
     } else {
-      progressr::handlers(
-        progressr::handler_progress(
-          format = format_string,
-          show_after = 0
-        ))
+
+      format_string <- paste0(
+        message,
+        " :current of :total (:tick_rate/s) [:bar] :percent, ETA: :eta")
+
+      if (requireNamespace("crayon", quietly = TRUE)) {
+        progressr::handlers(
+          progressr::handler_progress(
+            format = crayon::silver(crayon::italic(format_string)),
+            show_after = 0
+          ))
+      } else {
+        progressr::handlers(
+          progressr::handler_progress(
+            format = format_string,
+            show_after = 0
+          ))
+      }
     }
   }
 }
