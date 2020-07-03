@@ -1,5 +1,3 @@
-name: covr
-
 on:
   push:
     branches:
