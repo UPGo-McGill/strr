@@ -5,6 +5,10 @@
 
 <!-- badges: start -->
 
+[![R build
+status](https://github.com/UPGo-McGill/strr/workflows/R-CMD-check/badge.svg)](https://github.com/UPGo-McGill/strr/actions)
+[![codecov](https://codecov.io/gh/UPGo-McGill/strr/branch/master/graph/badge.svg)](https://codecov.io/gh/UPGo-McGill/strr)
+
 <!-- badges: end -->
 
 Tools for analysis of short-term rental data.

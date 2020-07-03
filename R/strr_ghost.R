@@ -92,17 +92,13 @@ strr_ghost <- function(
   steps <- 3 + multi_date + EH_check
 
 
-  ## Set data.table and future variables
-
-  .datatable.aware = TRUE
+  ## Set data.table and future variables ---------------------------------------
 
   data <- date_grid <- starts <- ends <- Var1 <- Var2 <- property_IDs <-
     listing_count <- intersects <- housing_units <- geometry <- ghost_ID <-
     subsets <- start <- end <- subset_list <- NULL
 
   threads <- data.table::setDTthreads(future::nbrOfWorkers())
-
-  options(future.globals.maxSize = +Inf)
 
 
   ## Check distance, min_listings flags

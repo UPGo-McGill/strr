@@ -22,9 +22,9 @@ strr_housing <- function(property, property_type = property_type) {
   dplyr::mutate(
     property,
     housing =
-      dplyr::if_else({{ property_type }} %in% housing_types, TRUE, FALSE),
+      dplyr::if_else({{property_type}} %in% housing_types, TRUE, FALSE),
     # Add extra logic to catch non-housing option with non-ASCII character
-    housing = dplyr::if_else(stringr::str_detect({{ property_type }}, "ara/s"),
+    housing = dplyr::if_else(stringr::str_detect({{property_type}}, "ara/s"),
                              FALSE, .data$housing),
     housing = dplyr::if_else(is.na(.data$housing), TRUE, .data$housing))
 
