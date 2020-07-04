@@ -1,14 +1,13 @@
 Package: strr
 Type: Package
 Title: Tools for Analysis of Short-Term Rental Data
-Version: 0.0.1.9000
+Version: 0.1
 Authors@R: 
     person(given = "David",
            family = "Wachsmuth",
            role = c("aut", "cre"),
            email = "david.wachsmuth@mcgill.ca",
            comment = c(ORCID = "http://orcid.org/0000-0001-5689-9527"))
-Author: David Wachsmuth
 Maintainer: David Wachsmuth <david.wachsmuth@mcgill.ca>
 Description: Tools for preparing and analyzing data about short-term rentals,
     with an emphasis on property files produced by Inside Airbnb or AirDNA, and

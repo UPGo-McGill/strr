@@ -32,25 +32,27 @@ progressor2 <-
 
 # Wrappers for lapply and mapply
 
-par_lapply <-
+par_lapply <- function(...) {
 
   if (requireNamespace("future", quietly = TRUE)) {
 
     if (requireNamespace("future.apply", quietly = TRUE)) {
 
       # Overwrite lapply with future.lapply for parallel processing
-      future.apply::future_lapply
+      future.apply::future_lapply(...)
 
       } else {
 
         message("Please install the `future.apply` package to enable ",
                 "parallel processing.")
 
-        lapply
+        lapply(...)
 
       }
 
-    } else lapply
+    } else lapply(...)
+
+}
 
 
 par_mapply <-
