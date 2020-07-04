@@ -194,21 +194,21 @@ strr_compress_test <- function(data, quiet = FALSE) {
   }
 
 
-  # ### COMPRESS PROCESSED DATA FILE #############################################
-  #
-  # helper_message("(", steps - 1, "/", steps,
-  #                ") Compressing rows, using {helper_plan()}.")
-  #
-  # handler_strr("Compressing row")
-  #
-  # with_progress2({
-  #
-  #   .strr_env$pb <- progressor2(steps = nrow(data))
-  #
-  #   if (daily)  compressed <- par_lapply(data_list, helper_compress_daily)
-  #   if (!daily) compressed <- par_lapply(data_list, helper_compress_host)
-  #
-  # })
+  ### COMPRESS PROCESSED DATA FILE #############################################
+
+  helper_message("(", steps - 1, "/", steps,
+                 ") Compressing rows, using {helper_plan()}.")
+
+  handler_strr("Compressing row")
+
+  with_progress2({
+
+    .strr_env$pb <- progressor2(steps = nrow(data))
+
+    if (daily)  compressed <- par_lapply(data_list, helper_compress_daily)
+    if (!daily) compressed <- par_lapply(data_list, helper_compress_host)
+
+  })
   #
   #
   # ## Rbind and add other columns -----------------------------------------------
@@ -245,7 +245,7 @@ strr_compress_test <- function(data, quiet = FALSE) {
   #
   # helper_message("Compression complete.", .type = "final")
 
-  return(data_list)
+  return(compressed)
 }
 
 
