@@ -11,12 +11,8 @@ helper_compress_host(data)
 function.}
 }
 \value{
-The output will be a compressed host table.
+A compressed host table.
 }
 \description{
-\code{helper_compress_host} takes a processed host table and generates a
-compressed version.
-}
-\details{
-A helper function for compressing the processed host summary table.
+Helper function to compress host file
 }

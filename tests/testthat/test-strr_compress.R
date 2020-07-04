@@ -254,6 +254,13 @@ strr_compress_test <- function(data, quiet = FALSE) {
 
 ### Tests ######################################################################
 
+test_that("helper functions work", {
+
+  expect_equal(nrow(helper_compress_daily(daily)), 6)
+  expect_equal(nrow(helper_compress_host(host)), 7)
+
+})
+
 test_that("first X lines complete", {
 
   expect_equal(length(strr_compress_test(daily)), 2)

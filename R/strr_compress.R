@@ -126,8 +126,15 @@ strr_compress <- function(data, quiet = FALSE) {
 
     .strr_env$pb <- progressor2(steps = nrow(data))
 
-    if (daily)  compressed <- par_lapply(data_list, helper_compress_daily)
-    if (!daily) compressed <- par_lapply(data_list, helper_compress_host)
+    if (daily)  compressed <- par_lapply(data_list, function(x) {
+      .strr_env$pb(amount = nrow(x))
+      helper_compress_daily(x)
+      })
+
+    if (!daily) compressed <- par_lapply(data_list, function(x) {
+      .strr_env$pb(amount = nrow(x))
+      helper_compress_host(x)
+      })
 
     })
 
@@ -172,20 +179,11 @@ strr_compress <- function(data, quiet = FALSE) {
 
 #' Helper function to compress daily file
 #'
-#' \code{helper_compress_daily} takes a processed `daily` table and
-#' generates a compressed version.
-#'
-#' A helper function for compressing the processed monthly `daily` table.
-#'
 #' @param data The processed daily table generated through the strr_compress
 #' function.
-#' @return The output will be a compressed daily table.
-#' @importFrom rlang .data
+#' @return A compressed daily table.
 
 helper_compress_daily <- function(data) {
-
-  # Iterate progress bar
-  .strr_env$pb(amount = nrow(data))
 
   # Silence R CMD check for data.table fields
   booked_date <- dates <- end_date <- price <- property_ID <- res_ID <-
@@ -258,15 +256,9 @@ helper_compress_daily <- function(data) {
 
 #' Helper function to compress host file
 #'
-#' \code{helper_compress_host} takes a processed host table and generates a
-#' compressed version.
-#'
-#' A helper function for compressing the processed host summary table.
-#'
 #' @param data The processed host table generated through the strr_compress
 #' function.
-#' @return The output will be a compressed host table.
-#' @importFrom rlang .data
+#' @return A compressed host table.
 
 helper_compress_host <- function(data) {
 

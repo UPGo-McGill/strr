@@ -11,12 +11,8 @@ helper_compress_daily(data)
 function.}
 }
 \value{
-The output will be a compressed daily table.
+A compressed daily table.
 }
 \description{
-\code{helper_compress_daily} takes a processed `daily` table and
-generates a compressed version.
-}
-\details{
-A helper function for compressing the processed monthly `daily` table.
+Helper function to compress daily file
 }
