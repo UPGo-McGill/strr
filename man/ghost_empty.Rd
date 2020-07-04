@@ -4,15 +4,11 @@
 \alias{ghost_empty}
 \title{Helper function to output an empty ghost hostel table}
 \usage{
-ghost_empty(crs_points)
+ghost_empty(crs_property)
 }
 \arguments{
-\item{crs_points}{The CRS of the points table.}
+\item{crs_property}{The CRS of the property table.}
 }
 \description{
-\code{ghost_empty} produces an empty output table.
-}
-\details{
-A function for producing an empty output table if there are no valid ghost
-hostels.
+Helper function to output an empty ghost hostel table
 }

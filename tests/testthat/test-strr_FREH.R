@@ -64,3 +64,7 @@ test_that("supplied dates work", {
   expect_error(strr_FREH(daily, "DSLKJ"), "start_date")
   expect_error(strr_FREH(daily, "2018-04-03", "DSLKJ"), "end_date")
 })
+
+test_that("The quiet flag suppresses all messages", {
+  expect_message(strr_FREH(daily, quiet = TRUE), regexp = NA)
+})

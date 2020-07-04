@@ -7,21 +7,16 @@
 ghost_combine(buffers, predicates, n)
 }
 \arguments{
-\item{buffers}{A data frame of buffers from points$data.}
+\item{buffers}{A data frame of buffers from property$data.}
 
-\item{predicates}{The points$data field generated from \code{st_intersects}.}
+\item{predicates}{The property$data field generated from \code{st_intersects}.}
 
 \item{n}{A numeric scalar. The number of points to attempt to find a set of
 combinations for}
 }
 \value{
-The output will be a matrix of possible intersection combinations.
+A matrix of possible intersection combinations.
 }
 \description{
-\code{ghost_combine} takes `buffers` and `predicates` and generates
-combinations.
-}
-\details{
-A function for generating potential intersection combinations using `buffers`
-and `predicates` from points$data.
+Helper function to create potential intersection combinations
 }

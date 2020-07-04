@@ -100,3 +100,7 @@ test_that("enormous tables are flagged", {
       )
   )
 })
+
+test_that("The quiet flag suppresses all messages", {
+  expect_message(strr_expand(daily, quiet = TRUE), regexp = NA)
+})

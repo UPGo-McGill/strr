@@ -14,24 +14,24 @@
 #' and can also check for possible duplication with entire-home listings
 #' operated by the same host.
 #'
-#' @param points A data frame of STR listings with sf or sp point geometries in
+#' @param property A data frame of STR listings with sf or sp point geometries in
 #'   a projected coordinate system. If the data frame does not have spatial
 #'   attributes, an attempt will be made to convert it to sf using
 #'   \code{\link{strr_as_sf}}. The result will be transformed into the Web
 #'   Mercator projection (EPSG: 3857) for distance calculations. To use a
 #'   projection more suitable to the data, supply an sf or sp object.
-#' @param property_ID The name of a character or numeric variable in the points
+#' @param property_ID The name of a character or numeric variable in the property
 #'   object which uniquely identifies STR listings.
-#' @param host_ID The name of a character or numeric variable in the points
+#' @param host_ID The name of a character or numeric variable in the property
 #'   object which uniquely identifies STR hosts.
 #' @param multi_date A logical scalar. Should the analysis be run for separate
 #'   dates (controlled by the `created`, `scraped`, `start_date` and `end_date`
 #'   arguments), or only run a single time, treating all listings as
 #'   simultaneously active?
-#' @param created The name of a date variable in the points object which gives
+#' @param created The name of a date variable in the property object which gives
 #'   the creation date for each listing. This argument is ignored if
 #'   `multi_date` is FALSE.
-#' @param scraped The name of a date variable in the points object which gives
+#' @param scraped The name of a date variable in the property object which gives
 #'   the last-scraped date for each listing. This argument is ignored if
 #'   `multi_date` is FALSE.
 #' @param start_date A character string of format YYYY-MM-DD indicating the
@@ -45,9 +45,9 @@
 #'   locations.
 #' @param min_listings A numeric scalar. The minimum number of listings to
 #'   be considered a ghost hostel.
-#' @param listing_type The name of a character variable in the points
+#' @param listing_type The name of a character variable in the property
 #'   object which identifies private-room listings. Set this argument to FALSE
-#'   to use all listings in the `points` table.
+#'   to use all listings in the `property` table.
 #' @param private_room A character string which identifies the value of the
 #'   `listing_type` variable to be used to find ghost hostels. This field is
 #'   ignored if `listing_type` is FALSE.
@@ -71,14 +71,14 @@
 #'   (or whatever name was passed to the property_ID argument) values from the
 #'   listings comprising the ghost hostel. `EH_check`: if EH_check is not NULL,
 #'   a list of possible entire-home listing duplicates. `data`: a nested tibble
-#'   of additional variables present in the points object. `geometry`: the
+#'   of additional variables present in the property object. `geometry`: the
 #'   polygons representing the possible locations of each ghost hostel.
 #' @export
 
 strr_ghost <- function(
-  points, start_date = NULL, end_date = NULL, property_ID = property_ID,
+  property, start_date = NULL, end_date = NULL, property_ID = property_ID,
   host_ID = host_ID, multi_date = TRUE, created = created, scraped = scraped,
-  distance = 200, min_listings = 3, listing_type = listing_type,
+  distance = 205, min_listings = 3, listing_type = listing_type,
   private_room = "Private room", EH_check = FALSE,
   entire_home = "Entire home/apt", quiet = FALSE) {
 
@@ -87,91 +87,48 @@ strr_ghost <- function(
 
   start_time <- Sys.time()
 
-  helper_progress_message("Analyzing ghost hostels.")
-
   steps <- 3 + multi_date + EH_check
 
 
-  ## Set data.table and future variables ---------------------------------------
+  ## Validate arguments --------------------------------------------------------
 
-  data <- date_grid <- starts <- ends <- Var1 <- Var2 <- property_IDs <-
-    listing_count <- intersects <- housing_units <- geometry <- ghost_ID <-
-    subsets <- start <- end <- subset_list <- NULL
+  helper_check_property(rlang::ensyms(property_ID, host_ID, created, scraped))
 
-  threads <- data.table::setDTthreads(future::nbrOfWorkers())
+  stopifnot(distance > 0, min_listings > 0)
 
-
-  ## Check distance, min_listings flags
-
-  # Check that distance > 0
-  if (distance <= 0) {
-    stop("The argument `distance` must be a positive number.")
-  }
-
-  # Check that min_listings is an integer > 0
   min_listings <- floor(min_listings)
-  if (min_listings <= 0) {
-    stop("The argument `min_listings` must be a positive integer.")
+
+
+  ## Handle spatial attributes -------------------------------------------------
+
+  # Convert property from sp
+  if (methods::is(property, "Spatial")) {
+    property <- sf::st_as_sf(property)
   }
 
-
-  ## Handle spatial attributes
-
-  # Convert points from sp
-  if (methods::is(points, "Spatial")) {
-    points <- sf::st_as_sf(points)
-  }
-
-  # Check that points is sf, and convert to sf if possible
-  if (!methods::is(points, "sf")) {
+  # Check that property is sf, and convert to sf if possible
+  if (!methods::is(property, "sf")) {
     tryCatch({
-      points <- strr_as_sf(points, 3857)
+      property <- strr_as_sf(property, 3857)
       helper_progress_message("Converting input table to sf.")
     },
     error = function(e) {
-      stop(paste0("The object `points` must be of class sf or sp, ",
-                  "or must be convertable to sf using strr_as_sf."))
+      stop(paste0("The object `property` must be of class sf or sp, ",
+                  "or must be convertible to sf using strr_as_sf."))
     })
   }
 
   # Store CRS for later
-  crs_points <- sf::st_crs(points)
+  crs_property <- sf::st_crs(property)
 
 
-  ## Check that points fields exist
-
-  tryCatch(
-    dplyr::pull(points, {{ property_ID }}),
-    error = function(e) {
-      stop("The value of `property_ID` is not a valid field in the input table."
-      )})
-
-  tryCatch(
-    dplyr::pull(points, {{ host_ID }}),
-    error = function(e) {
-      stop("The value of `host_ID` is not a valid field in the input table."
-      )})
-
-  tryCatch(
-    dplyr::pull(points, {{ created }}),
-    error = function(e) {
-      stop("The value of `created` is not a valid field in the input table."
-      )})
-
-  tryCatch(
-    dplyr::pull(points, {{ scraped }}),
-    error = function(e) {
-      stop("The value of `scraped` is not a valid field in the input table."
-      )})
-
-
-  ## Set lt_flag and check validity of listing_type
+  ## Set lt_flag and check validity of listing_type ----------------------------
 
   lt_flag <-
     tryCatch(
       {
-        # If listing_type is a field in points, set lt_flag = TRUE
-        dplyr::pull(points, {{ listing_type }})
+        # If listing_type is a field in property, set lt_flag = TRUE
+        dplyr::pull(property, {{listing_type}})
         TRUE
       },
       error = function(e) {
@@ -193,14 +150,14 @@ strr_ghost <- function(
 
   if (lt_flag) {
 
-    if (points %>% dplyr::filter({{ listing_type }} == private_room) %>% nrow() == 0) {
+    if (nrow(dplyr::filter(property, {{listing_type}} == private_room)) == 0) {
       warning(paste0("The supplied argument to `private_room` returns no ",
                      "matches in the input table. Are you sure the argument ",
                      "is correct?"))
     }
 
     if (EH_check &&
-        points %>% dplyr::filter({{ listing_type }} == entire_home) %>% nrow() == 0) {
+        nrow(dplyr::filter(property, {{listing_type}} == entire_home)) == 0) {
       warning(paste0("The supplied argument to `entire_home` returns no ",
                      "matches in the input table. Are you sure the argument ",
                      "is correct?"))
@@ -212,20 +169,25 @@ strr_ghost <- function(
   if (multi_date) {
 
     # Check if created and scraped are dates
-    if (!methods::is(dplyr::pull(points, {{ created }}), "Date")) {
-      stop("The `created` field must be of class 'Date'")
+    if (!methods::is(dplyr::pull(property, {{created}}), "Date")) {
+      tryCatch({
+        property <- dplyr::mutate(property, {{created}} := as.Date({{created}}))
+      }, error = function(e)
+        stop("The `created` field must be coercible to dates.")
+      )
     }
 
-    if (!methods::is(dplyr::pull(points, {{ scraped }}), "Date")) {
-      stop("The `scraped` field must be of class 'Date'")
+    if (!methods::is(dplyr::pull(property, {{scraped}}), "Date")) {
+      tryCatch({
+        property <- dplyr::mutate(property, {{scraped}} := as.Date({{scraped}}))
+      }, error = function(e)
+        stop("The `scraped` field must be coercible to dates.")
+      )
     }
 
     # Wrangle start_date/end_date values
     if (missing(start_date)) {
-      start_date <-
-        points %>%
-        dplyr::pull({{ created }}) %>%
-        min(na.rm = TRUE)
+      start_date <- min(dplyr::pull(property, {{created}}), na.rm = TRUE)
     } else {
       start_date <- tryCatch(as.Date(start_date), error = function(e) {
         stop(paste0('The value of `start_date`` ("', start_date,
@@ -233,10 +195,7 @@ strr_ghost <- function(
       })}
 
     if (missing(end_date)) {
-      end_date <-
-        points %>%
-        dplyr::pull({{ scraped }}) %>%
-        max(na.rm = TRUE)
+      end_date <- max(dplyr::pull(property, {{scraped}}), na.rm = TRUE)
     } else {
       end_date <- tryCatch(as.Date(end_date), error = function(e) {
         stop(paste0('The value of `end_date` ("', end_date,
@@ -245,50 +204,66 @@ strr_ghost <- function(
   }
 
 
-  ### POINTS SETUP #############################################################
+  ## Set data.table variables --------------------------------------------------
 
-  helper_progress_message("(1/", steps,
-                          ") Identifying possible ghost hostel clusters, ",
-                          "using {helper_plan()}.",
-                          .type = "open")
+  data <- date_grid <- starts <- ends <- Var1 <- Var2 <- property_IDs <-
+    listing_count <- intersects <- housing_units <- geometry <- ghost_ID <-
+    subsets <- start <- end <- subset_list <- NULL
+
+  threads <- data.table::setDTthreads(future::nbrOfWorkers())
+
+  on.exit(data.table::setDTthreads(threads))
+
+
+  ### PROPERTY SETUP ###########################################################
+
+  helper_message("(1/", steps, ") Identifying possible ghost hostel clusters, ",
+                 "using {helper_plan()}.", .type = "open")
+
+
+  ## Prepare table -------------------------------------------------------------
 
   # Rename fields for easier processing with future and data.table packages
-  points <-
-    points %>%
-    dplyr::rename(property_ID = {{ property_ID }},
-           host_ID = {{ host_ID }},
-           created = {{ created}},
-           scraped = {{ scraped }})
+  property <- dplyr::rename(property,
+                            property_ID = {{property_ID}},
+                            host_ID = {{host_ID}},
+                            created = {{created}},
+                            scraped = {{scraped}})
 
-  if (lt_flag) points <- points %>% dplyr::rename(listing_type = {{ listing_type }})
+  if (lt_flag) property <-
+    dplyr::rename(property, listing_type = {{listing_type}})
 
   # Convert to data.table
-  data.table::setDT(points)
+  data.table::setDT(property)
 
   # Remove invalid listings
-  points <- points[!is.na(host_ID)]
+  property <- property[!is.na(host_ID)]
+
+
+  ## Filter rows ---------------------------------------------------------------
 
   # Filter to private rooms if listing_type != FALSE
   if (lt_flag) {
 
     # Save entire-home listings for later if EH_check == TRUE
-    if (EH_check) EH_points <- points[listing_type == entire_home]
+    if (EH_check) EH_property <- property[listing_type == entire_home]
 
-    points <- points[listing_type == private_room]
+    property <- property[listing_type == private_room]
   }
 
-  # Filter points to clusters >= min_listings, and nest by host_ID
-  points <-
-    points[, if (.N >= min_listings) list(data = list(.SD)), by = "host_ID"]
-
+  # Filter property to clusters >= min_listings, and nest by host_ID
+  property <-
+    property[, if (.N >= min_listings) list(data = list(.SD)), by = "host_ID"]
 
   # Error handling for case where no clusters are identified
-  if (nrow(points) == 0) return(ghost_empty(crs_points))
+  if (nrow(property) == 0) return(ghost_empty(crs_property))
 
-  # Identify possible clusters by date if multi_date == TRUE
+
+  ## Identify possible clusters by date if multi_date == TRUE ------------------
+
   if (multi_date) {
 
-    points[, c("starts", "ends") := list(
+    property[, c("starts", "ends") := list(
       lapply(data, function(x) {
         # Add start_date to account for listings with created < start_date
         c(unique(x[created > start_date]$created), start_date)}),
@@ -297,22 +272,21 @@ strr_ghost <- function(
         c(unique(x[scraped < end_date]$scraped), end_date)}))]
 
     # Make list of all combinations of starts and ends
-    points[, date_grid := mapply(expand.grid, starts, ends, SIMPLIFY = FALSE)]
-    points[, date_grid := lapply(date_grid, function(x) setDT(x)[Var1 <= Var2])]
+    property[, date_grid := mapply(expand.grid, starts, ends, SIMPLIFY = FALSE)]
+    property[, date_grid := lapply(date_grid, function(x) {
+      data.table::setDT(x)[Var1 <= Var2]
+      })]
 
     # Error handling for case where no clusters are identified
-    if (nrow(points) == 0) return(ghost_empty(crs_points))
+    if (nrow(property) == 0) return(ghost_empty(crs_property))
 
-    helper_progress_message("(1/", steps,
-                            ") Possible ghost hostel clusters identified, ",
-                            "using {helper_plan()}.",
-                            .type = "close")
+    helper_message("(1/", steps,
+                   ") Possible ghost hostel clusters identified, ",
+                   "using {helper_plan()}.", .type = "close")
 
     # Create a nested tibble for each possible cluster
-    helper_progress_message("(2/", steps,
-                            ") Preparing possible clusters for analysis, ",
-                            "using {helper_plan()}.",
-                            .type = "open")
+    helper_message("(2/", steps, ") Preparing possible clusters for analysis, ",
+                   "using {helper_plan()}.", .type = "open")
 
     apply_fun <-
       function(x, y) {
@@ -321,108 +295,107 @@ strr_ghost <- function(
         output[lapply(output, nrow) >= min_listings]
       }
 
-    points[, data := mapply(apply_fun, date_grid, data, SIMPLIFY = FALSE)]
-    points[, c("starts", "ends", "date_grid") := list(NULL, NULL, NULL)]
-    points <-
-      points[, .(data = unlist(data, recursive = FALSE)), by = "host_ID"]
+    property[, data := mapply(apply_fun, date_grid, data, SIMPLIFY = FALSE)]
+    property[, c("starts", "ends", "date_grid") := list(NULL, NULL, NULL)]
+    property <- property[, .(data = unlist(data, recursive = FALSE)),
+                         by = "host_ID"]
 
-    helper_progress_message("(2/", steps,
-                            ") Possible clusters prepared for analysis, ",
-                            "using {helper_plan()}.",
-                            .type = "close")
+    helper_message("(2/", steps, ") Possible clusters prepared for analysis, ",
+                   "using {helper_plan()}.", .type = "close")
   } else {
-    helper_progress_message("(1/", steps,
-                            ") Possible ghost hostel clusters identified, ",
-                            "using {helper_plan()}.",
-                            .type = "close")
+    helper_message("(1/", steps,
+                   ") Possible ghost hostel clusters identified, ",
+                   "using {helper_plan()}.", .type = "close")
   }
 
 
   ### CLUSTER CREATION AND GHOST HOSTEL IDENTIFICATION #########################
 
-  points_list <- points %>% helper_table_split(type = "data")
+  property_list <- helper_table_split(property, type = "data")
 
-  helper_progress_message("(", 2 + multi_date, "/", steps,
-                          ") Identifying ghost hostels, using {helper_plan()}.",
-                          .type = "progress")
+  helper_message("(", 2 + multi_date, "/", steps,
+                 ") Identifying ghost hostels, using {helper_plan()}.")
 
   data.table::setDTthreads(1)
 
-  points <-
-    points_list %>%
-    furrr::future_map(~{
-      .x %>%
-        ghost_cluster(distance, min_listings) %>%
-        ghost_intersect(distance, min_listings) %>%
-        ghost_intersect_leftovers(distance, min_listings)
-    },
-    # Suppress progress bar if !quiet or the plan is remote
-    .progress = helper_progress()
-    )
+  handler_strr("Analzying row")
 
-  points <- data.table::rbindlist(points)
+  with_progress2({
+
+    .strr_env$pb <- progressor2(steps = nrow(property))
+
+    property <- par_lapply(property_list, function(x) {
+      .strr_env$pb(amount = nrow(x))
+      x <- ghost_cluster(x, distance, min_listings)
+      x <- ghost_intersect(x, distance, min_listings)
+      x <- ghost_intersect_leftovers(x, distance, min_listings)
+      x
+    })
+
+  })
+
+  property <- data.table::rbindlist(property)
 
   data.table::setDTthreads(future::nbrOfWorkers())
 
   # Error handling for case where no clusters are identified
-  if (nrow(points) == 0) return(ghost_empty(crs_points))
+  if (nrow(property) == 0) return(ghost_empty(crs_property))
 
 
   ### GHOST TABLE CREATION #####################################################
 
-  helper_progress_message("(", steps - EH_check, "/", steps,
-                          ") Creating final output table, ",
-                          "using {helper_plan()}.",
-                          .type = "open")
+  helper_message("(", steps - EH_check, "/", steps,
+                 ") Creating final output table, using {helper_plan()}.",
+                 .type = "open")
 
   # Remove duplicates now that leftovers have been processed
-  points <- points[!duplicated(points$property_IDs),]
+  property <- property[!duplicated(property$property_IDs),]
 
   # Make sure the only rows in the nested data are the actual GH points
-  points[, data := mapply(function(x, y) x[property_ID %in% y],
+  property[, data := mapply(function(x, y) x[property_ID %in% y],
                           data, property_IDs, SIMPLIFY = FALSE)]
 
   # Generate geometry column for ghost table
-  ghost_geom <-
-    points$intersects %>%
-    purrr::map(~{.x$geometry}) %>%
-    do.call(rbind, .) %>%
-    sf::st_as_sfc()
+  ghost_geom <- lapply(property$intersects, function(x) x$geometry)
+
+  if (length(ghost_geom) == 1) ghost_geom <- ghost_geom[[1]] else {
+    ghost_geom <- do.call(rbind, ghost_geom)
+    ghost_geom <- sf::st_as_sfc(ghost_geom, crs = crs_property)
+  }
 
 
-  ## Create ghost table
+  ## Create ghost table --------------------------------------------------------
 
-  # Create new fields and join geometry
-  points[, listing_count := sapply(intersects, function(x) x$n.overlaps)]
-  points[, housing_units := as.integer(ceiling(listing_count / 4))]
-  points[, geometry := ghost_geom]
+  # Create new fields
+  property[, listing_count := sapply(intersects, function(x) x$n.overlaps)]
+  property[, housing_units := as.integer(ceiling(listing_count / 4))]
 
   # Remove duplicates
-  points <- points[!duplicated(points$property_IDs)]
+  property <- property[!duplicated(property$property_IDs)]
 
   # Arrange table
-  data.table::setkey(points, host_ID)
+  data.table::setkey(property, host_ID)
 
-  # Create ghost_ID
-  points[, ghost_ID := seq_len(.N)]
+  # Create ghost_ID and drop extraneous columns
+  property[, ghost_ID := seq_len(.N)]
+  property[, c("buffers", "intersects") := NULL]
 
   # Arrange columns
-  points <-
-    points[, .(ghost_ID, host_ID, listing_count, housing_units, property_IDs,
-               data, geometry)]
+  data.table::setcolorder(property, c("ghost_ID", "host_ID", "listing_count",
+                                      "housing_units", "property_IDs", "data"))
 
-  # Convert to sf and reattach CRS
-  points <- sf::st_as_sf(points, crs = crs_points)
+  # Convert to sf
+  property <- sf::st_sf(property, geometry = ghost_geom)
 
 
-  ## Calculate dates if multi_date == TRUE
+  ## Calculate dates if multi_date == TRUE -------------------------------------
 
   if (multi_date) {
 
-    data.table::setDT(points)
+    suppressWarnings(data.table::setDT(property))
 
     # Calculate date ranges
-    points[, c("start", "end") := list(
+    property[, c("start", "end") := list(
       as.Date(sapply(data, function(x) max(c(start_date, pull(x, created)))),
               origin = "1970-01-01"),
       as.Date(sapply(data, function(x) min(c(end_date,   pull(x, scraped)))),
@@ -430,147 +403,147 @@ strr_ghost <- function(
     )]
 
     # Identify subsets
-
-    points[, subsets := lapply(property_IDs, function(y) {
-      which(purrr::map_lgl(points$property_IDs, ~all(.x %in% y)))
+    property[, subsets := lapply(property_IDs, function(y) {
+      which(sapply(property$property_IDs, function(x) all(x %in% y)))
     })]
 
-    points[, subsets := mapply(function(x, y) y[y != x], ghost_ID, subsets,
+    property[, subsets := mapply(function(x, y) y[y != x], ghost_ID, subsets,
                                SIMPLIFY = FALSE)]
 
   }
 
-  helper_progress_message("(", steps - EH_check, "/", steps,
-                          ") Final output table created, ",
-                          "using {helper_plan()}.",
-                          .type = "close")
+  helper_message("(", steps - EH_check, "/", steps,
+                 ") Final output table created, using {helper_plan()}.",
+                 .type = "close")
 
 
-  ## EH_check
+  ## EH_check ------------------------------------------------------------------
 
   if (EH_check) {
 
-    helper_progress_message("(", steps, "/", steps,
-                            ") Checking for possible entire-home duplicates.",
-                            .type = "open")
+    helper_message("(", steps, "/", steps,
+                   ") Checking for possible entire-home duplicates.",
+                   .type = "open")
 
-    data.table::setDT(points)
+    suppressWarnings(data.table::setDT(property))
 
     EH_buffers <-
-      copy(EH_points)[, geometry := sf::st_buffer(geometry, distance)] %>%
-      sf::st_as_sf() %>%
-      sf::st_transform(crs_points) %>%
-      dplyr::rename(EH_property_ID = property_ID)
+      copy(EH_property)[, geometry := sf::st_buffer(geometry, distance)]
 
-    EH_gm_fun <- function(x, y) {
-      gm <- sf::st_sf(geometry = sf::st_sfc(list(x)), crs = crs_points,
+    EH_buffers <- sf::st_as_sf(EH_buffers)
+    EH_buffers <- sf::st_transform(EH_buffers, crs_property)
+    EH_buffers <- dplyr::rename(EH_buffers, EH_property_ID = property_ID)
+
+    gm_fun <- function(x, y) {
+
+      gm <- sf::st_sf(geometry = sf::st_sfc(list(x)), crs = crs_property,
                   agr = "constant")
+
       EH_host <- sf::st_set_agr(EH_buffers[EH_buffers$host_ID == y,],
                                 "constant")
-      sf::st_intersection(gm, EH_host) %>% dplyr::pull(.data$EH_property_ID)
+
+      int <- sf::st_intersection(gm, EH_host)
+
+      dplyr::pull(int, .data$EH_property_ID)
     }
 
-    points[, EH_check := mapply(EH_gm_fun, geometry, host_ID, SIMPLIFY = TRUE)]
+    property[, EH_check := mapply(gm_fun, geometry, host_ID, SIMPLIFY = TRUE)]
 
-    data.table::setcolorder(points, c(setdiff(names(points), "geometry"), "geometry"))
+    data.table::setcolorder(property,
+                            c(setdiff(names(property), "geometry"), "geometry"))
 
-    helper_progress_message("(", steps, "/", steps,
-                            ") Possible entire-home duplicates detected.",
-                            .type = "close")
+    helper_message("(", steps, "/", steps,
+                   ") Possible entire-home duplicates detected.",
+                   .type = "close")
 
   }
 
 
   ### TIDY TABLE CREATION ######################################################
 
-  # Create tidy version of ghost_points
+  ## Create tidy version of ghost_property -------------------------------------
 
   if (multi_date) {
 
-    ghost_points <- points[, .(ghost_ID, start, end)]
+    ghost_property <- property[, .(ghost_ID, start, end)]
 
-    ghost_points[, date := mapply(function(x, y) seq(unique(x), unique(y), 1),
+    ghost_property[, date := mapply(function(x, y) seq(unique(x), unique(y), 1),
                                   start, end, SIMPLIFY = FALSE)]
 
     # Unnest points by date
-    ghost_points <-
-      ghost_points[, .(date = as.Date(unlist(date), origin = "1970-01-01")),
+    ghost_property <-
+      ghost_property[, .(date = as.Date(unlist(date), origin = "1970-01-01")),
                  by = "ghost_ID"]
 
     # Make sure no invalid dates were introduced
-    ghost_points <- ghost_points[date >= start_date & date <= end_date]
+    ghost_property <- ghost_property[date >= start_date & date <= end_date]
 
-    # Rejoin info from points
-    ghost_points <- points[ghost_points, on = "ghost_ID"]
-    ghost_points[, c("start", "end") := NULL]
-    data.table::setcolorder(ghost_points, c("ghost_ID", "date"))
+    # Rejoin info from property
+    ghost_property <- property[ghost_property, on = "ghost_ID"]
+    ghost_property[, c("start", "end") := NULL]
+    data.table::setcolorder(ghost_property, c("ghost_ID", "date"))
 
-    # Remove rows from ghost_points which are subsets of other rows
-
+    # Remove rows from ghost_property which are subsets of other rows
     date_subsets <-
-      ghost_points[, .(subset_list = list(unlist(subsets))), by = "date"]
+      ghost_property[, .(subset_list = list(unlist(subsets))), by = "date"]
 
-    ghost_points <- date_subsets[ghost_points, on = "date"]
+    ghost_property <- date_subsets[ghost_property, on = "date"]
 
-    ghost_points <-
-      ghost_points[!mapply(function(x, y) x %in% y, ghost_ID, subset_list)]
+    ghost_property <-
+      ghost_property[!mapply(function(x, y) x %in% y, ghost_ID, subset_list)]
 
-    ghost_points[, c("subset_list", "subsets") := NULL]
+    ghost_property[, c("subset_list", "subsets") := NULL]
 
-    data.table::setcolorder(ghost_points, c("ghost_ID", "date", "host_ID", "listing_count",
-                                "housing_units", "property_IDs"))
+    data.table::setcolorder(ghost_property, c("ghost_ID", "date", "host_ID",
+                                              "listing_count", "housing_units",
+                                              "property_IDs"))
 
-  } else ghost_points <- points
+  } else ghost_property <- property
 
-  # Convert to sf tibble and rename fields to match input fields
-  ghost_points <-
-    ghost_points %>%
-    dplyr::as_tibble() %>%
-    sf::st_as_sf() %>%
-    dplyr::rename({{ host_ID }} := .data$host_ID)
+
+  ## Convert to sf tibble and rename fields to match input fields --------------
+
+  ghost_property <- dplyr::as_tibble(ghost_property)
+  ghost_property <- sf::st_as_sf(ghost_property)
+  ghost_property <- dplyr::rename(ghost_property, {{host_ID}} := .data$host_ID)
 
 
   ### RETURN OUTPUT ############################################################
 
-  helper_progress_message("Analysis complete.", .type = "final")
+  helper_message("Analysis complete.", .type = "final")
 
-  return(ghost_points)
+  return(ghost_property)
+
 }
 
 
 
 #' Helper function to create potential ghost hostel clusters
 #'
-#' \code{ghost_cluster} takes `points` and splits it into potential clusters.
-#'
-#' A function for splitting `points` into clusters of potential ghost hostels,
-#' with each cluster having length >= min_listings.
-#'
-#' @param points A data frame of STR listings with sf or sp point geometries in
+#' @param property A data frame of STR listings with sf or sp point geometries in
 #'   a projected coordinate system.
 #' @param distance A numeric scalar. The radius (in the units of the CRS) of the
 #'   buffer which will be drawn around points to determine possible ghost hostel
 #'   locations.
 #' @param min_listings A numeric scalar. The minimum number of listings to
 #'   be considered a ghost hostel.
-#' @return The output will be the `points` object, rearranged with one row per
-#'   cluster and with a new `predicates` field.
-#' @importFrom rlang .data
+#' @return The `property` table, rearranged with one row per cluster and with a
+#' new `predicates` field.
 
-ghost_cluster <- function(points, distance, min_listings) {
+ghost_cluster <- function(property, distance, min_listings) {
 
   predicates <- data <- NULL
 
   # Create intersect predicate lists
-  points[, predicates := lapply(data, function(x) {
+  property[, predicates := lapply(data, function(x) {
     sf::st_intersects(sf::st_buffer(sf::st_as_sf(x), distance))
   })]
 
   # Extra list around lapply is needed to force embedded list where nrow == 1
-  points[, predicates := list(lapply(predicates, function(pred) {
+  property[, predicates := list(lapply(predicates, function(pred) {
     purrr::map(seq_along(pred), ~{
       # Merge lists with common elements
-      reduce(pred, function(x, y) if (any(y %in% x)) unique(c(x, y)) else x,
+      purrr::reduce(pred, function(x, y) if (any(y %in% x)) unique(c(x, y)) else x,
       .init = pred[[.]]) # Compile lists starting at each position
     }) %>%
       purrr::map(sort) %>%
@@ -578,45 +551,38 @@ ghost_cluster <- function(points, distance, min_listings) {
   }))]
 
   # Remove lists < min_listings
-  points[, predicates := list(lapply(predicates,
+  property[, predicates := list(lapply(predicates,
                                 function(x) x[lengths(x) >= min_listings]))]
 
-  # Use predicates to split points into clusters with length >= min_listings
-  points <- points[lapply(predicates, length) > 0]
+  # Use predicates to split property into clusters with length >= min_listings
+  property <- property[lapply(predicates, length) > 0]
 
   pred_fun <- function(x, y) purrr::map(y, ~x[.,])
 
-  points[, data := list(mapply(pred_fun, data, predicates, SIMPLIFY = FALSE))]
+  property[, data := list(mapply(pred_fun, data, predicates, SIMPLIFY = FALSE))]
 
-  # Exit function early if points table is empty
-  if (nrow(points) == 0) {
+  # Exit function early if property table is empty
+  if (nrow(property) == 0) {
     return(data.table::data.table(host_ID = character(), data = list()))
   }
 
   # Unnest data
-  points <- points[, .(data = unlist(data, recursive = FALSE)), by = "host_ID"]
+  property <- property[, .(data = unlist(data, recursive = FALSE)), by = "host_ID"]
 
   # Remove duplicate clusters
-  points <- points[!duplicated(points$data),]
+  property <- property[!duplicated(property$data),]
 
-  points
+  property
 }
 
 
 #' Helper function to create potential intersection combinations
 #'
-#' \code{ghost_combine} takes `buffers` and `predicates` and generates
-#' combinations.
-#'
-#' A function for generating potential intersection combinations using `buffers`
-#' and `predicates` from points$data.
-#'
-#' @param buffers A data frame of buffers from points$data.
-#' @param predicates The points$data field generated from \code{st_intersects}.
+#' @param buffers A data frame of buffers from property$data.
+#' @param predicates The property$data field generated from \code{st_intersects}.
 #' @param n A numeric scalar. The number of points to attempt to find a set of
 #'   combinations for
-#' @return The output will be a matrix of possible intersection combinations.
-#' @importFrom rlang .data
+#' @return A matrix of possible intersection combinations.
 
 ghost_combine <- function(buffers, predicates, n) {
 
@@ -647,7 +613,7 @@ ghost_combine <- function(buffers, predicates, n) {
     unique()
 
   # Test if reducer will be necessary to avoid too many combinations
-  while(sum(purrr::map_dbl(combinations, ~{
+  while (sum(purrr::map_dbl(combinations, ~{
     factorial(length(.)) / {factorial(n) * factorial(length(.) - n)}
   })) > 100000) {
 
@@ -708,14 +674,9 @@ ghost_combine <- function(buffers, predicates, n) {
 
 #' Helper function to intersect two buffers
 #'
-#' \code{ghost_intersect_with_done} takes the intersection of two buffers.
-#'
-#' A function for intersecting two buffers with done(), for use in reduce().
-#'
 #' @param x A buffer.
 #' @param y A buffer.
-#' @return The output will be an intersect polygon.
-#' @importFrom rlang .data
+#' @return An intersect polygon.
 
 ghost_intersect_with_done <- function(x, y) {
   result <- sf::st_intersection(x, y)
@@ -725,17 +686,10 @@ ghost_intersect_with_done <- function(x, y) {
 
 #' Helper function to intersect a data frame of buffers
 #'
-#' \code{ghost_stepwise_intersect} applies st_intersection in stepwise fashion
-#' to a data frame of buffers.
-#'
-#' A function for intersecting a data frame of buffers in stepwise fashion,
-#' including a number of optimizations for performance.
-#'
-#' @param buffers A data frame of buffers from points$data.
+#' @param buffers A data frame of buffers from property$data.
 #' @param min_listings A numeric scalar. The minimum number of listings to
 #'   be considered a ghost hostel.
-#' @return The output will be an intersect polygon.
-#' @importFrom rlang .data
+#' @return An intersect polygon.
 
 ghost_stepwise_intersect <- function(buffers, min_listings) {
 
@@ -818,66 +772,60 @@ ghost_stepwise_intersect <- function(buffers, min_listings) {
 #'
 #' A function for finding ghost hostel locations from a set of point clusters.
 #'
-#' @param points An sf data frame of STR listings nested by cluster.
+#' @param property An sf data frame of STR listings nested by cluster.
 #' @param distance A numeric scalar. The radius (in the units of the CRS) of the
 #'   buffer which will be drawn around points to determine possible ghost hostel
 #'   locations.
 #' @param min_listings A numeric scalar. The minimum number of listings to
 #'   be considered a ghost hostel.
-#' @return The output will be `points`, trimmed to valid ghost hostel locations
+#' @return The output will be `property`, trimmed to valid ghost hostel locations
 #'   and with additional fields added.
 #' @importFrom rlang .data
 
-ghost_intersect <- function(points, distance, min_listings) {
+ghost_intersect <- function(property, distance, min_listings) {
 
   buffers <- data <- intersects <- property_IDs <- NULL
 
   # Prepare buffers
-  points[, buffers := lapply(data, function(x) sf::st_buffer(sf::st_as_sf(x),
+  property[, buffers := lapply(data, function(x) sf::st_buffer(sf::st_as_sf(x),
                                                          dist = distance))]
 
   # Create intersects using ghost_stepwise_intersect
-  points[, intersects := purrr::map(buffers, ghost_stepwise_intersect,
+  property[, intersects := purrr::map(buffers, ghost_stepwise_intersect,
                              min_listings)]
 
   # Remove empty clusters
-  points <- points[lapply(intersects, nrow) > 0]
+  property <- property[lapply(intersects, nrow) > 0]
 
   # Choose intersect with max area
-  points[lapply(intersects, nrow) > 1,
+  property[lapply(intersects, nrow) > 1,
          intersects := lapply(intersects,
                               function(x) x[which.max(sf::st_area(x)),])]
 
   # Add $property_IDs field
-  data_PIDs <- purrr::map(points$data, `$`, "property_ID")
-  int_origs <- purrr::map(points$intersects, `$`, "origins")
+  data_PIDs <- purrr::map(property$data, `$`, "property_ID")
+  int_origs <- purrr::map(property$intersects, `$`, "origins")
 
-  points[, property_IDs := mapply(function(x, y) y[x[[1]]], int_origs,
+  property[, property_IDs := mapply(function(x, y) y[x[[1]]], int_origs,
                                   data_PIDs, SIMPLIFY = FALSE)]
 
-  points
+  property
 }
 
 
 #' Helper function to identify leftover ghost hostel candidates
 #'
-#' \code{ghost_identify_leftovers} identifies leftover ghost hostel candidates.
-#'
-#' A function for identifying leftover ghost hostel candidates after the main
-#' ghost hostel analysis has been run.
-#'
-#' @param points An sf data frame of STR listings nested by cluster.
+#' @param property An sf data frame of STR listings nested by cluster.
 #' @param min_listings A numeric scalar. The minimum number of listings to
 #'   be considered a ghost hostel.
-#' @return The output will be a set of new candidate `points`.
-#' @importFrom rlang .data
+#' @return The output will be a set of new candidate points.
 
-ghost_identify_leftovers <- function(points, min_listings) {
+ghost_identify_leftovers <- function(property, min_listings) {
 
   data <- property_ID <- property_IDs <- host_ID <- NULL
 
   leftovers <-
-    points[sapply(data, nrow) - lengths(property_IDs) >= min_listings]
+    property[sapply(data, nrow) - lengths(property_IDs) >= min_listings]
 
   leftovers[, data := mapply(function(x, y) x[!property_ID %in% y], data,
                              property_IDs, SIMPLIFY = FALSE)]
@@ -891,68 +839,54 @@ ghost_identify_leftovers <- function(points, min_listings) {
 
 #' Helper function to rerun analysis on leftover ghost hostel candidates
 #'
-#' \code{ghost_intersect_leftovers} reruns the ghost hostel analysis on leftover
-#'  candidates.
-#'
-#' A function for rerunning the ghost hostel analysis on leftover candidates
-#' after the main analysis has been run.
-#'
-#' @param points An sf data frame of STR listings nested by cluster.
+#' @param property An sf data frame of STR listings nested by cluster.
 #' @param distance A numeric scalar. The radius (in the units of the CRS) of the
-#'   buffer which will be drawn around points to determine possible ghost hostel
+#'   buffer which will be drawn around property to determine possible ghost hostel
 #'   locations.
 #' @param min_listings A numeric scalar. The minimum number of listings to
 #'   be considered a ghost hostel.
-#' @return The output will be the `points` file with additional ghost hostels
-#'   added.
-#' @importFrom rlang .data
+#' @return The `property` file with additional ghost hostels added.
 
-ghost_intersect_leftovers <- function(points, distance, min_listings) {
+ghost_intersect_leftovers <- function(property, distance, min_listings) {
 
   data <- property_IDs <- property_ID <- NULL
 
-  if (nrow(points) == 0) return(points)
+  if (nrow(property) == 0) return(property)
 
   # Subset leftover candidates
-  leftovers <- ghost_identify_leftovers(points, min_listings)
+  leftovers <- ghost_identify_leftovers(property, min_listings)
 
   # Condition to run ghost_intersect on leftovers
   while (nrow(leftovers) > 0) {
 
-    # Remove leftovers from points$data
-    points <-
+    # Remove leftovers from property$data
+    property <-
       rbind(
-        points[sapply(data, nrow) - lengths(property_IDs) < min_listings],
+        property[sapply(data, nrow) - lengths(property_IDs) < min_listings],
         # Add leftovers in case there is only a partial match
-        points[sapply(data, nrow) - lengths(property_IDs) >= min_listings
+        property[sapply(data, nrow) - lengths(property_IDs) >= min_listings
                ][, data := mapply(function(x, y) x[property_ID %in% y], data,
                                   property_IDs, SIMPLIFY = FALSE)])
 
     # Apply ghost_intersect to leftovers
     leftover_outcome <- ghost_intersect(leftovers, distance, min_listings)
 
-    # Add leftover_outcome to points
-    points <- rbind(points, leftover_outcome)
+    # Add leftover_outcome to property
+    property <- rbind(property, leftover_outcome)
 
     # Subset leftover candidates again
-    leftovers <- ghost_identify_leftovers(points, min_listings)
+    leftovers <- ghost_identify_leftovers(property, min_listings)
   }
 
-  points
+  property
 }
 
 
 #' Helper function to output an empty ghost hostel table
 #'
-#' \code{ghost_empty} produces an empty output table.
-#'
-#' A function for producing an empty output table if there are no valid ghost
-#' hostels.
-#'
-#' @param crs_points The CRS of the points table.
-#' @importFrom rlang .data
+#' @param crs_property The CRS of the property table.
 
-ghost_empty <- function(crs_points) {
+ghost_empty <- function(crs_property) {
   dplyr::tibble(ghost_ID = integer(),
          date = as.Date(x = integer(), origin = "1970-01-01"),
          host_ID = character(),
@@ -961,5 +895,5 @@ ghost_empty <- function(crs_points) {
          property_IDs = list(),
          data = list(),
          geometry = sf::st_sfc()) %>%
-    sf::st_as_sf(crs = crs_points)
+    sf::st_as_sf(crs = crs_property)
 }

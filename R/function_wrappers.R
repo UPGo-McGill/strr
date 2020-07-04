@@ -55,23 +55,24 @@ par_lapply <- function(...) {
 }
 
 
-par_mapply <-
+par_mapply <- function(...) {
 
   if (requireNamespace("future", quietly = TRUE)) {
 
     if (requireNamespace("future.apply", quietly = TRUE)) {
 
       # Overwrite lapply with future.lapply for parallel processing
-      future.apply::future_mapply
+      future.apply::future_mapply(...)
 
     } else {
 
       message("Please install the `future.apply` package to enable ",
               "parallel processing.")
 
-      mapply
+      mapply(...)
 
     }
 
-  } else mapply
+  } else mapply(...)
 
+}

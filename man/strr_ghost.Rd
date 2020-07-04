@@ -5,7 +5,7 @@
 \title{Function to identify STR ghost hostels}
 \usage{
 strr_ghost(
-  points,
+  property,
   start_date = NULL,
   end_date = NULL,
   property_ID = property_ID,
@@ -13,7 +13,7 @@ strr_ghost(
   multi_date = TRUE,
   created = created,
   scraped = scraped,
-  distance = 200,
+  distance = 205,
   min_listings = 3,
   listing_type = listing_type,
   private_room = "Private room",
@@ -23,7 +23,7 @@ strr_ghost(
 )
 }
 \arguments{
-\item{points}{A data frame of STR listings with sf or sp point geometries in
+\item{property}{A data frame of STR listings with sf or sp point geometries in
 a projected coordinate system. If the data frame does not have spatial
 attributes, an attempt will be made to convert it to sf using
 \code{\link{strr_as_sf}}. The result will be transformed into the Web
@@ -38,10 +38,10 @@ be used. This argument is ignored if `multi_date` is FALSE.}
 date for which to run the analysis. If NULL (default), all dates will be
 used. This argument is ignored if `multi_date` is FALSE.}
 
-\item{property_ID}{The name of a character or numeric variable in the points
+\item{property_ID}{The name of a character or numeric variable in the property
 object which uniquely identifies STR listings.}
 
-\item{host_ID}{The name of a character or numeric variable in the points
+\item{host_ID}{The name of a character or numeric variable in the property
 object which uniquely identifies STR hosts.}
 
 \item{multi_date}{A logical scalar. Should the analysis be run for separate
@@ -49,11 +49,11 @@ dates (controlled by the `created`, `scraped`, `start_date` and `end_date`
 arguments), or only run a single time, treating all listings as
 simultaneously active?}
 
-\item{created}{The name of a date variable in the points object which gives
+\item{created}{The name of a date variable in the property object which gives
 the creation date for each listing. This argument is ignored if
 `multi_date` is FALSE.}
 
-\item{scraped}{The name of a date variable in the points object which gives
+\item{scraped}{The name of a date variable in the property object which gives
 the last-scraped date for each listing. This argument is ignored if
 `multi_date` is FALSE.}
 
@@ -64,9 +64,9 @@ locations.}
 \item{min_listings}{A numeric scalar. The minimum number of listings to
 be considered a ghost hostel.}
 
-\item{listing_type}{The name of a character variable in the points
+\item{listing_type}{The name of a character variable in the property
 object which identifies private-room listings. Set this argument to FALSE
-to use all listings in the `points` table.}
+to use all listings in the `property` table.}
 
 \item{private_room}{A character string which identifies the value of the
 `listing_type` variable to be used to find ghost hostels. This field is
@@ -96,7 +96,7 @@ The output will be a tidy data frame of identified ghost hostels,
   (or whatever name was passed to the property_ID argument) values from the
   listings comprising the ghost hostel. `EH_check`: if EH_check is not NULL,
   a list of possible entire-home listing duplicates. `data`: a nested tibble
-  of additional variables present in the points object. `geometry`: the
+  of additional variables present in the property object. `geometry`: the
   polygons representing the possible locations of each ghost hostel.
 }
 \description{

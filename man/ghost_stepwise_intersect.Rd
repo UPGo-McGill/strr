@@ -7,19 +7,14 @@
 ghost_stepwise_intersect(buffers, min_listings)
 }
 \arguments{
-\item{buffers}{A data frame of buffers from points$data.}
+\item{buffers}{A data frame of buffers from property$data.}
 
 \item{min_listings}{A numeric scalar. The minimum number of listings to
 be considered a ghost hostel.}
 }
 \value{
-The output will be an intersect polygon.
+An intersect polygon.
 }
 \description{
-\code{ghost_stepwise_intersect} applies st_intersection in stepwise fashion
-to a data frame of buffers.
-}
-\details{
-A function for intersecting a data frame of buffers in stepwise fashion,
-including a number of optimizations for performance.
+Helper function to intersect a data frame of buffers
 }

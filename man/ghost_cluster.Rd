@@ -4,10 +4,10 @@
 \alias{ghost_cluster}
 \title{Helper function to create potential ghost hostel clusters}
 \usage{
-ghost_cluster(points, distance, min_listings)
+ghost_cluster(property, distance, min_listings)
 }
 \arguments{
-\item{points}{A data frame of STR listings with sf or sp point geometries in
+\item{property}{A data frame of STR listings with sf or sp point geometries in
 a projected coordinate system.}
 
 \item{distance}{A numeric scalar. The radius (in the units of the CRS) of the
@@ -18,13 +18,9 @@ locations.}
 be considered a ghost hostel.}
 }
 \value{
-The output will be the `points` object, rearranged with one row per
-  cluster and with a new `predicates` field.
+The `property` table, rearranged with one row per cluster and with a
+new `predicates` field.
 }
 \description{
-\code{ghost_cluster} takes `points` and splits it into potential clusters.
-}
-\details{
-A function for splitting `points` into clusters of potential ghost hostels,
-with each cluster having length >= min_listings.
+Helper function to create potential ghost hostel clusters
 }

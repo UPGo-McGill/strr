@@ -4,10 +4,10 @@
 \alias{ghost_intersect}
 \title{Helper function to find ghost hostel locations}
 \usage{
-ghost_intersect(points, distance, min_listings)
+ghost_intersect(property, distance, min_listings)
 }
 \arguments{
-\item{points}{An sf data frame of STR listings nested by cluster.}
+\item{property}{An sf data frame of STR listings nested by cluster.}
 
 \item{distance}{A numeric scalar. The radius (in the units of the CRS) of the
 buffer which will be drawn around points to determine possible ghost hostel
@@ -17,7 +17,7 @@ locations.}
 be considered a ghost hostel.}
 }
 \value{
-The output will be `points`, trimmed to valid ghost hostel locations
+The output will be `property`, trimmed to valid ghost hostel locations
   and with additional fields added.
 }
 \description{

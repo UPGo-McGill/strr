@@ -36,8 +36,8 @@ data_sf <-
 
 data_list_sf <-
   data_sf %>%
-  group_split(a) %>%
-  map(sf::st_as_sf, coords = c("lon", "lat"))
+  dplyr::group_split(a) %>%
+  lapply(sf::st_as_sf, coords = c("lon", "lat"))
 
 
 ### Tests ######################################################################

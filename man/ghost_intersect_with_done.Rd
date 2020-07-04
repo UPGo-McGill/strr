@@ -12,11 +12,8 @@ ghost_intersect_with_done(x, y)
 \item{y}{A buffer.}
 }
 \value{
-The output will be an intersect polygon.
+An intersect polygon.
 }
 \description{
-\code{ghost_intersect_with_done} takes the intersection of two buffers.
-}
-\details{
-A function for intersecting two buffers with done(), for use in reduce().
+Helper function to intersect two buffers
 }

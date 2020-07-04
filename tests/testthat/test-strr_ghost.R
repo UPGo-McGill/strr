@@ -45,22 +45,17 @@ points <- dplyr::tibble(
 
 ### Tests ######################################################################
 
-test_that("cores/distance/min_listings flags are correctly handled", {
-  # cores
-  expect_error(strr_ghost(points, property_ID, host_ID, multi_date = TRUE,
-                          created, scraped, distance = 200, min_listings = 3,
-                          listing_type = listing_type,
-                          private_room = "Private room", cores = -1))
+test_that("distance/min_listings flags are correctly handled", {
   # distance
   expect_error(strr_ghost(points, property_ID, host_ID, multi_date = TRUE,
                           created, scraped, distance = -200, min_listings = 3,
                           listing_type = listing_type,
-                          private_room = "Private room", cores = 1))
+                          private_room = "Private room"))
   # min_listings
   expect_error(strr_ghost(points, property_ID, host_ID, multi_date = TRUE,
                           created, scraped, distance = 200, min_listings = -3,
                           listing_type = listing_type,
-                          private_room = "Private room", cores = 1))
+                          private_room = "Private room"))
 })
 
 
@@ -77,16 +72,16 @@ test_that("handling of sf/sp classes is correct", {
 test_that("points fields are correctly handled", {
   # property_ID
   expect_error(strr_ghost(points, property_ID = missing_field),
-               "`property_ID` is not")
+               "`missing_field` is not")
   # host_ID
   expect_error(strr_ghost(points, host_ID = missing_field),
-               "`host_ID` is not")
+               "`missing_field` is not")
   # created
   expect_error(strr_ghost(points, created = missing_field),
-               "`created` is not")
+               "`missing_field` is not")
   # scraped
   expect_error(strr_ghost(points, scraped = missing_field),
-               "`scraped` is not")
+               "`missing_field` is not")
   # listing_type missing
   expect_error(strr_ghost(points, listing_type = missing_field),
                "`listing_type` must be")
@@ -173,6 +168,10 @@ test_that("Non-default field names are passed through", {
       names() %>%
       `[`(3)
     }, "HID")
+})
+
+test_that("Tables with only a single output row work", {
+  expect_equal(nrow(strr_ghost(points[1:6,])), 366)
 })
 
 test_that("The quiet flag suppresses all messages", {

@@ -81,11 +81,10 @@ helper_table_split <- function(data_list, multiplier = 10, type = ".list") {
   length(index_positions) <- n_elements
 
   # Order from largest to smallest
-  data_list <-
-    data_list[order(purrr::map_int(data_list, nrow), decreasing = TRUE)]
+  data_list <- data_list[order(sapply(data_list, nrow), decreasing = TRUE)]
 
   # Get element nrows
-  nrows <- purrr::map_int(data_list, nrow)
+  nrows <- sapply(data_list, nrow)
 
   # Set initial target nrow
   target_nrow <- sum(nrows) / n_elements
@@ -112,19 +111,19 @@ helper_table_split <- function(data_list, multiplier = 10, type = ".list") {
   # Deal with case where input is nested data frame
   if (type != ".list") {
 
-    data_list <-
-      purrr::map(index_positions, ~table[.x,])
+    data_list <- lapply(index_positions, function(x) table[x,])
 
   } else {
     # If table is sf, use do.call to rbind, to preserve geometry column
     if (sf_flag) {
-      data_list <- purrr::map(index_positions, ~{
-        do.call(rbind, data_list[.x])
+      data_list <- lapply(index_positions, function(x) {
+        do.call(rbind, data_list[x])
       })
       # Otherwise use faster rbindlist
     } else {
-      data_list <-
-        purrr::map(index_positions, ~data.table::rbindlist(data_list[.x]))
+      data_list <- lapply(index_positions, function(x) {
+        data.table::rbindlist(data_list[x])
+        })
     }
   }
 
@@ -406,7 +405,7 @@ helper_check_daily <- function(...) {
         dplyr::pull(daily, !! .x)
       }, error = function(e) {
         stop(glue::glue(
-          "{rlang::as_string(.x)}` is not a valid field in the input table."),
+          "`{rlang::as_string(.x)}` is not a valid field in the input table."),
           call. = FALSE)
       })
     })
@@ -479,7 +478,7 @@ helper_check_property <- function(...) {
         dplyr::pull(property, !! .x)
       }, error = function(e) {
         stop(glue::glue(
-          "{rlang::as_string(.x)}` is not a valid field in the input table."),
+          "`{rlang::as_string(.x)}` is not a valid field in the input table."),
           call. = FALSE)
       })
     })

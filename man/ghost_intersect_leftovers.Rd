@@ -4,27 +4,21 @@
 \alias{ghost_intersect_leftovers}
 \title{Helper function to rerun analysis on leftover ghost hostel candidates}
 \usage{
-ghost_intersect_leftovers(points, distance, min_listings)
+ghost_intersect_leftovers(property, distance, min_listings)
 }
 \arguments{
-\item{points}{An sf data frame of STR listings nested by cluster.}
+\item{property}{An sf data frame of STR listings nested by cluster.}
 
 \item{distance}{A numeric scalar. The radius (in the units of the CRS) of the
-buffer which will be drawn around points to determine possible ghost hostel
+buffer which will be drawn around property to determine possible ghost hostel
 locations.}
 
 \item{min_listings}{A numeric scalar. The minimum number of listings to
 be considered a ghost hostel.}
 }
 \value{
-The output will be the `points` file with additional ghost hostels
-  added.
+The `property` file with additional ghost hostels added.
 }
 \description{
-\code{ghost_intersect_leftovers} reruns the ghost hostel analysis on leftover
- candidates.
-}
-\details{
-A function for rerunning the ghost hostel analysis on leftover candidates
-after the main analysis has been run.
+Helper function to rerun analysis on leftover ghost hostel candidates
 }
