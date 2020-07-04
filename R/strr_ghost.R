@@ -110,7 +110,7 @@ strr_ghost <- function(
   if (!methods::is(property, "sf")) {
     tryCatch({
       property <- strr_as_sf(property, 3857)
-      helper_progress_message("Converting input table to sf.")
+      helper_message("Converting input table to sf.")
     },
     error = function(e) {
       stop(paste0("The object `property` must be of class sf or sp, ",

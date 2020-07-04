@@ -27,7 +27,7 @@ strr_expand <- function(data, quiet = FALSE) {
 
   ## Input checking ------------------------------------------------------------
 
-  daily <- helper_check_data()
+  daily_flag <- helper_check_data()
   helper_check_quiet()
 
 
@@ -58,7 +58,7 @@ strr_expand <- function(data, quiet = FALSE) {
 
     iterations <- ceiling(nrow(data) / chunk_size)
 
-    if (daily) {
+    if (daily_flag) {
       helper_message("Daily table identified. It will be processed in ",
                      iterations, " batches.")
     } else {
@@ -66,7 +66,7 @@ strr_expand <- function(data, quiet = FALSE) {
                      iterations, " batches.")
     }
   } else {
-    if (daily) {helper_message("Daily table identified.")
+    if (daily_flag) {helper_message("Daily table identified.")
     } else helper_message("Host table identified.")
   }
 
@@ -75,7 +75,7 @@ strr_expand <- function(data, quiet = FALSE) {
 
   data.table::setDT(data)
 
-  if (daily) {
+  if (daily_flag) {
 
     # These fields are per-property
     join_fields <- data[, data.table::last(.SD), by = property_ID
@@ -99,9 +99,8 @@ strr_expand <- function(data, quiet = FALSE) {
 
     with_progress2({
 
-      # Initialize progress bar
       .strr_env$pb <- progressor2(steps = nrow(data))
-      data <- helper_expand(data, daily)
+      data <- helper_expand(data, daily_flag)
 
       })
 
@@ -129,7 +128,7 @@ strr_expand <- function(data, quiet = FALSE) {
         # Initialize progress bar
         .strr_env$pb <- progressor2(steps = nrow(data[range_1:range_2]))
 
-        data_list[[i]] <- helper_expand(data[range_1:range_2], daily)
+        data_list[[i]] <- helper_expand(data[range_1:range_2], daily_flag)
 
         })
 
@@ -146,23 +145,18 @@ strr_expand <- function(data, quiet = FALSE) {
   helper_message("(", iterations + 1, "/", iterations + 1, ") Arranging table.",
                  .type = "open")
 
-  if (daily) {
+  if (daily_flag) {
 
     data <- data.table::setDT(data)[order(property_ID, date)]
-
     data <- dplyr::left_join(data, join_fields, by = "property_ID")
-
     data <- dplyr::as_tibble(data)
-
-    data <- dplyr::select(
-      data, .data$property_ID, .data$date, dplyr::everything())
+    data <- dplyr::select(data, .data$property_ID, .data$date,
+                          dplyr::everything())
 
   } else {
 
     data <- data.table::setDT(data)[order(host_ID, date)]
-
     data <- dplyr::as_tibble(data)
-
     data <- dplyr::select(data, .data$host_ID, .data$date, dplyr::everything())
 
   }
@@ -171,33 +165,16 @@ strr_expand <- function(data, quiet = FALSE) {
                  .type = "close")
 
 
-  ### SET CLASS OF OUTPUT ######################################################
-
-  # if (daily) {
-  #   class(data) <- append(class(data), "strr_daily")
-  # } else {
-  #   class(data) <- append(class(data), "strr_host")
-  # }
-
-
   ### OUTPUT DATA FRAME ########################################################
 
   helper_message("Expansion complete.", .type = "final")
-
-  if (requireNamespace("future", quietly = TRUE)) {
-    on.exit(.Options$future.globals.maxSize <- NULL)
-  }
 
   return(data)
 }
 
 
-
 #' Helper function to expand compressed STR tables
 #'
-#' \code{helper_expand} performs the daily/host table expansion within
-#' \code{\link{strr_expand}}.
-#'#'
 #' @param data A table in compressed UPGo DB format (e.g. created by running
 #' \code{\link{strr_compress}}). Currently daily activity table and host tables
 #' are recognized.
@@ -205,7 +182,6 @@ strr_expand <- function(data, quiet = FALSE) {
 #' or a host table (FALSE)?
 #' @return A table with one row per date and all other fields returned
 #' unaltered.
-#' @importFrom dplyr %>%
 
 helper_expand <- function(data, daily_flag) {
 
@@ -235,7 +211,6 @@ helper_expand <- function(data, daily_flag) {
     .x[, date := as.Date(date, origin = "1970-01-01")]
 
   }
-
 
 
   ### SPLIT DATA ###############################################################

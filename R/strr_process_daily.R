@@ -40,7 +40,6 @@
 #' identifying corrupt or otherwise invalid row entries; 4) a missing_rows table
 #' identifying property_IDs with missing dates in between their first and last
 #' date entries, and therefore potentially missing data.
-#' @importFrom rlang .data
 #' @export
 
 strr_process_daily <- function(daily, property, keep_cols = FALSE,
@@ -57,40 +56,32 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   helper_check_property()
   helper_check_quiet()
 
-
-
-  # Print \n on exit so error messages don't collide with progress messages
-  on.exit(if (!quiet) message())
-
   helper_message("Beginning processing.")
 
 
-  ### Error checking and initialization ########################################
-
-  .datatable.aware = TRUE
+  ## Set up data.table variables -----------------------------------------------
 
   count <- created <- dif <- full_count <- high <- low <-  price <-
     property_ID <- scraped <- status <- NULL
 
 
-
-
-  ## Check number of fields and rename
+  ## Check number of fields and rename -----------------------------------------
 
   if (length(daily) == 6) {
 
-    setnames(daily, c("property_ID", "date", "status", "booked_date", "price",
-                      "res_ID"))
+    data.table::setnames(daily, c("property_ID", "date", "status",
+                                  "booked_date", "price", "res_ID"))
 
   } else if (length(daily) == 10) {
 
-    setnames(daily, c("property_ID", "date", "status", "booked_date", "price",
-                      "price_native", "currency", "res_ID", "ab_property",
-                      "ha_property"))
+    data.table::setnames(daily, c("property_ID", "date", "status",
+                                  "booked_date", "price", "price_native",
+                                  "currency", "res_ID", "ab_property",
+                                  "ha_property"))
 
     if (!keep_cols) {
 
-      setDT(daily)
+      data.table::setDT(daily)
 
       daily[, c("price_native", "currency", "ab_property",
                 "ha_property") := NULL]
@@ -99,68 +90,61 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   } else stop("The `daily` table must have either six or ten fields.")
 
 
-  ## Get number of rows for error checking
+  ## Get number of rows for error checking -------------------------------------
 
   daily_rows <- nrow(daily)
 
 
-  ### Join property file to daily file, and begin error table ##################
+  ### JOIN PROPERTY FILE TO DAILY FILE, AND BEING ERROR TABLE ##################
 
-  helper_progress_message("(1/6) Identifying rows missing from property file.",
-                          .type = "open")
+  helper_message("(1/6) Identifying rows missing from property file.",
+                 .type = "open")
 
-  error <-
-    daily %>%
-    dplyr::anti_join(property, by = "property_ID")
+  error <- dplyr::anti_join(daily, property, by = "property_ID")
 
-  helper_progress_message("(1/6) Rows missing from property file identified.",
-                          .type = "close")
+  helper_message("(1/6) Rows missing from property file identified.",
+                 .type = "close")
 
-  helper_progress_message("(2/6) Joining listing data into daily file.",
-                          .type = "open")
+  helper_message("(2/6) Joining listing data into daily file.", .type = "open")
 
-  prop_cols <-
-    c("property_ID", "host_ID", "listing_type", "created", "scraped", "housing",
-      "country", "region", "city")
+  prop_cols <- c("property_ID", "host_ID", "listing_type", "created", "scraped",
+                 "housing", "country", "region", "city")
 
-  daily <-
-    daily %>%
-    dplyr::inner_join(select(property, prop_cols), by = "property_ID")
+  daily <- dplyr::inner_join(daily, dplyr::select(property, prop_cols),
+                             by = "property_ID")
 
-  helper_progress_message("(2/6) Listing data joined into daily file.",
-                          .type = "close")
+  helper_message("(2/6) Listing data joined into daily file.", .type = "close")
 
 
-  ### Process date, status and duplicates ######################################
+  ### PROCESS DATE, STATUS AND DUPLICATES ######################################
 
-  ## Find rows with missing or invalid date or status
+  ## Find rows with missing or invalid date or status --------------------------
 
-  helper_progress_message(
+  helper_message(
     "(3/6) Identifying rows with missing or invalid date or status.",
     .type = "open")
 
-  setDT(daily)
+  data.table::setDT(daily)
 
   # This combination of filters is the fastest and least memory-intensive
   error_date <- stats::na.omit(daily, cols = c("date"), invert = TRUE)
-  error_status <- filter(daily, !status %in% c("A", "U", "B", "R"))
+  error_status <- dplyr::filter(daily, !.data$status %in% c("A", "U", "B", "R"))
 
-  new_error <- dplyr::distinct(data.table::rbindlist(list(error_date, error_status)))
+  new_error <- dplyr::distinct(
+    data.table::rbindlist(list(error_date, error_status)))
 
   if (nrow(new_error) > 0) {
-    daily <-
-      daily %>%
-      # Do join by all fields
-      dplyr::anti_join(new_error, by = names(daily))
+    # Do join by all fields
+    daily <- dplyr::anti_join(daily, new_error, by = names(daily))
 
-    setDT(daily)
+    data.table::setDT(daily)
 
     # Only take the first six columns of new_error to match length of error
-    error <- bind_rows(error, select(new_error, 1:6))
+    error <- dplyr::bind_rows(error, dplyr::select(new_error, 1:6))
   }
 
 
-  ## Discard duplicates
+  ## Discard duplicates --------------------------------------------------------
 
   # Prepare to calculate number of duplicate rows
   dup_rows <- nrow(error)
@@ -174,20 +158,20 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   # Add as attribute
   attr(error, "duplicate_rows") <- dup_rows
 
-  helper_progress_message(
+  helper_message(
     "(3/6) Rows with missing or invalid date or status identified.",
     .type = "close")
 
 
-  ### Remove duplicate entries by price, but don't add to error file ###########
+  ### REMOVE DUPLICATE ENTRIES BY PRICE, BUT DON'T ADD TO ERROR FILE ###########
 
-  helper_progress_message("(4/6) Removing duplicate rows.", .type = "open")
+  helper_message("(4/6) Removing duplicate rows.", .type = "open")
 
   # Prepare to calculate number of duplicate rows
   dup_rows <- nrow(daily)
 
   # This query is faster in data.table than dplyr
-  daily <- daily[!is.na(price),]
+  daily <- daily[!is.na(price)]
 
   # Save number of duplicate rows for subsequent error checking
   dup_rows <- dup_rows - nrow(daily)
@@ -195,12 +179,12 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
   # Add as attribute
   attr(error, "duplicate_rows") <- attr(error, "duplicate_rows") + dup_rows
 
-  helper_progress_message("(4/6) Duplicate rows removed.", .type = "close")
+  helper_message("(4/6) Duplicate rows removed.", .type = "close")
 
 
-  ### Produce missing_rows table ###############################################
+  ### PRODUCE missing_rows TABLE ###############################################
 
-  helper_progress_message("(5/6) Identifying missing rows.", .type = "open")
+  helper_message("(5/6) Identifying missing rows.", .type = "open")
 
   # Faster and less memory-intensive to split up
   missing_rows <-
@@ -210,13 +194,12 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
             ][, c("low", "high") := NULL
               ][dif > 0]
 
-  helper_progress_message("(5/6) Missing rows identified.", .type = "close")
+  helper_message("(5/6) Missing rows identified.", .type = "close")
 
 
-  ### Produce daily and daily_inactive tables ##################################
+  ### PRODUCE daily AND daily_inactive TABLES ##################################
 
-  helper_progress_message(
-    "(6/6) Identifying inactive rows.", .type = "open")
+  helper_message("(6/6) Identifying inactive rows.", .type = "open")
 
   daily_inactive <-
     daily[date < created | date > scraped | status == "U"
@@ -228,33 +211,32 @@ strr_process_daily <- function(daily, property, keep_cols = FALSE,
           ][order(property_ID, date)
             ][, c("created", "scraped") := NULL]
 
-  helper_progress_message(
-    "(6/6) Inactive rows identified.", .type = "close")
+  helper_message("(6/6) Inactive rows identified.", .type = "close")
 
 
-  ### Return output ############################################################
+  ### RETURN OUTPUT ############################################################
 
-  daily <- as_tibble(daily)
-  daily_inactive <- as_tibble(daily_inactive)
-  error <- as_tibble(error)
-  missing_rows <- as_tibble(missing_rows)
+  daily <- dplyr::as_tibble(daily)
+  daily_inactive <- dplyr::as_tibble(daily_inactive)
+  error <- dplyr::as_tibble(error)
+  missing_rows <- dplyr::as_tibble(missing_rows)
 
 
-  ## Compare length of input with lengths of outputs
+  ## Compare length of input with lengths of outputs ---------------------------
 
   if (daily_rows != nrow(daily) + nrow(daily_inactive) + nrow(error) +
       attr(error, "duplicate_rows")) {
-    warning(
-      glue::glue("The number of rows of the input daily table ({daily_rows}) "),
-      glue::glue("does not equal the combined rows of the output tables "),
-      glue::glue("({nrow(daily) + nrow(daily_inactive)}) plus the number of "),
-      glue::glue("duplicated rows ({attr(error, 'duplicate_rows')})."))
+    warning("The number of rows of the input daily table (", daily_rows,
+            ") does not equal the combined rows of the output tables (",
+            nrow(daily) + nrow(daily_inactive),
+            ") plus the number of duplicated rows (",
+            attr(error, 'duplicate_rows'), ").")
   }
 
 
-  ## Return output
+  ## Return output -------------------------------------------------------------
 
-  helper_progress_message("Processing complete.", .type = "final")
+  helper_message("Processing complete.", .type = "final")
 
   return(list(daily, daily_inactive, error, missing_rows))
 

@@ -1,24 +1,3 @@
-#' Helper function to display furrr progress bars
-#'
-#' \code{helper_progress} decides whether to display progress bars in furrr
-#' functions.
-#'
-#' A helper function for deciding whether to display a progress bar when a
-#' function is called from \code{furrr}, based on the `quiet` argument supplied
-#' to the calling function and on the status of the future plan.
-#'
-#' @return A logical scalar. Should the progress bar be displayed or not?
-
-helper_progress <- function() {
-
-  quiet <- get("quiet", envir = parent.frame(n = 1))
-
-  tryCatch(
-    !("remote" %in% class(future::plan())),
-    error = function(e) TRUE) * !quiet
-}
-
-
 #' Helper function to characterize future plan
 #'
 #' \code{helper_plan} parses the current \code{future::plan} for display in
@@ -128,84 +107,6 @@ helper_table_split <- function(data_list, multiplier = 10, type = ".list") {
   }
 
   return(data_list)
-}
-
-
-#' Helper function to display a progress message
-#'
-#' \code{helper_progress_message} produces a formatted progress message,
-#' optionally with the current time.
-#' @param ... Character strings to be displayed. The strings can include
-#' code for evaluation via \code{glue::glue} inside `{}`.
-#' @param .type One of c("open", "close", "main", "plan", "final"). "Open"
-#' prints a temporary message in grey italics with no timestamp. "Close" is
-#' designed to be called after "open", since it overwrites the previous line
-#' with a message in grey with a timestamp in cyan. "Main" is the same as
-#' "close" but does not override the previous line. "Progress" adds a newline
-#' after the output so that a subsequent progress bar does not overwrite it.
-#' "Final" is the same as "main" but appends an additional line in cyan bold
-#' which states the total time.
-#' @param .quiet The name of the argument in the calling function specifying
-#' whether messages should be displayed.
-#' @return A status message.
-
-helper_progress_message <- function(..., .type = "main", .quiet = NULL) {
-
-  if (requireNamespace("ellipsis", quietly = TRUE)) {
-    ellipsis::check_dots_unnamed()
-  }
-
-  if (missing(.quiet)) {
-    .quiet <-
-      get("quiet", envir = parent.frame(n = 1))
-  }
-
-  if (!.quiet) {
-
-    args <- purrr::map(list(...), ~glue::glue(.x))
-
-    output_time <- crayon::cyan(glue::glue(" ({substr(Sys.time(), 12, 19)})"))
-
-
-    if (.type == "open") {
-
-      args <- purrr::map(args, crayon::silver$italic)
-      args <- c("\n", args, sep = "")
-
-    } else if (.type == "close") {
-
-      args <- purrr::map(args, crayon::silver)
-      args <- c("\r", args, output_time, sep = "")
-
-    } else if (.type == "main") {
-
-      args <- purrr::map(args, crayon::silver)
-      args <- c("\n", args, output_time, sep = "")
-
-    } else if (.type == "progress") {
-
-      args <- purrr::map(args, crayon::silver)
-      args <- c("\n", args, output_time, "\n\n", sep = "")
-
-    } else if (.type == "final") {
-
-      start_time <- get("start_time", envir = parent.frame(n = 1))
-      total_time <- Sys.time() - start_time
-      time_final_1 <- substr(total_time, 1, 5)
-      time_final_2 <- attr(total_time, 'units')
-
-      total_time <- crayon::cyan$bold(glue::glue(
-        "Total time: {time_final_1} {time_final_2}."
-      ))
-
-      args <- purrr::map(args, crayon::silver)
-      args <- c("\n", args, output_time, "\n", total_time, "\n", sep = "")
-
-    }
-
-    message(args, appendLF = FALSE)
-
-  }
 }
 
 
