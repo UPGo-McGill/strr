@@ -76,35 +76,35 @@ test_that("the quiet flag suppresses all messages", {
   expect_message(strr_expand(daily_expand, quiet = TRUE), regexp = NA)
 })
 
-test_that("batches work", {
-  skip_if_not(isTRUE(as.logical(Sys.getenv("TESTCOV"))) | run_all_tests)
-  expect_equal({
-
-    daily_expand_batches <-
-      data.table::rbindlist(replicate(1800000, daily_expand, simplify = FALSE))
-
-    props <- rep(paste0("ab-00", letters[1:24]), 3)
-    props <- sort(props)
-    props <- rep(props, 150000)
-    daily_expand_batches$property_ID <- props
-
-    nrow(strr_expand(daily_expand_batches))
-    }, 54000000)
-
-  expect_equal({
-
-    host_expand_batches <-
-      data.table::rbindlist(replicate(1800000, host_expand, simplify = FALSE))
-
-    props <- rep(paste0("h-", letters[1:24]), 3)
-    props <- sort(props)
-    props <- rep(props, 250000)
-    host_expand_batches$host_ID <- props
-
-    nrow(strr_expand(host_expand_batches))
-    }, 381600000)
-
-})
+# test_that("batches work", {
+#   skip_if_not(isTRUE(as.logical(Sys.getenv("TESTCOV"))) | run_all_tests)
+#   expect_equal({
+#
+#     daily_expand_batches <-
+#       data.table::rbindlist(replicate(1800000, daily_expand, simplify = FALSE))
+#
+#     props <- rep(paste0("ab-00", letters[1:24]), 3)
+#     props <- sort(props)
+#     props <- rep(props, 150000)
+#     daily_expand_batches$property_ID <- props
+#
+#     nrow(strr_expand(daily_expand_batches))
+#     }, 54000000)
+#
+#   expect_equal({
+#
+#     host_expand_batches <-
+#       data.table::rbindlist(replicate(1000800, host_expand, simplify = FALSE))
+#
+#     props <- rep(paste0("h-", letters[1:24]), 3)
+#     props <- sort(props)
+#     props <- rep(props, 139000)
+#     host_expand_batches$host_ID <- props
+#
+#     nrow(strr_expand(host_expand_batches))
+#     }, 212169600)
+#
+# })
 
 test_that("enormous tables are flagged", {
   skip_if_not(isTRUE(as.logical(Sys.getenv("TESTCOV"))) | run_all_tests)

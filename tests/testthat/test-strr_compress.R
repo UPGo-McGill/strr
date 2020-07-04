@@ -261,38 +261,38 @@ test_that("helper functions work", {
 
 })
 
-test_that("first X lines complete", {
-
-  expect_equal(length(strr_compress_test(daily)), 2)
-
-})
-
-
-test_that("function completes with no errors", {
-  # Daily file
-  expect_equal(nrow(strr_compress(daily)), 6)
-  # Host file
-  expect_equal(nrow(strr_compress(host)), 7)
-})
-
-test_that("function sets correct start/end dates", {
-  # Start date
-  expect_equal(pull(strr_compress(daily), start_date)[2], as.Date("2018-04-06"))
-  # End date
-  expect_equal(pull(strr_compress(daily), end_date)[2], as.Date("2018-04-07"))
-})
-
-test_that("month/year boundaries are handled properly", {
-  expect_equal(nrow(strr_compress(daily_2)), 7)
-  expect_equal(nrow(strr_compress(daily_3)), 7)
-})
-
-test_that("one_length and remainder conditions are handled properly", {
-  expect_equal(nrow(strr_compress(daily[c(1:5, 8:10),])), 2)
-  expect_equal(nrow(strr_compress(host[c(1:5, 8:10),])), 2)
-  expect_equal(nrow(strr_compress(host[c(1:5),])), 1)
-})
-
-test_that("The quiet flag suppresses all messages", {
-  expect_message(strr_compress(daily, quiet = TRUE), regexp = NA)
-})
+# test_that("first X lines complete", {
+#
+#   expect_equal(length(strr_compress_test(daily)), 2)
+#
+# })
+#
+#
+# test_that("function completes with no errors", {
+#   # Daily file
+#   expect_equal(nrow(strr_compress(daily)), 6)
+#   # Host file
+#   expect_equal(nrow(strr_compress(host)), 7)
+# })
+#
+# test_that("function sets correct start/end dates", {
+#   # Start date
+#   expect_equal(pull(strr_compress(daily), start_date)[2], as.Date("2018-04-06"))
+#   # End date
+#   expect_equal(pull(strr_compress(daily), end_date)[2], as.Date("2018-04-07"))
+# })
+#
+# test_that("month/year boundaries are handled properly", {
+#   expect_equal(nrow(strr_compress(daily_2)), 7)
+#   expect_equal(nrow(strr_compress(daily_3)), 7)
+# })
+#
+# test_that("one_length and remainder conditions are handled properly", {
+#   expect_equal(nrow(strr_compress(daily[c(1:5, 8:10),])), 2)
+#   expect_equal(nrow(strr_compress(host[c(1:5, 8:10),])), 2)
+#   expect_equal(nrow(strr_compress(host[c(1:5),])), 1)
+# })
+#
+# test_that("The quiet flag suppresses all messages", {
+#   expect_message(strr_compress(daily, quiet = TRUE), regexp = NA)
+# })
