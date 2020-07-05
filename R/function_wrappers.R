@@ -27,7 +27,7 @@ progressor <-
   } else function(...) function(...) NULL
 
 
-# Wrappers for lapply and mapply
+# Wrapper for lapply
 
 par_lapply <- function(...) {
 
@@ -50,3 +50,10 @@ par_lapply <- function(...) {
     } else lapply(...)
 
 }
+
+
+# Wrapper for future assignment
+
+`%<-%` <- if ("remote" %in% class(future::plan())) future::`%<-%` else `<-`
+
+

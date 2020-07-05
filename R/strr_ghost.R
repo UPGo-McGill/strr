@@ -218,7 +218,7 @@ strr_ghost <- function(
   ### PROPERTY SETUP ###########################################################
 
   helper_message("(1/", steps, ") Identifying possible ghost hostel clusters, ",
-                 "using {helper_plan()}.", .type = "open")
+                 "using ", helper_plan(), ".", .type = "open")
 
 
   ## Prepare table -------------------------------------------------------------
@@ -282,11 +282,11 @@ strr_ghost <- function(
 
     helper_message("(1/", steps,
                    ") Possible ghost hostel clusters identified, ",
-                   "using {helper_plan()}.", .type = "close")
+                   "using ", helper_plan(), ".", .type = "close")
 
     # Create a nested tibble for each possible cluster
     helper_message("(2/", steps, ") Preparing possible clusters for analysis, ",
-                   "using {helper_plan()}.", .type = "open")
+                   "using ", helper_plan(), ".", .type = "open")
 
     apply_fun <-
       function(x, y) {
@@ -301,11 +301,11 @@ strr_ghost <- function(
                          by = "host_ID"]
 
     helper_message("(2/", steps, ") Possible clusters prepared for analysis, ",
-                   "using {helper_plan()}.", .type = "close")
+                   "using ", helper_plan(), ".", .type = "close")
   } else {
     helper_message("(1/", steps,
                    ") Possible ghost hostel clusters identified, ",
-                   "using {helper_plan()}.", .type = "close")
+                   "using ", helper_plan(), ".", .type = "close")
   }
 
 
@@ -314,7 +314,7 @@ strr_ghost <- function(
   property_list <- helper_table_split(property, type = "data")
 
   helper_message("(", 2 + multi_date, "/", steps,
-                 ") Identifying ghost hostels, using {helper_plan()}.")
+                 ") Identifying ghost hostels, using ", helper_plan(), ".")
 
   data.table::setDTthreads(1)
 
@@ -345,7 +345,7 @@ strr_ghost <- function(
   ### GHOST TABLE CREATION #####################################################
 
   helper_message("(", steps - EH_check, "/", steps,
-                 ") Creating final output table, using {helper_plan()}.",
+                 ") Creating final output table, using ", helper_plan(), ".",
                  .type = "open")
 
   # Remove duplicates now that leftovers have been processed
@@ -413,7 +413,7 @@ strr_ghost <- function(
   }
 
   helper_message("(", steps - EH_check, "/", steps,
-                 ") Final output table created, using {helper_plan()}.",
+                 ") Final output table created, using ", helper_plan(), ".",
                  .type = "close")
 
 
@@ -541,12 +541,13 @@ ghost_cluster <- function(property, distance, min_listings) {
 
   # Extra list around lapply is needed to force embedded list where nrow == 1
   property[, predicates := list(lapply(predicates, function(pred) {
-    purrr::map(seq_along(pred), ~{
+    lapply(seq_along(pred), function(.x) {
       # Merge lists with common elements
-      purrr::reduce(pred, function(x, y) if (any(y %in% x)) unique(c(x, y)) else x,
-      .init = pred[[.]]) # Compile lists starting at each position
-    }) %>%
-      purrr::map(sort) %>%
+      purrr::reduce(pred,
+                    function(x, y) if (any(y %in% x)) unique(c(x, y)) else x,
+                    .init = pred[[.x]]) # Compile list starting at each position
+      }) %>%
+      lapply(sort) %>%
       unique() # Remove duplicate lists
   }))]
 
@@ -557,7 +558,7 @@ ghost_cluster <- function(property, distance, min_listings) {
   # Use predicates to split property into clusters with length >= min_listings
   property <- property[lapply(predicates, length) > 0]
 
-  pred_fun <- function(x, y) purrr::map(y, ~x[.,])
+  pred_fun <- function(x, y) lapply(y, function(z) x[z,])
 
   property[, data := list(mapply(pred_fun, data, predicates, SIMPLIFY = FALSE))]
 
@@ -780,7 +781,6 @@ ghost_stepwise_intersect <- function(buffers, min_listings) {
 #'   be considered a ghost hostel.
 #' @return The output will be `property`, trimmed to valid ghost hostel locations
 #'   and with additional fields added.
-#' @importFrom rlang .data
 
 ghost_intersect <- function(property, distance, min_listings) {
 

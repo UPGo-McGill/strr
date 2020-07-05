@@ -32,46 +32,18 @@ strr_host <- function(daily, quiet = FALSE) {
 
   ## Prepare data.table and future variables -----------------------------------
 
-  .datatable.aware = TRUE
-
   # Silence R CMD check for data.table fields
   host_ID <- status <- date <- listing_type <- housing <- host_split <- .GRP <-
     NULL
 
-  # Default to local analysis
-  remote <- FALSE
-
-  if (requireNamespace("future", quietly = TRUE) &&
-      requireNamespace("furrr", quietly = TRUE)) {
-
-    # Remove limit on globals size
-    options(future.globals.maxSize = +Inf)
+  if (requireNamespace("future", quietly = TRUE)) {
 
     # Set data.table threads to match future workers
     threads <- data.table::setDTthreads(future::nbrOfWorkers())
 
-    # Prepare for remote execution
-    if ("remote" %in% class(future::plan())) {
-      remote <- TRUE
-      `%<-%` <- future::`%<-%`()
-    }
+    # Restore data.table threads on exit
+    on.exit(data.table::setDTthreads(threads))
 
-    # Set up on.exit expression for errors
-    on.exit({
-
-      # Flush out any stray multicore processes
-      furrr::future_map(1:future::nbrOfWorkers(), ~.x)
-
-      # Restore future global export limit
-      .Options$future.globals.maxSize <- NULL
-
-      # Restore data.table threads
-      data.table::setDTthreads(threads)
-
-      # Print \n so error messages don't collide with progress messages
-      if (!quiet) message()
-
-    })
   }
 
 
@@ -94,13 +66,7 @@ strr_host <- function(daily, quiet = FALSE) {
   helper_message("(2/2) Analyzing rows, using {helper_plan()}.")
 
   # Use future assignment if plan is remote
-  if (remote) {
-    host %<-%
-      daily[,.(count = .N), by = .(host_ID, date, listing_type, housing)]
-
-  } else {
-    host <- daily[,.(count = .N), by = .(host_ID, date, listing_type, housing)]
-  }
+  host %<-% daily[,.(count = .N), by = .(host_ID, date, listing_type, housing)]
 
   host <- dplyr::as_tibble(host)
 
@@ -111,20 +77,6 @@ strr_host <- function(daily, quiet = FALSE) {
   if (daily_check != sum(host$count)) {
     stop("The function did not return the correct number of entries. ",
          "This might be because a parallel worker failed to complete its job.")
-  }
-
-  # Set class
-  class(host) <- append(class(host), "strr_host")
-
-  # Overwrite previous on.exit call
-  if (requireNamespace("future", quietly = TRUE) &&
-      requireNamespace("furrr", quietly = TRUE)) {
-
-    on.exit({
-      .Options$future.globals.maxSize <- NULL
-      data.table::setDTthreads(threads)
-
-    })
   }
 
   helper_message("Processing complete.", .type = "final")

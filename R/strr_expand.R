@@ -93,7 +93,7 @@ strr_expand <- function(data, quiet = FALSE) {
 
   if (iterations == 1) {
 
-    helper_message("(1/2) Expanding table, using {helper_plan()}.")
+    helper_message("(1/2) Expanding table, using ", helper_plan(), ".")
 
     handler_strr("Expanding row")
 
@@ -116,7 +116,7 @@ strr_expand <- function(data, quiet = FALSE) {
     for (i in seq_len(iterations)) {
 
       helper_message("(", i, "/", iterations + 1, ") Expanding batch ", i,
-                     ", using {helper_plan()}.")
+                     ", using ", helper_plan(), ".")
 
       range_1 <- (i - 1) * chunk_size + 1
       range_2 <- min(i * chunk_size, nrow(data))

@@ -117,8 +117,8 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ### COMPRESS PROCESSED DATA FILE #############################################
 
-  helper_message("(", steps - 1, "/", steps,
-                 ") Compressing rows, using {helper_plan()}.")
+  helper_message("(", steps - 1, "/", steps, ") Compressing rows, using ",
+                 helper_plan(), ".")
 
   handler_strr("Compressing row")
 

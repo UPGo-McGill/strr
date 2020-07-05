@@ -21,22 +21,18 @@ Depends: R (>= 3.5.0)
 Imports: 
     data.table (>= 1.12.2),
     dplyr (>= 0.8),
-    furrr (>= 0.1.0),
-    future (>= 1.17),
-    glue (>= 1.3.1),
     methods (>= 3.5.2),
     polyCub (>= 0.7.1),
     progressr (>= 0.6),
     purrr (>= 0.3.2),
     rlang (>= 0.3.4),
     sf (>= 0.7),
-    spatstat (>= 1.59),
-    stringr (>= 1.4.0),
-    tidyr (>= 0.8.3)
+    spatstat (>= 1.59)
 Suggests: 
     covr (>= 3.5.0),
     crayon (>= 1.3.4),
     ellipsis (>= 0.3.0),
+    future (>= 1.17),
     future.apply (>= 1.5.0),
     progress (>= 1.2.2),
     testthat (>= 2.1.0)

@@ -205,7 +205,7 @@ strr_raffle <- function(
 
   if (iterations == 1) {
 
-    helper_message("(2/2) Analyzing rows, using {helper_plan()}.")
+    helper_message("(2/2) Analyzing rows, using ", helper_plan(), ".")
 
     handler_strr("Intersecting row")
 
@@ -235,7 +235,7 @@ strr_raffle <- function(
     for (i in seq_len(iterations)) {
 
       helper_message("(", i + 1, "/", iterations + 1, ") Analyzing batch ", i,
-        ", using {helper_plan()}.")
+        ", using ", helper_plan(), ".")
 
       property_list[[i]] <-
         dplyr::slice(property, ((i - 1) * chunk_size + 1):(i * chunk_size))

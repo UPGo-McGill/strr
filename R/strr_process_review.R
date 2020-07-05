@@ -82,8 +82,8 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
     c("review", "user_name", "user_country", "user_region", "user_city",
       "description", "school", "work")
 
-  review[, c(char_cols) := lapply(.SD, stringr::str_replace_all, '\\r|\\n|\\"',
-                                  ""), .SDcols = char_cols]
+  review[, c(char_cols) := lapply(.SD, function(x) gsub('\\r|\\n|\\"', "", x)),
+         .SDcols = char_cols]
 
 
   ### DEAL WITH COUNTRY NAMES ##################################################

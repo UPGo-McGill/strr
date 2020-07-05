@@ -46,7 +46,6 @@
 #' @importFrom dplyr %>% as_tibble bind_rows case_when filter if_else mutate
 #' @importFrom dplyr pull select
 #' @importFrom rlang .data set_names
-#' @importFrom stringr str_replace_all str_starts
 #' @export
 
 strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
@@ -56,7 +55,7 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
 
   ### Error checking and initialization ########################################
 
-  ab_host <-country <- ha_host <- host_ID <- property_ID <- region <- NULL
+  ab_host <- country <- ha_host <- host_ID <- property_ID <- region <- NULL
 
   if (!inherits(property, "data.frame")) {
     stop("The input table must be a data frame.")
@@ -148,7 +147,7 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
 
   error <-
     property %>%
-    filter(!str_starts(.data$property_ID, "(ab-)|(ha-)")) %>%
+    filter(!substr(.data$property_ID, 1, 3) %in% c("ab-", "ha-")) %>%
     bind_rows(error)
 
   property <-
@@ -179,10 +178,7 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
 
   helper_message("(3/5) Removing problematic characters.", .type = "open")
 
-  property <-
-    property %>%
-    mutate(
-      listing_title = str_replace_all(.data$listing_title, "\n|\r|\"|\'", ""))
+  property$listing_title <- gsub("\n|\r|\"|\'", "", property$listing_title)
 
   helper_message("(3/5) Problematic characters removed.", .type = "close")
 

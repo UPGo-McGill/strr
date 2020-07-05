@@ -196,7 +196,7 @@ strr_FREH <- function(daily, start_date = NULL, end_date = NULL,
 
   ### PERFORM CALCULATIONS #####################################################
 
-  helper_message("(1/2) Analyzing data, using {helper_plan()}.")
+  helper_message("(1/2) Analyzing data, using ", helper_plan(), ".")
 
 
   ## Function to be iterated over ----------------------------------------------

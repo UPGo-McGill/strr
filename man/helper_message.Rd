@@ -7,8 +7,7 @@
 helper_message(..., .type = "main", .quiet = NULL)
 }
 \arguments{
-\item{...}{Character strings to be displayed. The strings can include
-code for evaluation via \code{glue::glue} inside `{}`.}
+\item{...}{Character strings to be displayed.}
 
 \item{.type}{One of c("open", "close", "main", "final"). "Open" prints a
 temporary message in grey italics with no timestamp. "Close" is designed to

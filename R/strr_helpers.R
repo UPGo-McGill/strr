@@ -152,8 +152,7 @@ handler_strr <- function(message) {
 #' Helper function to display a message
 #'
 #' \code{helper_message} produces a formatted progress message.
-#' @param ... Character strings to be displayed. The strings can include
-#' code for evaluation via \code{glue::glue} inside `{}`.
+#' @param ... Character strings to be displayed.
 #' @param .type One of c("open", "close", "main", "final"). "Open" prints a
 #' temporary message in grey italics with no timestamp. "Close" is designed to
 #' be called after "open", since it overwrites the previous line with a message
@@ -177,9 +176,9 @@ helper_message <- function(..., .type = "main", .quiet = NULL) {
 
   if (!.quiet) {
 
-    args <- purrr::map(list(...), ~glue::glue(.x))
+    args <- list(...)
 
-    output_time <- glue::glue(" ({substr(Sys.time(), 12, 19)})")
+    output_time <- paste0(" (", substr(Sys.time(), 12, 19), ")")
 
     if (requireNamespace("crayon", quietly = TRUE)) {
       output_time <- crayon::cyan(output_time)
@@ -188,13 +187,13 @@ helper_message <- function(..., .type = "main", .quiet = NULL) {
     if (.type == "open") {
 
       if (requireNamespace("crayon", quietly = TRUE)) {
-        args <- purrr::map(args, crayon::silver$italic)
+        args <- lapply(args, crayon::silver$italic)
       }
 
     } else if (.type == "close") {
 
       if (requireNamespace("crayon", quietly = TRUE)) {
-        args <- purrr::map(args, crayon::silver)
+        args <- lapply(args, crayon::silver)
       }
 
       args <- c("\r", args, output_time, "\n", sep = "")
@@ -202,7 +201,7 @@ helper_message <- function(..., .type = "main", .quiet = NULL) {
     } else if (.type == "main") {
 
       if (requireNamespace("crayon", quietly = TRUE)) {
-        args <- purrr::map(args, crayon::silver)
+        args <- lapply(args, crayon::silver)
       }
 
       args <- c(args, output_time, "\n", sep = "")
@@ -213,11 +212,11 @@ helper_message <- function(..., .type = "main", .quiet = NULL) {
       total_time <- Sys.time() - start_time
       time_final_1 <- substr(total_time, 1, 5)
       time_final_2 <- attr(total_time, 'units')
-      total_time <- glue::glue("Total time: {time_final_1} {time_final_2}.")
+      total_time <- paste0("Total time: ", time_final_1, " ", time_final_2, ".")
 
       if (requireNamespace("crayon", quietly = TRUE)) {
         total_time <- crayon::cyan$bold(total_time)
-        args <- purrr::map(args, crayon::silver)
+        args <- lapply(args, crayon::silver)
       }
 
       args <- c(args, output_time, "\n", total_time, "\n", sep = "")
@@ -301,12 +300,12 @@ helper_check_daily <- function(...) {
   ## Check field arguments if any are supplied ---------------------------------
 
   if (length(list(...)) > 0) {
-    purrr::map(..., ~{
+    lapply(..., function(.x) {
       tryCatch({
         dplyr::pull(daily, !! .x)
       }, error = function(e) {
-        stop(glue::glue(
-          "`{rlang::as_string(.x)}` is not a valid field in the input table."),
+        stop(paste0("`", rlang::as_string(.x),
+                    "` is not a valid field in the input table."),
           call. = FALSE)
       })
     })
@@ -374,12 +373,12 @@ helper_check_property <- function(...) {
   ## Check field arguments if any are supplied ---------------------------------
 
   if (length(list(...)) > 0) {
-    purrr::map(..., ~{
+    lapply(..., function(.x) {
       tryCatch({
         dplyr::pull(property, !! .x)
       }, error = function(e) {
-        stop(glue::glue(
-          "`{rlang::as_string(.x)}` is not a valid field in the input table."),
+        stop(paste0("`", rlang::as_string(.x),
+                    "` is not a valid field in the input table."),
           call. = FALSE)
       })
     })
@@ -422,12 +421,12 @@ helper_check_review <- function(...) {
   ## Check field arguments if any are supplied ---------------------------------
 
   if (length(list(...)) > 0) {
-    purrr::map(..., ~{
+    lapply(..., function(.x) {
       tryCatch({
         dplyr::pull(review, !! .x)
       }, error = function(e) {
-        stop(glue::glue(
-          "{rlang::as_string(.x)}` is not a valid field in the input table."),
+        stop(paste0("`", rlang::as_string(.x),
+                    "` is not a valid field in the input table."),
           call. = FALSE)
       })
     })

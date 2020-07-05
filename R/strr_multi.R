@@ -52,59 +52,22 @@ strr_multi <- function(daily, host,
   helper_check_host()
   helper_check_quiet()
 
-  # Check that combine_listing_type is a logical
-  if (!is.logical(combine_listing_type)) {
-    stop("The argument `combine_listing_type` ",
-         "must be a logical value (TRUE or FALSE).")
-  }
-
-  # Check that combine_housing is a logical
-  if (!is.logical(combine_housing)) {
-    stop("The argument `combine_housing` ",
-         "must be a logical value (TRUE or FALSE).")
-  }
+  stopifnot(is.logical(combine_listing_type), is.logical(combine_housing))
 
 
   ## Prepare data.table and future variables -----------------------------------
 
-  .datatable.aware = TRUE
-
   # Silence R CMD check for data.table fields
   listing_type <- .ML <- count <- NULL
 
-  # Default to local analysis
-  remote <- FALSE
-
-  if (requireNamespace("future", quietly = TRUE) &&
-      requireNamespace("furrr", quietly = TRUE)) {
-
-    # Remove limit on globals size
-    options(future.globals.maxSize = +Inf)
+  if (requireNamespace("future", quietly = TRUE)) {
 
     # Set data.table threads to match future workers
     threads <- data.table::setDTthreads(future::nbrOfWorkers())
 
-    # Prepare for remote execution
-    if ("remote" %in% class(future::plan())) {
-      remote <- TRUE
-      `%<-%` <- future::`%<-%`()
-    }
+    # Restore data.table threads on exit
+    on.exit(data.table::setDTthreads(threads))
 
-    # Set up on.exit expression for errors
-    on.exit({
-      # Flush out any stray multicore processes
-      furrr::future_map(1:future::nbrOfWorkers(), ~.x)
-
-      # Restore future global export limit
-      .Options$future.globals.maxSize <- NULL
-
-      # Restore data.table threads
-      data.table::setDTthreads(threads)
-
-      # Print \n so error messages don't collide with progress messages
-      if (!quiet) message()
-
-    })
   }
 
 
@@ -157,23 +120,18 @@ strr_multi <- function(daily, host,
 
     helper_message(
       "(", steps_so_far, "/", steps,
-      ") Combining housing and non-housing listings, using {helper_plan()}.",
-      .type = "open")
+      ") Combining housing and non-housing listings, using ", helper_plan(),
+      ".", .type = "open")
 
-    # Only use future assignment if plan is remote
-    if (remote) {
-      host %<-%
-        host[, .(count = sum(count)), by = c("host_ID", "date", "listing_type")]
+    # Use future assignment if plan is remote
+    host %<-%
+      host[, .(count = sum(count)), by = c("host_ID", "date", "listing_type")]
 
-    } else {
-      host <-
-        host[, .(count = sum(count)), by = c("host_ID", "date", "listing_type")]
-    }
   }
 
   helper_message(
     "(", steps_so_far, "/", steps,
-    ") Housing and non-housing listings combined, using {helper_plan()}.",
+    ") Housing and non-housing listings combined, using ", helper_plan(), ".",
     .type = "close")
 
 
@@ -277,8 +235,8 @@ strr_multi <- function(daily, host,
   steps_so_far <- steps_so_far + 1
 
   helper_message("(", steps_so_far, "/", steps,
-                 ") Joining results into daily table, using {helper_plan()}.",
-                 .type = "open")
+                 ") Joining results into daily table, using ", helper_plan(),
+                 ".", .type = "open")
 
   # Establish columns to join on
   join_cols <- setdiff(names(multi), ".ML")
@@ -300,18 +258,12 @@ strr_multi <- function(daily, host,
   ## Perform join --------------------------------------------------------------
 
   # Use future assignment if plan is remote
-  if (remote) {
-    daily %<-% multi[daily, on = join_cols
+  daily %<-% multi[daily, on = join_cols
                      ][, .ML := if_else(is.na(.ML), FALSE, .ML)]
 
-  } else {
-    daily <- multi[daily, on = join_cols
-                   ][, .ML := if_else(is.na(.ML), FALSE, .ML)]
-  }
-
   helper_message("(", steps_so_far, "/", steps,
-                 ") Results joined into daily table, using {helper_plan()}.",
-                 .type = "close")
+                 ") Results joined into daily table, using ", helper_plan(),
+                 ".", .type = "close")
 
 
   ## Clean up ------------------------------------------------------------------
@@ -319,23 +271,10 @@ strr_multi <- function(daily, host,
   data.table::setcolorder(daily, c(col_names, ".ML"))
 
   daily <- dplyr::as_tibble(daily)
-  daily  <- dplyr::rename(daily, {{ field_name }} := .data$.ML)
-
-  class(daily) <- append(class(daily), "strr_daily")
+  daily  <- dplyr::rename(daily, {{field_name}} := .data$.ML)
 
 
   ### RETURN OUTPUT ############################################################
-
-  # Overwrite previous on.exit call
-  if (requireNamespace("future", quietly = TRUE) &&
-      requireNamespace("furrr", quietly = TRUE)) {
-
-    on.exit({
-      .Options$future.globals.maxSize <- NULL
-      data.table::setDTthreads(threads)
-
-    })
-  }
 
   helper_message("Processing complete.", .type = "final")
 
