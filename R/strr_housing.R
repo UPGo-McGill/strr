@@ -23,6 +23,7 @@ strr_housing <- function(property, property_type = property_type) {
     property,
     housing =
       dplyr::if_else({{property_type}} %in% housing_types, TRUE, FALSE),
+
     # Add extra logic to catch non-housing option with non-ASCII character
     housing = dplyr::if_else(grepl("ara/s", {{property_type}}), FALSE,
                              .data$housing),

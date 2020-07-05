@@ -54,6 +54,7 @@ par_lapply <- function(...) {
 
 # Wrapper for future assignment
 
-`%<-%` <- if ("remote" %in% class(future::plan())) future::`%<-%` else `<-`
+`%<-%` <- if (requireNamespace("future", quietly = TRUE) &&
+              "remote" %in% class(future::plan())) future::`%<-%` else `<-`
 
 
