@@ -215,10 +215,10 @@ helper_compress_daily <- function(data) {
     one_length <-
       data.table::data.table(
         property_ID = character(),
-        start_date = as.Date(character()),
-        end_date = as.Date(character()),
+        start_date = as.Date(character(), origin = "1970-01-01"),
+        end_date = as.Date(character(), origin = "1970-01-01"),
         status = character(),
-        booked_date = as.Date(character()),
+        booked_date = as.Date(character(), origin = "1970-01-01"),
         price = integer(),
         res_ID = integer())
 
@@ -292,8 +292,8 @@ helper_compress_host <- function(data) {
     one_length <-
       data.table::data.table(
         host_ID = character(),
-        start_date = as.Date(character()),
-        end_date = as.Date(character()),
+        start_date = as.Date(character(), origin = "1970-01-01"),
+        end_date = as.Date(character(), origin = "1970-01-01"),
         listing_type = character(),
         housing = logical(),
         count = integer())
