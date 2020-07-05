@@ -119,13 +119,15 @@ test_that("function completes with no errors", {
   # expect_equal(nrow(strr_compress(host)), 7)
 })
 
-# test_that("function sets correct start/end dates", {
-#   # Start date
-#   expect_equal(pull(strr_compress(daily), start_date)[2], as.Date("2018-04-06"))
-#   # End date
-#   expect_equal(pull(strr_compress(daily), end_date)[2], as.Date("2018-04-07"))
-# })
-#
+test_that("function sets correct start/end dates", {
+  # Start date
+  expect_equal(pull(strr_compress(daily_compress), start_date)[2],
+               as.Date("2018-04-06"))
+  # End date
+  expect_equal(pull(strr_compress(daily_compress), end_date)[2],
+               as.Date("2018-04-07"))
+})
+
 # test_that("month/year boundaries are handled properly", {
 #   expect_equal(nrow(strr_compress(daily_2)), 7)
 #   expect_equal(nrow(strr_compress(daily_3)), 7)
