@@ -28,7 +28,7 @@ daily_compress <-
          region = c(rep("Ontario", 20), rep("Quebec", 10)),
          city = NA)
 
-daily_2 <-
+daily_compress_2 <-
   dplyr::tibble(property_ID = c(rep("ab-1", 20), rep("ab-2", 10)),
                 date = as.Date(c(
                   "2018-12-21", "2018-12-22", "2018-12-23", "2018-12-24",
@@ -52,7 +52,7 @@ daily_2 <-
                 region = c(rep("Ontario", 20), rep("Quebec", 10)),
                 city = NA)
 
-daily_3 <-
+daily_compress_3 <-
   dplyr::tibble(property_ID = c(rep("ab-1", 20), rep("ab-2", 10)),
                 date = as.Date(c(
                   "2018-01-21", "2018-01-22", "2018-01-23", "2018-01-24",
@@ -76,7 +76,7 @@ daily_3 <-
                 region = c(rep("Ontario", 20), rep("Quebec", 10)),
                 city = NA)
 
-host <-
+host_compress <-
   dplyr::tibble(host_ID = c(rep("ab-1", 20), rep("ab-2", 10)),
          date = as.Date(c(
            "2018-04-01", "2018-04-02", "2018-04-03", "2018-04-04",
@@ -108,7 +108,7 @@ host <-
 test_that("helper functions work", {
 
   expect_equal(nrow(helper_compress_daily(daily_compress)), 6)
-  # expect_equal(nrow(helper_compress_host(host)), 7)
+  expect_equal(nrow(helper_compress_host(host_compress)), 7)
 
 })
 
@@ -116,7 +116,7 @@ test_that("function completes with no errors", {
   # Daily file
   expect_equal(nrow(strr_compress(daily_compress)), 6)
   # Host file
-  # expect_equal(nrow(strr_compress(host)), 7)
+  expect_equal(nrow(strr_compress(host_compress)), 7)
 })
 
 test_that("function sets correct start/end dates", {
@@ -128,17 +128,17 @@ test_that("function sets correct start/end dates", {
                as.Date("2018-04-07"))
 })
 
-# test_that("month/year boundaries are handled properly", {
-#   expect_equal(nrow(strr_compress(daily_2)), 7)
-#   expect_equal(nrow(strr_compress(daily_3)), 7)
-# })
-#
-# test_that("one_length and remainder conditions are handled properly", {
-#   expect_equal(nrow(strr_compress(daily[c(1:5, 8:10),])), 2)
-#   expect_equal(nrow(strr_compress(host[c(1:5, 8:10),])), 2)
-#   expect_equal(nrow(strr_compress(host[c(1:5),])), 1)
-# })
-#
-# test_that("The quiet flag suppresses all messages", {
-#   expect_message(strr_compress(daily, quiet = TRUE), regexp = NA)
-# })
+test_that("month/year boundaries are handled properly", {
+  expect_equal(nrow(strr_compress(daily_compress_2)), 7)
+  expect_equal(nrow(strr_compress(daily_compress_3)), 7)
+})
+
+test_that("one_length and remainder conditions are handled properly", {
+  expect_equal(nrow(strr_compress(daily_compress[c(1:5, 8:10),])), 2)
+  expect_equal(nrow(strr_compress(host_compress[c(1:5, 8:10),])), 2)
+  expect_equal(nrow(strr_compress(host_compress[c(1:5),])), 1)
+})
+
+test_that("The quiet flag suppresses all messages", {
+  expect_message(strr_compress(daily_compress, quiet = TRUE), regexp = NA)
+})

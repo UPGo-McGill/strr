@@ -312,10 +312,15 @@ helper_compress_host <- function(data) {
     remainder <-
       data[sapply(dates, function(x) {length(x) - length(min(x):max(x))}) != 0,
            .(host_ID,
-             start_date = lapply(dates,
-                                 function(x) {x[which(diff(c(0, x)) > 1)]}),
-             end_date = lapply(dates,
-                               function(x) {x[which(diff(c(x, 30000)) > 1)]}),
+             start_date = lapply(
+               dates,
+               function(x) {
+                 x[which(diff(c(as.Date(0, origin = "1970-01-01"), x)) > 1)]}),
+             end_date = lapply(
+               dates,
+               function(x) {
+                 x[which(diff(c(x,
+                                as.Date(30000, origin = "1970-01-01"))) > 1)]}),
              listing_type, housing, count)]
 
     remainder <-
