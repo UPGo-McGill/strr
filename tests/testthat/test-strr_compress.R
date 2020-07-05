@@ -112,13 +112,13 @@ test_that("helper functions work", {
 
 })
 
-# test_that("function completes with no errors", {
-#   # Daily file
-#   expect_equal(nrow(strr_compress(daily)), 6)
-#   # Host file
-#   expect_equal(nrow(strr_compress(host)), 7)
-# })
-#
+test_that("function completes with no errors", {
+  # Daily file
+  expect_equal(nrow(strr_compress(daily_compress)), 6)
+  # Host file
+  # expect_equal(nrow(strr_compress(host)), 7)
+})
+
 # test_that("function sets correct start/end dates", {
 #   # Start date
 #   expect_equal(pull(strr_compress(daily), start_date)[2], as.Date("2018-04-06"))
