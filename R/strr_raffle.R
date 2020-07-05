@@ -209,8 +209,8 @@ strr_raffle <- function(
 
     handler_strr("Intersecting row")
 
-    with_progress2({
-      .strr_env$pb <- progressor2(steps = nrow(property))
+    with_progress({
+      .strr_env$pb <- progressor(steps = nrow(property))
       result <- helper_intersect(property, polys, distance, quiet)
       })
 
@@ -220,8 +220,8 @@ strr_raffle <- function(
 
     handler_strr("Integrating row")
 
-    with_progress2({
-      .strr_env$pb <- progressor2(steps = sum(sapply(result, nrow)))
+    with_progress({
+      .strr_env$pb <- progressor(steps = sum(sapply(result, nrow)))
       suppressMessages({result <- helper_integrate(result, pdf, quiet)})
       })
 
@@ -242,17 +242,17 @@ strr_raffle <- function(
 
       handler_strr("Intersecting row")
 
-      with_progress2({
+      with_progress({
         # Initialize progress bar
-        .strr_env$pb <- progressor2(steps = nrow(property_list[[i]]))
+        .strr_env$pb <- progressor(steps = nrow(property_list[[i]]))
         result_list[[i]] <-
           helper_intersect(property_list[[i]], polys, distance, quiet)
         })
 
       handler_strr("Integrating row")
 
-      with_progress2({
-        .strr_env$pb <- progressor2(steps = sum(sapply(result_list[[i]], nrow)))
+      with_progress({
+        .strr_env$pb <- progressor(steps = sum(sapply(result_list[[i]], nrow)))
         result_list[[i]] <- helper_integrate(result_list[[i]], pdf, quiet)
         })
     }

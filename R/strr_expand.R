@@ -97,9 +97,9 @@ strr_expand <- function(data, quiet = FALSE) {
 
     handler_strr("Expanding row")
 
-    with_progress2({
+    with_progress({
 
-      .strr_env$pb <- progressor2(steps = nrow(data))
+      .strr_env$pb <- progressor(steps = nrow(data))
       data <- helper_expand(data, daily_flag)
 
       })
@@ -123,10 +123,10 @@ strr_expand <- function(data, quiet = FALSE) {
 
       handler_strr("Expanding row")
 
-      with_progress2({
+      with_progress({
 
         # Initialize progress bar
-        .strr_env$pb <- progressor2(steps = nrow(data[range_1:range_2]))
+        .strr_env$pb <- progressor(steps = nrow(data[range_1:range_2]))
 
         data_list[[i]] <- helper_expand(data[range_1:range_2], daily_flag)
 

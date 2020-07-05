@@ -320,9 +320,9 @@ strr_ghost <- function(
 
   handler_strr("Analzying row")
 
-  with_progress2({
+  with_progress({
 
-    .strr_env$pb <- progressor2(steps = nrow(property))
+    .strr_env$pb <- progressor(steps = nrow(property))
 
     property <- par_lapply(property_list, function(x) {
       .strr_env$pb(amount = nrow(x))

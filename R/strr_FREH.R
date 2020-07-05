@@ -217,10 +217,10 @@ strr_FREH <- function(daily, start_date = NULL, end_date = NULL,
 
   handler_strr("Analyzing date")
 
-  with_progress2({
+  with_progress({
 
       # Initialize progress bar
-      .strr_env$pb <- progressor2(along = start_date:end_date)
+      .strr_env$pb <- progressor(along = start_date:end_date)
 
       daily <-
         par_lapply(start_date:end_date, date_fun, future.globals =

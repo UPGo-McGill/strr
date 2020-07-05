@@ -33,58 +33,21 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
   helper_check_quiet()
 
 
-  ## Define default versions of map_* ------------------------------------------
-
-  map <- purrr::map
-
-
   ## Prepare data.table and future variables -----------------------------------
-
-  .datatable.aware = TRUE
 
   # Silence R CMD check for data.table fields
   property_ID <- ..drop_cols <- user_ID <- country <- i.country <-
     user_country <- ..keep_cols <- review_ID <- i.region <- i.city <-
     col_split <- NULL
 
+  # Set data.table threads to match future workers if plan isn't remote
   if (requireNamespace("future", quietly = TRUE) &&
-      requireNamespace("furrr", quietly = TRUE)) {
+      !"remote" %in% class(future::plan())) {
 
-    # Replace map_* with future_map_*
-    map <- furrr::future_map
+    threads <- data.table::setDTthreads(future::nbrOfWorkers())
 
-    # Remove limit on globals size
-    options(future.globals.maxSize = +Inf)
+    on.exit({data.table::setDTthreads(threads)}, add = TRUE)
 
-    # Set up on.exit expression for errors
-    on.exit({
-      # Flush out any stray multicore processes
-      map(1:future::nbrOfWorkers(), ~.x)
-
-      # Restore future global export limit
-      .Options$future.globals.maxSize <- NULL
-
-    })
-
-    # Set data.table threads to match future workers if plan isn't remote
-    if (!"remote" %in% class(future::plan())) {
-      threads <- data.table::setDTthreads(future::nbrOfWorkers())
-
-      on.exit({data.table::setDTthreads(threads)}, add = TRUE)
-    }
-
-  }
-
-
-  ## Prepare progress reporting ------------------------------------------------
-
-  # Enable progress bars if quiet == FALSE
-  progress <- !quiet
-
-  # Disable progress bars if {progressr} is not installed
-  if (!requireNamespace("progressr", quietly = TRUE)) {
-    progress <- FALSE
-    .strr_env$pb <- function() NULL
   }
 
 
@@ -143,6 +106,7 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
   ## Produce table with one row per distinct combination of user info ----------
 
   rm(..keep_cols) # Silence data.table warning about variable in calling scope
+
   keep_cols <- c("user_ID", "date", "member_since", "user_name", "user_country",
                  "user_region", "user_city", "description", "school", "work")
 
@@ -167,57 +131,41 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
 
   ## Remove rows that duplicate info already in latest_user --------------------
 
-  if (progress) {
+  handler_strr("Analyzing duplicates: row")
 
-    # handler_strr("Analyzing duplicates: row")
+  with_progress({
 
-    # progressr::with_progress({
+    .strr_env$pb <- progressor(steps = nrow(review_user))
 
-      # Initialize progress bar
-      # .strr_env$pb <- progressr::progressor(steps = nrow(review_user))
+    data_list <- par_lapply(data_list, function(.x) {
+      .strr_env$pb(amount = nrow(.x))
 
-      data_list <- map(data_list, ~{
-        # .strr_env$pb(amount = nrow(.x))
-        unique(.x, by = setdiff(keep_cols, "date"))[date >= start_date]
-        })
-    # })
-
-  } else {
-
-    data_list <- map(data_list, ~{
       unique(.x, by = setdiff(keep_cols, "date"))[date >= start_date]
-    })
-  }
 
+      })
+
+    })
 
   review_user <- data.table::rbindlist(data_list)
 
 
   ## Update latest_user with new entries ---------------------------------------
 
-  if (progress) {
+  handler_strr("Adding new entries to latest_user: row")
 
-    # handler_strr("Adding new entries to latest_user: row")
+  with_progress({
 
-    # progressr::with_progress({
+    .strr_env$pb <- progressor(steps = sum(sapply(data_list, nrow)))
 
-      # Initialize progress bar
-      # .strr_env$pb <-
-        # progressr::progressor(steps = sum(sapply(data_list, nrow)))
+    new_user <- par_lapply(data_list, function(.x) {
 
-      new_user <- map(data_list, ~{
-        # .strr_env$pb(amount = nrow(.x))
-        .x[, .SD[.N], by = user_ID]
-      })
-    # })
+      .strr_env$pb(amount = nrow(.x))
 
-  } else {
-
-    new_user <- map(data_list, ~{
       .x[, .SD[.N], by = user_ID]
-    })
-  }
 
+      })
+
+    })
 
   new_user <- data.table::rbindlist(new_user)
 
@@ -261,21 +209,7 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
 
   helper_message("Processing complete.", .type = "final")
 
-  # Overwrite previous on.exit call
-  if (requireNamespace("future", quietly = TRUE) &&
-      requireNamespace("furrr", quietly = TRUE)) {
-
-    on.exit({
-      .Options$future.globals.maxSize <- NULL
-
-      if (!"remote" %in% class(future::plan())) {
-        data.table::setDTthreads(threads)
-      }
-
-    })
-  }
-
-  return(purrr::map(list(review, review_user, review_text, latest_user),
+  return(lapply(list(review, review_user, review_text, latest_user),
              dplyr::as_tibble))
 
 }
