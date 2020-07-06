@@ -77,7 +77,8 @@ strr_multi <- function(daily, host,
   thresholds_names <- names(thresholds)
 
   # Replace 0 with NA
-  thresholds <- dplyr::if_else(thresholds == 0, NA_integer_, thresholds)
+  thresholds <- dplyr::if_else(thresholds == 0, NA_integer_,
+                               as.integer(thresholds))
 
   # Calculate steps for progress reporting
   steps <- sum(!is.na(thresholds), combine_housing) + 1

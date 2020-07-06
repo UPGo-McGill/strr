@@ -4,7 +4,7 @@
 
 context("strr_multi tests")
 
-daily <-
+daily_multi <-
   dplyr::tibble(property_ID = c(rep("ab-1", 20), rep("ab-2", 10)),
                 date = as.Date(c(
                   "2018-04-01", "2018-04-02", "2018-04-03", "2018-04-04",
@@ -28,12 +28,20 @@ daily <-
                 region = c(rep("Ontario", 20), rep("Quebec", 10)),
                 city = NA)
 
-host <- strr_host(daily, quiet = TRUE)
+host_multi <- strr_host(daily_multi, quiet = TRUE)
 
 
 ### Tests ######################################################################
 
 test_that("function completes with no errors", {
-  expect_equal(sum((strr_multi(daily, host))$multi), 20)
+  expect_equal(sum((
+    strr_multi(daily_multi, host_multi)
+    )$multi), 20)
+})
+
+test_that("function completes with unnamed thresholds and SR/HR > 0", {
+  expect_equal(sum((
+    strr_multi(daily_multi, host_multi, c(2, 3, 1, 1))
+  )$multi), 20)
 })
 
