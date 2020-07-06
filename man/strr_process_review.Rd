@@ -4,14 +4,21 @@
 \alias{strr_process_review}
 \title{Process raw STR review tables into UPGo format}
 \usage{
-strr_process_review(review, property, latest_user, max_id = 0, quiet = FALSE)
+strr_process_review(
+  review,
+  property,
+  latest_user = NULL,
+  max_id = 0,
+  quiet = FALSE
+)
 }
 \arguments{
 \item{review}{TKTK}
 
-\item{property}{TKTK}
+\item{property}{An strr_property data frame.}
 
-\item{latest_user}{TKTK}
+\item{latest_user}{A review_user table with a single row containing the most
+recent observations for each user_ID.}
 
 \item{max_id}{The highest review_ID currently in use. New review_IDs will be
 assigned starting with max_id + 1.}
@@ -20,10 +27,7 @@ assigned starting with max_id + 1.}
 it return status updates throughout the function (default)?}
 }
 \value{
-A list with three elements: 1) the processed property table, with 35
-fields; 2) an error table identifying corrupt or otherwise invalid row
-entries; 3) a missing_geography table identifying property_IDs with missing
-latitude/longitude coordinates.
+TKTK.
 }
 \description{
 \code{strr_process_review} takes raw review tables from AirDNA and cleans

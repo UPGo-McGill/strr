@@ -7,20 +7,18 @@
 #' for subsequent analysis or upload in the UPGo format.
 #'
 #' @param review TKTK
-#' @param property TKTK
-#' @param latest_user TKTK
+#' @param property An strr_property data frame.
+#' @param latest_user A review_user table with a single row containing the most
+#' recent observations for each user_ID.
 #' @param max_id The highest review_ID currently in use. New review_IDs will be
 #' assigned starting with max_id + 1.
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
-#' @return A list with three elements: 1) the processed property table, with 35
-#' fields; 2) an error table identifying corrupt or otherwise invalid row
-#' entries; 3) a missing_geography table identifying property_IDs with missing
-#' latitude/longitude coordinates.
+#' @return TKTK.
 #' @export
 
-strr_process_review <- function(review, property, latest_user, max_id = 0,
-                                quiet = FALSE) {
+strr_process_review <- function(review, property, latest_user = NULL,
+                                max_id = 0, quiet = FALSE) {
 
   ### ERROR CHECKING AND INITIALIZATION ########################################
 
@@ -31,14 +29,14 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
 
   helper_check_property()
   helper_check_quiet()
+  stopifnot(is.numeric(max_id))
 
 
   ## Prepare data.table and future variables -----------------------------------
 
   # Silence R CMD check for data.table fields
-  property_ID <- ..drop_cols <- user_ID <- country <- i.country <-
-    user_country <- ..keep_cols <- review_ID <- i.region <- i.city <-
-    col_split <- NULL
+  property_ID <- drop_cols <- user_ID <- country <- i.country <- user_country <-
+    ..keep_cols <- review_ID <- i.region <- i.city <- col_split <- NULL
 
   # Set data.table threads to match future workers if plan isn't remote
   if (requireNamespace("future", quietly = TRUE) &&
@@ -60,7 +58,7 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
   drop_cols <- c("Latitude", "Longitude", "Address", "Profile Image URL",
                  "Profile URL")
 
-  if (length(review) == 17) review[, ..drop_cols := NULL]
+  if (length(review) == 17) review[, c(drop_cols) := NULL]
 
   data.table::setnames(review, c(
     "property_ID", "date", "review", "user_ID", "member_since", "user_name",
@@ -100,7 +98,7 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
 
   ### CREATE REVIEW_USER #######################################################
 
-  helper_message("(2/4) Creating review_user table, using {helper_plan()}")
+  helper_message("(2/4) Creating review_user table, using ", helper_plan(), ".")
 
 
   ## Produce table with one row per distinct combination of user info ----------
@@ -117,7 +115,8 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
 
   start_date <- min(review_user$date)
 
-  review_user <- data.table::rbindlist(list(review_user, latest_user))
+  if (!missing(latest_user)) review_user <-
+    data.table::rbindlist(list(review_user, latest_user))
 
   data.table::setorder(review_user, date, user_ID)
 
@@ -171,9 +170,13 @@ strr_process_review <- function(review, property, latest_user, max_id = 0,
 
   data.table::setDT(latest_user)
 
-  latest_user <- latest_user[!user_ID %in% new_user$user_ID]
+  if (!missing(latest_user)) {
 
-  latest_user <- data.table::rbindlist(list(latest_user, new_user))
+    latest_user <- latest_user[!user_ID %in% new_user$user_ID]
+
+    latest_user <- data.table::rbindlist(list(latest_user, new_user))
+
+  } else latest_user <- new_user
 
 
   ### CREATE REVIEW TEXT #######################################################
