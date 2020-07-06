@@ -39,23 +39,20 @@ points <- dplyr::tibble(
     sf::st_point(c(1, 1)), sf::st_point(c(1, 1)), sf::st_point(c(1, 1)), sf::st_point(c(1, 1)),
     sf::st_point(c(1, 1)), sf::st_point(c(1, 1)), sf::st_point(c(1, 1)), sf::st_point(c(1, 1)),
     sf::st_point(c(1, 1)), sf::st_point(c(1, 1)), sf::st_point(c(1, 1)), sf::st_point(c(300, 1)),
-    crs = 32617)
+    crs = 32617),
   ) %>% sf::st_as_sf()
 
 
 ### Tests ######################################################################
 
+result <- strr_ghost(points)
+result_EH <- strr_ghost(points, EH_check = TRUE)
+
 test_that("distance/min_listings flags are correctly handled", {
   # distance
-  expect_error(strr_ghost(points, property_ID, host_ID, multi_date = TRUE,
-                          created, scraped, distance = -200, min_listings = 3,
-                          listing_type = listing_type,
-                          private_room = "Private room"))
+  expect_error(strr_ghost(points, distance = -200))
   # min_listings
-  expect_error(strr_ghost(points, property_ID, host_ID, multi_date = TRUE,
-                          created, scraped, distance = 200, min_listings = -3,
-                          listing_type = listing_type,
-                          private_room = "Private room"))
+  expect_error(strr_ghost(points, min_listings = -3))
 })
 
 
@@ -65,7 +62,7 @@ test_that("handling of sf/sp classes is correct", {
   # Convert sp
   ### TEST FOR sp CONVERSION TKTK
   # CRS handling
-  expect_equal(sf::st_crs(points), sf::st_crs(strr_ghost(points)))
+  expect_equal(sf::st_crs(points), sf::st_crs(result))
 })
 
 
@@ -93,7 +90,7 @@ test_that("points fields are correctly handled", {
 test_that("listing_type is correctly handled", {
   # listing_type = listing_type
   expect_equal({
-    strr_ghost(points, quiet = TRUE) %>%
+    result %>%
       dplyr::filter(host_ID == "listing_type", date == "2019-04-01") %>%
       dplyr::pull(listing_count)
   }, 3)
@@ -120,12 +117,12 @@ test_that("private_room and entire_home warnings are issued", {
 test_that("multi_date produces the expected outputs", {
   # 4 to 3 with early date
   expect_equal({
-    strr_ghost(points) %>%
+    result %>%
       dplyr::filter(date == "2016-01-01", host_ID == "4 to 3") %>%
       nrow()}, 0)
   # 4 to 3 with late date
   expect_equal({
-    strr_ghost(points) %>%
+    result %>%
       dplyr::filter(date == "2019-03-01", host_ID == "4 to 3") %>%
       dplyr::pull(listing_count)}, 3)
   # 4 to 3 with multi_date = FALSE
@@ -138,13 +135,13 @@ test_that("multi_date produces the expected outputs", {
 test_that("EH_check works correctly", {
   # Valid EH point is included
   expect_equal({
-    strr_ghost(points, EH_check = TRUE) %>%
+    result_EH %>%
       dplyr::filter(host_ID == "EH_check TRUE", date == "2018-02-01") %>%
       dplyr::pull(EH_check) %>% unlist()
     }, 15)
   # Invalid EH point is excluded
   expect_equal({
-    strr_ghost(points, EH_check = TRUE) %>%
+    result_EH %>%
       dplyr::filter(host_ID == "EH_check FALSE", date == "2018-02-01") %>%
       dplyr::pull(EH_check) %>% length()
     }, 0)
@@ -153,8 +150,8 @@ test_that("EH_check works correctly", {
 test_that("Non-default field names are passed through", {
   # # Renamed property_ID shows up in output
   # expect_equal({
-  #   points %>% rename(PID = property_ID) %>%
-  #     strr_ghost(property_ID = PID) %>%
+    # points %>% rename(PID = property_ID) %>%
+    #   strr_ghost(property_ID = PID) %>%
   #     dplyr::slice(1) %>%
   #     dplyr::pull(data) %>%
   #     `[[`(1) %>%
