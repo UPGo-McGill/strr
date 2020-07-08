@@ -33,6 +33,9 @@
 #' only option currently is "airbnb", which is a radially symmetric normal
 #' curve around the point origin, with mean 100 m and standard deviation 50 m.
 #' More options may be added in the future.
+#' @param batch_size A positive integer. The number of points to be processed in
+#' a single batch (default 10,000). Higher values will use more memory but
+#' execute more quickly.
 #' @param diagnostic A logical scalar. Should a list of polygon candidates and
 #' associated probabilities be appended to the function output?
 #' @param quiet A logical scalar. Should the function execute quietly, or should
@@ -52,7 +55,7 @@
 
 strr_raffle <- function(
   property, polys, poly_ID, units, distance = 200, seed = NULL, pdf = "airbnb",
-  diagnostic = FALSE, quiet = FALSE) {
+  batch_size = 10000, diagnostic = FALSE, quiet = FALSE) {
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
@@ -63,12 +66,11 @@ strr_raffle <- function(
 
   helper_check_quiet()
   stopifnot(inherits(property, "data.frame"), distance > 0, pdf == "airbnb",
-            is.logical(diagnostic))
+            is.numeric(batch_size), batch_size > 0, is.logical(diagnostic))
 
 
   ## Prepare batch processing variables ----------------------------------------
 
-  chunk_size <- 10000
   iterations <- 1
 
 
@@ -134,9 +136,9 @@ strr_raffle <- function(
 
   ### SET BATCH PROCESSING STRATEGY ############################################
 
-  if (nrow(property) > chunk_size) {
+  if (nrow(property) > batch_size) {
 
-    iterations <- ceiling(nrow(property) / chunk_size)
+    iterations <- ceiling(nrow(property) / batch_size)
 
     helper_message("Raffling point locations in ", iterations, " batches.")
   }
@@ -238,7 +240,7 @@ strr_raffle <- function(
         ", using ", helper_plan(), ".")
 
       property_list[[i]] <-
-        dplyr::slice(property, ((i - 1) * chunk_size + 1):(i * chunk_size))
+        dplyr::slice(property, ((i - 1) * batch_size + 1):(i * batch_size))
 
       handler_strr("Intersecting row")
 
