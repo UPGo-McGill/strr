@@ -491,11 +491,17 @@ raffle_pdf_airbnb <- function(x) {
 
 helper_raffle_integrate <- function(intersects) {
 
-  probability <- geometry <- int_units <- NULL
+  suppressMessages({
 
-  int_fun <- function(x, y) {
-    polyCub::polyCub.midpoint(x, raffle_pdf_airbnb) * y
-  }
+    probability <- geometry <- int_units <- NULL
 
-  intersects[, probability := mapply(int_fun, geometry, int_units)]
-  }
+    int_fun <- function(x, y) {
+      polyCub::polyCub.midpoint(x, raffle_pdf_airbnb) * y
+    }
+
+    intersects[, probability := mapply(int_fun, geometry, int_units)]
+
+  })
+}
+
+
