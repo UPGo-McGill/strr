@@ -12,7 +12,6 @@ strr_raffle(
   distance = 200,
   seed = NULL,
   pdf = "airbnb",
-  batch_size = 10000,
   diagnostic = FALSE,
   quiet = FALSE
 )
@@ -46,10 +45,6 @@ be used for assigning listing locations within the `distance` radius. The
 only option currently is "airbnb", which is a radially symmetric normal
 curve around the point origin, with mean 100 m and standard deviation 50 m.
 More options may be added in the future.}
-
-\item{batch_size}{A positive integer. The number of points to be processed in
-a single batch (default 10,000). Higher values will use more memory but
-execute more quickly.}
 
 \item{diagnostic}{A logical scalar. Should a list of polygon candidates and
 associated probabilities be appended to the function output?}
