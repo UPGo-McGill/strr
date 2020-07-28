@@ -63,7 +63,7 @@ strr_host <- function(daily, quiet = FALSE) {
 
   ### PRODUCE HOST TABLE #######################################################
 
-  helper_message("(2/2) Analyzing rows, using {helper_plan()}.")
+  helper_message("(2/2) Analyzing rows, using ", helper_plan(), ".")
 
   # Use future assignment if plan is remote
   host %<-% daily[,.(count = .N), by = .(host_ID, date, listing_type, housing)]

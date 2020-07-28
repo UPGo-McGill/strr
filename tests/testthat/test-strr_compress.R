@@ -94,15 +94,6 @@ host_compress <-
          count = c(rep(1, 10), rep(3, 20)))
 
 
-
-
-
-
-
-
-
-
-
 ### Tests ######################################################################
 
 test_that("helper functions work", {
