@@ -33,9 +33,6 @@
 #' only option currently is "airbnb", which is a radially symmetric normal
 #' curve around the point origin, with mean 100 m and standard deviation 50 m.
 #' More options may be added in the future.
-#' @param batch_size A positive integer. The number of points to be processed in
-#' a single batch (default 10,000). Higher values will use more memory but
-#' execute more quickly.
 #' @param diagnostic A logical scalar. Should a list of polygon candidates and
 #' associated probabilities be appended to the function output?
 #' @param quiet A logical scalar. Should the function execute quietly, or should
@@ -55,7 +52,7 @@
 
 strr_raffle <- function(
   property, polys, poly_ID, units, distance = 200, seed = NULL, pdf = "airbnb",
-  batch_size = 10000, diagnostic = FALSE, quiet = FALSE) {
+  diagnostic = FALSE, quiet = FALSE) {
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
@@ -66,7 +63,7 @@ strr_raffle <- function(
 
   helper_check_quiet()
   stopifnot(inherits(property, "data.frame"), distance > 0, pdf == "airbnb",
-            is.numeric(batch_size), batch_size > 0, is.logical(diagnostic))
+            is.logical(diagnostic))
 
 
   ## Prepare batch processing variables ----------------------------------------
@@ -136,11 +133,21 @@ strr_raffle <- function(
 
   ### SET BATCH PROCESSING STRATEGY ############################################
 
-  if (nrow(property) > batch_size) {
+  complexity <- as.numeric(nrow(property)) * as.numeric(nrow(polys))
 
-    iterations <- ceiling(nrow(property) / batch_size)
+  if (complexity > 1000000000) {
+
+    grid <- sf::st_make_grid(property,
+                             n = max(4, ceiling(complexity / 2000000000)))
+
+    iterations <- length(grid)
+
+    property <- sf::st_join(property,
+                            sf::st_sf(grid_id = seq_along(grid),
+                                      geometry = grid))
 
     helper_message("Raffling point locations in ", iterations, " batches.")
+
   }
 
 
@@ -239,8 +246,9 @@ strr_raffle <- function(
       helper_message("(", i + 1, "/", iterations + 1, ") Analyzing batch ", i,
         ", using ", helper_plan(), ".")
 
-      property_list[[i]] <-
-        dplyr::slice(property, ((i - 1) * batch_size + 1):(i * batch_size))
+      property_list[[i]] <- property[property$grid_id == i,]
+
+      polys_filter <- sf::st_filter(polys, sf::st_buffer(grid[[i]], distance))
 
       handler_strr("Intersecting row")
 
@@ -248,7 +256,7 @@ strr_raffle <- function(
         # Initialize progress bar
         .strr_env$pb <- progressor(steps = nrow(property_list[[i]]))
         result_list[[i]] <-
-          helper_intersect(property_list[[i]], polys, distance, quiet)
+          helper_intersect(property_list[[i]], polys_filter, distance, quiet)
         })
 
       handler_strr("Integrating row")
@@ -257,7 +265,7 @@ strr_raffle <- function(
         .strr_env$pb <- progressor(steps = sum(sapply(result_list[[i]], nrow)))
         result_list[[i]] <- helper_integrate(result_list[[i]], pdf, quiet)
         })
-    }
+    }; Sys.time()
 
     # Bind batches together
     result <-
