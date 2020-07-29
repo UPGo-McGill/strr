@@ -210,6 +210,15 @@ strr_raffle <- function(
     "(1/", 1 + iterations, ") Tables prepared for analysis.", .type = "close")
 
 
+  ### Store empty table for later ##############################################
+
+  empty <- polys[0,]
+  empty$.point_ID <- integer()
+  empty$.point_x <- numeric()
+  empty$.point_y <- numeric()
+  empty <- data.table::setDT(empty[,c(5:7, 1:4)])
+
+
   ### Dispatch to main helper functions ########################################
 
   if (iterations == 1) {
@@ -220,7 +229,7 @@ strr_raffle <- function(
 
     with_progress({
       .strr_env$pb <- progressor(steps = nrow(property))
-      result <- helper_intersect(property, polys, distance, quiet)
+      result <- helper_intersect(property, polys, empty, distance, quiet)
       })
 
     if (sum(sapply(result, nrow)) == 0) {
@@ -256,16 +265,29 @@ strr_raffle <- function(
         # Initialize progress bar
         .strr_env$pb <- progressor(steps = nrow(property_list[[i]]))
         result_list[[i]] <-
-          helper_intersect(property_list[[i]], polys_filter, distance, quiet)
+          helper_intersect(property_list[[i]], polys_filter, empty, distance,
+                           quiet)
         })
 
-      handler_strr("Integrating row")
+      # Don't integrate if the results are empty
+      if (sum(sapply(result_list[[i]], nrow)) == 0) {
 
-      with_progress({
-        .strr_env$pb <- progressor(steps = sum(sapply(result_list[[i]], nrow)))
-        result_list[[i]] <- helper_integrate(result_list[[i]], pdf, quiet)
+        result_list[[i]] <-
+          data.table::data.table(.point_ID = integer(), candidates = list(),
+                                 poly_ID = character())
+      } else {
+
+        handler_strr("Integrating row")
+
+        with_progress({
+          .strr_env$pb <-
+            progressor(steps = sum(sapply(result_list[[i]], nrow)))
+          result_list[[i]] <- helper_integrate(result_list[[i]], pdf, quiet)
         })
-    }; Sys.time()
+
+      }
+
+    }
 
     # Bind batches together
     result <-
@@ -312,11 +334,11 @@ strr_raffle <- function(
 #'
 #' \code{helper_intersect} intersects property and polys
 #'
-#' @param property,polys,distance,quiet Arguments passed along from the main
-#' function.
+#' @param property,polys,empty,distance,quiet Arguments passed along from the
+#' main function.
 #' @return The output will be a list of two data frames.
 
-helper_intersect <- function(property, polys, distance, quiet) {
+helper_intersect <- function(property, polys, empty, distance, quiet) {
 
   geometry <- .point_ID <- NULL
 
@@ -371,15 +393,19 @@ helper_intersect <- function(property, polys, distance, quiet) {
 
   # Recombine output list
   intersects <- intersects[sapply(intersects, nrow) > 0]
-  intersects <- sf::st_as_sf(data.table::rbindlist(intersects))
 
   # Exit early if no intersections are found
-  if (nrow(intersects) == 0) return(list(intersects, intersects))
+  if (length(intersects) == 0) return(list(empty, empty))
+
+  # Convert back to sf
+  intersects <- sf::st_as_sf(data.table::rbindlist(intersects))
 
   # Store results where there is only one possible option
   one_choice <- setDT(intersects)[, if (.N == 1) .SD, by = ".point_ID"]
+  if (nrow(one_choice) == 0) one_choice <- empty
 
   intersects <- intersects[, if (.N > 1) .SD, by = ".point_ID"]
+  if (nrow(intersects) == 0) intersects <- empty
 
   return(list(one_choice, intersects))
 }
@@ -511,5 +537,3 @@ helper_raffle_integrate <- function(intersects) {
 
   })
 }
-
-

@@ -4,11 +4,11 @@
 \alias{helper_intersect}
 \title{Helper function to intersect property and polys}
 \usage{
-helper_intersect(property, polys, distance, quiet)
+helper_intersect(property, polys, empty, distance, quiet)
 }
 \arguments{
-\item{property, polys, distance, quiet}{Arguments passed along from the main
-function.}
+\item{property, polys, empty, distance, quiet}{Arguments passed along from the
+main function.}
 }
 \value{
 The output will be a list of two data frames.
