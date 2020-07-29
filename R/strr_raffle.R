@@ -246,23 +246,17 @@ strr_raffle <- function(
 
   } else {
 
-    ## Initialize empty lists --------------------------------------------------
+    ## Initialize lists --------------------------------------------------------
 
-    property_list <- vector("list", iterations)
-    polys_list <- vector("list", iterations)
+    property_list <- par_lapply(seq_len(iterations), function(i) {
+      property[property$grid_id == i,]
+    })
+
+    polys_list <- par_lapply(seq_len(iterations), function(i) {
+      sf::st_filter(polys, sf::st_buffer(grid[[i]], distance))
+    })
+
     result_list <- vector("list", iterations)
-
-
-    ## Populate lists ----------------------------------------------------------
-
-    for (i in seq_len(iterations)) {
-
-      property_list[[i]] <- property[property$grid_id == i,]
-
-      polys_list[[i]] <- sf::st_filter(polys,
-                                       sf::st_buffer(grid[[i]], distance))
-
-    }
 
 
     ## Intersect each batch sequentially ---------------------------------------
