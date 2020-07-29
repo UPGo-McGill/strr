@@ -153,8 +153,7 @@ strr_raffle <- function(
 
   ### PREPARE PROPERTY AND POLYS TABLES ########################################
 
-  helper_message("(1/", 1 + iterations, ") Preparing tables for analysis.",
-                 .type = "open")
+  helper_message("(1/3) Preparing tables for analysis.", .type = "open")
 
 
   ## Process property ----------------------------------------------------------
@@ -207,7 +206,7 @@ strr_raffle <- function(
   polys <- sf::st_as_sf(polys, agr = "constant")
 
   helper_message(
-    "(1/", 1 + iterations, ") Tables prepared for analysis.", .type = "close")
+    "(1/3) Tables prepared for analysis.", .type = "close")
 
 
   ### Store empty table for later ##############################################
@@ -223,7 +222,7 @@ strr_raffle <- function(
 
   if (iterations == 1) {
 
-    helper_message("(2/2) Analyzing rows, using ", helper_plan(), ".")
+    helper_message("(2/3) Intersecting rows, using ", helper_plan(), ".")
 
     handler_strr("Intersecting row")
 
@@ -236,6 +235,8 @@ strr_raffle <- function(
       stop("The input tables do not intersect.")
       }
 
+    helper_message("(3/3) Integrating rows, using ", helper_plan(), ".")
+
     handler_strr("Integrating row")
 
     with_progress({
@@ -245,53 +246,70 @@ strr_raffle <- function(
 
   } else {
 
-    # Initialize empty lists
+    ## Initialize empty lists --------------------------------------------------
+
     property_list <- vector("list", iterations)
     result_list <- vector("list", iterations)
 
-    # Process each batch sequentially
-    for (i in seq_len(iterations)) {
 
-      helper_message("(", i + 1, "/", iterations + 1, ") Analyzing batch ", i,
-        ", using ", helper_plan(), ".")
+    ## Intersect each batch sequentially ---------------------------------------
 
-      property_list[[i]] <- property[property$grid_id == i,]
+    helper_message("(2/3) Intersecting rows, using ", helper_plan(), ".")
 
-      polys_filter <- sf::st_filter(polys, sf::st_buffer(grid[[i]], distance))
+    handler_strr("Intersecting row")
 
-      handler_strr("Intersecting row")
+    with_progress({
 
-      with_progress({
-        # Initialize progress bar
-        .strr_env$pb <- progressor(steps = nrow(property_list[[i]]))
+      .strr_env$pb <- progressor(steps = nrow(property))
+
+      for (i in seq_len(iterations)) {
+
+        property_list[[i]] <- property[property$grid_id == i,]
+
+        polys_filter <- sf::st_filter(polys, sf::st_buffer(grid[[i]], distance))
+
         result_list[[i]] <-
           helper_intersect(property_list[[i]], polys_filter, empty, distance,
                            quiet)
-        })
+        }
 
-      # Don't integrate if the results are empty
-      if (sum(sapply(result_list[[i]], nrow)) == 0) {
+      })
 
-        result_list[[i]] <-
-          data.table::data.table(.point_ID = integer(), candidates = list(),
-                                 poly_ID = character())
-      } else {
+    ## Integrate each batch sequentially ---------------------------------------
 
-        handler_strr("Integrating row")
+    helper_message("(3/3) Integrating rows, using ", helper_plan(), ".")
 
-        with_progress({
-          .strr_env$pb <-
-            progressor(steps = sum(sapply(result_list[[i]], nrow)))
-          result_list[[i]] <- helper_integrate(result_list[[i]], pdf, quiet)
-        })
+    handler_strr("Integrating row")
+
+    with_progress({
+
+      .strr_env$pb <- progressor(
+        steps = sum(sapply(result_list, function(x) sum(sapply(x, nrow)))))
+
+      for (i in seq_len(iterations)) {
+
+        # Don't integrate if the results are empty
+        if (sum(sapply(result_list[[i]], nrow)) == 0) {
+
+          result_list[[i]] <-
+            data.table::data.table(.point_ID = integer(), candidates = list(),
+                                   poly_ID = character())
+
+        } else {
+
+            result_list[[i]] <- helper_integrate(result_list[[i]], pdf, quiet)
+
+        }
 
       }
 
-    }
+    })
 
-    # Bind batches together
+    ## Bind batches together ---------------------------------------------------
+
     result <-
       data.table::setorder(data.table::rbindlist(result_list), .point_ID)
+
   }
 
 
