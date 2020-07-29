@@ -138,7 +138,7 @@ strr_raffle <- function(
   if (complexity > 1000000000) {
 
     grid <- sf::st_make_grid(property,
-                             n = max(4, ceiling(complexity / 1000000000)))
+                             n = max(4, ceiling(complexity / 500000000)))
 
     iterations <- length(grid)
 
@@ -249,7 +249,20 @@ strr_raffle <- function(
     ## Initialize empty lists --------------------------------------------------
 
     property_list <- vector("list", iterations)
+    polys_list <- vector("list", iterations)
     result_list <- vector("list", iterations)
+
+
+    ## Populate lists ----------------------------------------------------------
+
+    for (i in seq_len(iterations)) {
+
+      property_list[[i]] <- property[property$grid_id == i,]
+
+      polys_list[[i]] <- sf::st_filter(polys,
+                                       sf::st_buffer(grid[[i]], distance))
+
+    }
 
 
     ## Intersect each batch sequentially ---------------------------------------
@@ -264,12 +277,8 @@ strr_raffle <- function(
 
       for (i in seq_len(iterations)) {
 
-        property_list[[i]] <- property[property$grid_id == i,]
-
-        polys_filter <- sf::st_filter(polys, sf::st_buffer(grid[[i]], distance))
-
         result_list[[i]] <-
-          helper_intersect(property_list[[i]], polys_filter, empty, distance,
+          helper_intersect(property_list[[i]], polys_list[[i]], empty, distance,
                            quiet)
         }
 
