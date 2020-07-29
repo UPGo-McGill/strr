@@ -131,26 +131,6 @@ strr_raffle <- function(
   }
 
 
-  ### SET BATCH PROCESSING STRATEGY ############################################
-
-  complexity <- as.numeric(nrow(property)) * as.numeric(nrow(polys))
-
-  if (complexity > 1000000000) {
-
-    grid <- sf::st_make_grid(property,
-                             n = max(4, ceiling(complexity / 500000000)))
-
-    iterations <- length(grid)
-
-    property <- sf::st_join(property,
-                            sf::st_sf(grid_id = seq_along(grid),
-                                      geometry = grid))
-
-    helper_message("Raffling point locations in ", iterations, " batches.")
-
-  }
-
-
   ### PREPARE PROPERTY AND POLYS TABLES ########################################
 
   helper_message("(1/3) Preparing tables for analysis.", .type = "open")
@@ -218,6 +198,52 @@ strr_raffle <- function(
   empty <- data.table::setDT(empty[,c(5:7, 1:4)])
 
 
+  ### SET BATCH PROCESSING STRATEGY ############################################
+
+  complexity <-
+    as.integer(ceiling((distance ^ 2 * pi) / mean(sf::st_area(polys))))
+  target_rows_per_grid <- max(ceiling(10000 / complexity), 100)
+  iterations <- ceiling(nrow(property) / target_rows_per_grid)
+
+  if (iterations > 1) {
+
+    ## Make first grid ---------------------------------------------------------
+
+    grid <- sf::st_make_grid(property, n = 2)
+    grid_table <- sf::st_sf(grid_ID = seq_along(grid), geometry = grid)
+    property$grid_ID <- NULL
+    property <- sf::st_join(property, grid_table)
+    grid_counts <- dplyr::count(sf::st_drop_geometry(property), .data$grid_ID)
+    grid_table <- dplyr::left_join(grid_table, grid_counts, by = "grid_ID")
+
+
+    ## Make subsequent grids ---------------------------------------------------
+
+    while (any(grid_table$n > target_rows_per_grid)) {
+
+      grid <-
+        grid[grid_table$n > target_rows_per_grid] %>%
+        lapply(sf::st_make_grid, n = 2) %>%
+        unlist(recursive = FALSE) %>%
+        sf::st_as_sfc() %>%
+        c(grid[grid_table$n <= target_rows_per_grid]) %>%
+        sf::st_set_crs(sf::st_crs(property))
+
+      grid_table <- sf::st_sf(grid_ID = seq_along(grid), geometry = grid)
+      property$grid_ID <- NULL
+      property <- sf::st_join(property, grid_table)
+      grid_counts <- dplyr::count(sf::st_drop_geometry(property), .data$grid_ID)
+      grid_table <- dplyr::left_join(grid_table, grid_counts, by = "grid_ID")
+      grid <- grid[which(grid_table$n > 0)]
+      grid_table <- dplyr::filter(grid_table, .data$n > 0)
+      grid_table$grid_ID <- seq_along(grid_table$grid_ID)
+      iterations <- length(grid)
+
+    }
+
+  }
+
+
   ### Dispatch to main helper functions ########################################
 
   if (iterations == 1) {
@@ -248,7 +274,8 @@ strr_raffle <- function(
 
     ## Initialize lists --------------------------------------------------------
 
-    helper_message("(2/3) Intersecting rows, using ", helper_plan(), ".")
+    helper_message("(2/3) Intersecting rows in ", iterations,
+                   " batches using ", helper_plan(), ".")
 
     handler_strr("Preparing points: batch")
 
@@ -258,7 +285,7 @@ strr_raffle <- function(
 
       property_list <- par_lapply(seq_len(iterations), function(i) {
         .strr_env$pb()
-        property[property$grid_id == i,]
+        property[property$grid_ID == i,]
       })
 
     })
@@ -295,6 +322,7 @@ strr_raffle <- function(
         }
 
       })
+
 
     ## Integrate each batch sequentially ---------------------------------------
 
