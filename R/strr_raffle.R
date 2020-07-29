@@ -248,20 +248,38 @@ strr_raffle <- function(
 
     ## Initialize lists --------------------------------------------------------
 
-    property_list <- par_lapply(seq_len(iterations), function(i) {
-      property[property$grid_id == i,]
+    helper_message("(2/3) Intersecting rows, using ", helper_plan(), ".")
+
+    handler_strr("Preparing points: batch")
+
+    with_progress({
+
+      .strr_env$pb <- progressor(steps = iterations)
+
+      property_list <- par_lapply(seq_len(iterations), function(i) {
+        .strr_env$pb()
+        property[property$grid_id == i,]
+      })
+
     })
 
-    polys_list <- par_lapply(seq_len(iterations), function(i) {
-      sf::st_filter(polys, sf::st_buffer(grid[[i]], distance))
+    handler_strr("Preparing polygons: batch")
+
+    with_progress({
+
+      .strr_env$pb <- progressor(steps = iterations)
+
+      polys_list <- par_lapply(seq_len(iterations), function(i) {
+        .strr_env$pb()
+        sf::st_filter(polys, sf::st_buffer(grid[[i]], distance))
+      })
+
     })
 
     result_list <- vector("list", iterations)
 
 
     ## Intersect each batch sequentially ---------------------------------------
-
-    helper_message("(2/3) Intersecting rows, using ", helper_plan(), ".")
 
     handler_strr("Intersecting row")
 
