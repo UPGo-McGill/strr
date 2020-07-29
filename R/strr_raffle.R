@@ -138,7 +138,7 @@ strr_raffle <- function(
   if (complexity > 1000000000) {
 
     grid <- sf::st_make_grid(property,
-                             n = max(4, ceiling(complexity / 2000000000)))
+                             n = max(4, ceiling(complexity / 1000000000)))
 
     iterations <- length(grid)
 
