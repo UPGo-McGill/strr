@@ -97,11 +97,11 @@ strr_compress <- function(data, quiet = FALSE) {
 
   ### SPLIT TABLE FOR PROCESSING ###############################################
 
-  ## Split by first three digits of property_ID/host_ID ------------------------
+  ## Split by first few digits of property_ID/host_ID --------------------------
 
   if (daily) {
 
-    data[, PID_split := substr(property_ID, 1, 6)]
+    data[, PID_split := substr(property_ID, 1, 7)]
 
     data_list <- split(data, by = "PID_split", keep.by = FALSE)
     data_list <- helper_table_split(data_list)
@@ -124,15 +124,15 @@ strr_compress <- function(data, quiet = FALSE) {
 
   with_progress({
 
-    .strr_env$pb <- progressor(steps = nrow(data))
+    pb <- progressor(steps = nrow(data))
 
     if (daily)  compressed <- par_lapply(data_list, function(x) {
-      .strr_env$pb(amount = nrow(x))
+      pb(amount = nrow(x))
       helper_compress_daily(x)
       })
 
     if (!daily) compressed <- par_lapply(data_list, function(x) {
-      .strr_env$pb(amount = nrow(x))
+      pb(amount = nrow(x))
       helper_compress_host(x)
       })
 
