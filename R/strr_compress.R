@@ -126,7 +126,7 @@ strr_compress <- function(data, quiet = FALSE) {
 
     pb <- progressor(steps = nrow(data))
 
-    if (daily)  compressed <- par_lapply(data_list, function(x) {
+    if (daily) compressed <- par_lapply(data_list, function(x) {
       pb(amount = nrow(x))
       helper_compress_daily(x)
       })

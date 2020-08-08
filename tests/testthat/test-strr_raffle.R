@@ -50,5 +50,6 @@ test_that("Odd field names are handled properly", {
   # points and polys with field name "poly_ID"
   expect_equal(nrow(strr_raffle(
     dplyr::rename(points, poly_ID = property_ID),
-    dplyr::rename(polys, poly_ID = GeoUID), poly_ID, dwellings)), 31)
+    dplyr::rename(sf::st_set_agr(polys, "constant"), poly_ID = GeoUID), poly_ID,
+    dwellings)), 31)
 })
