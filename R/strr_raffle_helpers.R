@@ -278,7 +278,7 @@ helper_prepare_integrate <- function(intersects) {
 
 helper_integrate <- function(x, y, pdf) {
 
-  polyCub::polyCub.midpoint(x, pdf) * y
+  suppressMessages(polyCub::polyCub.midpoint(x, pdf) * y)
 
 }
 
