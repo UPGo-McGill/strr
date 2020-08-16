@@ -48,7 +48,7 @@ strr_expand <- function(data, quiet = FALSE) {
 
   ## Prepare batches -----------------------------------------------------------
 
-  chunk_size <- 1e7
+  chunk_size <- 1e6
   iterations <- 1
 
 
