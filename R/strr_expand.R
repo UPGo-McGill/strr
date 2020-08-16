@@ -11,6 +11,7 @@
 #' @param data A table in compressed UPGo DB format (e.g. created by running
 #' \code{\link{strr_compress}}). Currently daily activity tables and host tables
 #' are recognized.
+#' @param chunk_size TKTK
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return A table with one row per date and all other fields returned
@@ -18,7 +19,7 @@
 #' @importFrom rlang .data
 #' @export
 
-strr_expand <- function(data, quiet = FALSE) {
+strr_expand <- function(data, chunk_size = 1e6, quiet = FALSE) {
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
 
@@ -48,7 +49,7 @@ strr_expand <- function(data, quiet = FALSE) {
 
   ## Prepare batches -----------------------------------------------------------
 
-  chunk_size <- 1e6
+  # chunk_size <- 1e6
   iterations <- 1
 
 
@@ -201,7 +202,7 @@ helper_expand <- function(data, daily_flag) {
     data.table::setDT(.x)
 
     # Add new date field
-    .x[, date := list(list(start_date:end_date)), by = 1:nrow(.x)]
+    .x[, date := list(list(start_date:end_date)), by = seq_len(nrow(.x))]
 
     # Unnest
     .x <-

@@ -4,12 +4,14 @@
 \alias{strr_expand}
 \title{Expand compressed STR tables}
 \usage{
-strr_expand(data, quiet = FALSE)
+strr_expand(data, chunk_size = 1e+06, quiet = FALSE)
 }
 \arguments{
 \item{data}{A table in compressed UPGo DB format (e.g. created by running
 \code{\link{strr_compress}}). Currently daily activity tables and host tables
 are recognized.}
+
+\item{chunk_size}{TKTK}
 
 \item{quiet}{A logical scalar. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}
