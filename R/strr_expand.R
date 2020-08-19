@@ -49,7 +49,6 @@ strr_expand <- function(data, chunk_size = 1e6, quiet = FALSE) {
 
   ## Prepare batches -----------------------------------------------------------
 
-  # chunk_size <- 1e6
   iterations <- 1
 
 
@@ -92,59 +91,72 @@ strr_expand <- function(data, chunk_size = 1e6, quiet = FALSE) {
 
   ### PROCESS FOR SMALL TABLE ##################################################
 
+  # Make sure data.table is single-threaded within the helper
+  threads <- data.table::setDTthreads(1)
+
   if (iterations == 1) {
 
     helper_message("(1/2) Expanding table, using ", helper_plan(), ".")
 
+    data_list <- helper_prepare_expand(data, daily_flag)
+
+    # Run function
     handler_strr("Expanding row")
 
     with_progress({
-
-      .strr_env$pb <- progressor(steps = nrow(data))
-      data <- helper_expand(data, daily_flag)
-
+      pb <- progressor(steps = nrow(data))
+      data <- par_lapply(data_list, function(x) {
+        pb(amount = nrow(x))
+        helper_expand(x)})
       })
+
+    data <- data.table::rbindlist(data)
 
 
   ### PROCESS FOR LARGE TABLE ##################################################
 
   } else {
 
-    # Split data into 10-million-line chunks
-    data_list <- vector("list", iterations)
+    # Split data into chunks
+    chunk_list <- vector("list", iterations)
+
+    helper_message("(1/2) Expanding table in, using ", helper_plan(), ".")
+    handler_strr("Expanding row")
 
     # Process each batch sequentially
-    for (i in seq_len(iterations)) {
+    with_progress({
 
-      helper_message("(", i, "/", iterations + 1, ") Expanding batch ", i,
-                     ", using ", helper_plan(), ".")
+      pb <- progressor(steps = nrow(data))
 
-      range_1 <- (i - 1) * chunk_size + 1
-      range_2 <- min(i * chunk_size, nrow(data))
+      for (i in seq_len(iterations)) {
 
-      handler_strr("Expanding row")
+        range_1 <- (i - 1) * chunk_size + 1
+        range_2 <- min(i * chunk_size, nrow(data))
 
-      with_progress({
+        data_list <- helper_prepare_expand(data[range_1:range_2], daily_flag)
 
-        # Initialize progress bar
-        .strr_env$pb <- progressor(steps = nrow(data[range_1:range_2]))
+        chunk_list[[i]] <- par_lapply(data_list, function(x) {
+          pb(amount = nrow(x))
+          helper_expand(x)})
 
-        data_list[[i]] <- helper_expand(data[range_1:range_2], daily_flag)
+        chunk_list[[i]] <- data.table::rbindlist(chunk_list[[i]])
 
-        })
+      }
 
-    }
+      # Bind batches together
+      data <- data.table::rbindlist(data_list)
 
-    # Bind batches together
-    data <- data.table::rbindlist(data_list)
+      })
+
+    # Restore DT threads
+    data.table::setDTthreads(threads)
 
   }
 
 
   ### REJOIN TO ADDITIONAL FIELDS, THEN ARRANGE COLUMNS ########################
 
-  helper_message("(", iterations + 1, "/", iterations + 1, ") Arranging table.",
-                 .type = "open")
+  helper_message("(2/2) Arranging table.", .type = "open")
 
   if (daily_flag) {
 
@@ -162,8 +174,7 @@ strr_expand <- function(data, chunk_size = 1e6, quiet = FALSE) {
 
   }
 
-  helper_message("(", iterations + 1, "/", iterations + 1, ") Table arranged.",
-                 .type = "close")
+  helper_message("(2/2) Table arranged.", .type = "close")
 
 
   ### OUTPUT DATA FRAME ########################################################
@@ -174,47 +185,19 @@ strr_expand <- function(data, chunk_size = 1e6, quiet = FALSE) {
 }
 
 
-#' Helper function to expand compressed STR tables
+#' Helper function to prepare to expand compressed STR tables
 #'
-#' @param data A table in compressed UPGo DB format (e.g. created by running
-#' \code{\link{strr_compress}}). Currently daily activity table and host tables
-#' are recognized.
-#' @param daily_flag A logical scalar. Is the input table a daily table (TRUE)
-#' or a host table (FALSE)?
-#' @return A table with one row per date and all other fields returned
-#' unaltered.
+#' @param data,daily_flag Arguments passed from the main function.
 
-helper_expand <- function(data, daily_flag) {
+helper_prepare_expand <- function(data, daily_flag) {
 
-  ### INITIALIZE OBJECTS #######################################################
+  ## Initialize objects --------------------------------------------------------
 
   property_ID <- start_date <- end_date <- col_split <- host_ID <- NULL
-
   data.table::setDT(data)
 
 
-  ### DEFINE FUNCTION TO BE ITERATED WITH ######################################
-
-  expand_fun <- function(.x) {
-
-    .strr_env$pb(amount = nrow(.x))
-
-    data.table::setDT(.x)
-
-    # Add new date field
-    .x[, date := list(list(start_date:end_date)), by = seq_len(nrow(.x))]
-
-    # Unnest
-    .x <-
-      .x[, lapply(.SD, unlist), by = 1:nrow(.x)
-         ][, c("nrow", "start_date", "end_date") := NULL]
-
-    .x[, date := as.Date(date, origin = "1970-01-01")]
-
-  }
-
-
-  ### SPLIT DATA ###############################################################
+  ## Split data ----------------------------------------------------------------
 
   # Split by property_ID for daily and host_ID for host
   if (daily_flag) {
@@ -226,19 +209,28 @@ helper_expand <- function(data, daily_flag) {
   data_list <- split(data, by = "col_split", keep.by = FALSE)
   data_list <- helper_table_split(data_list)
 
-
-  ### EXPAND TABLE #############################################################
-
-  # Make sure data.table is single-threaded within the helper
-  threads <- data.table::setDTthreads(1)
-
-  # Run function
-  data <- par_lapply(data_list, expand_fun)
-  data <- data.table::rbindlist(data)
-
-  # Restore DT threads
-  data.table::setDTthreads(threads)
-
-  return(data)
+  return(data_list)
 
 }
+
+
+#' Helper function to expand compressed STR tables
+#'
+#' @param .x Argument passed from the main function.
+
+helper_expand <- function(x) {
+
+  start_date <- end_date <- NULL
+
+  data.table::setDT(x)
+
+  # Add new date field
+  x[, date := list(list(start_date:end_date)), by = seq_len(nrow(x))]
+
+  # Unnest
+  x <- x[, lapply(.SD, unlist), by = 1:nrow(x)
+           ][, c("nrow", "start_date", "end_date") := NULL]
+
+  x[, date := as.Date(date, origin = "1970-01-01")]
+
+  }

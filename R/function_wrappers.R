@@ -29,25 +29,25 @@ progressor <-
 
 # Wrapper for lapply
 
-par_lapply <- function(...) {
+par_lapply <- function(X, FUN, ...) {
 
   if (requireNamespace("future", quietly = TRUE)) {
 
     if (requireNamespace("future.apply", quietly = TRUE)) {
 
       # Overwrite lapply with future.lapply for parallel processing
-      future.apply::future_lapply(...)
+      future.apply::future_lapply(X, FUN, ...)
 
       } else {
 
         message("Please install the `future.apply` package to enable ",
                 "parallel processing.")
 
-        lapply(...)
+        lapply(X, FUN, ...)
 
       }
 
-    } else lapply(...)
+    } else lapply(X, FUN, ...)
 
 }
 

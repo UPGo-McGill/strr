@@ -4,19 +4,10 @@
 \alias{helper_expand}
 \title{Helper function to expand compressed STR tables}
 \usage{
-helper_expand(data, daily_flag)
+helper_expand(.x)
 }
 \arguments{
-\item{data}{A table in compressed UPGo DB format (e.g. created by running
-\code{\link{strr_compress}}). Currently daily activity table and host tables
-are recognized.}
-
-\item{daily_flag}{A logical scalar. Is the input table a daily table (TRUE)
-or a host table (FALSE)?}
-}
-\value{
-A table with one row per date and all other fields returned
-unaltered.
+\item{.x}{Argument passed from the main function.}
 }
 \description{
 Helper function to expand compressed STR tables
