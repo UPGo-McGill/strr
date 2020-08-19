@@ -120,7 +120,7 @@ strr_expand <- function(data, chunk_size = 1e6, quiet = FALSE) {
     # Split data into chunks
     chunk_list <- vector("list", iterations)
 
-    helper_message("(1/2) Expanding table in, using ", helper_plan(), ".")
+    helper_message("(1/2) Expanding table, using ", helper_plan(), ".")
     handler_strr("Expanding row")
 
     # Process each batch sequentially
@@ -144,7 +144,7 @@ strr_expand <- function(data, chunk_size = 1e6, quiet = FALSE) {
       }
 
       # Bind batches together
-      data <- data.table::rbindlist(data_list)
+      data <- data.table::rbindlist(chunk_list)
 
       })
 
