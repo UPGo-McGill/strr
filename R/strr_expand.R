@@ -201,7 +201,7 @@ helper_prepare_expand <- function(data, daily_flag) {
 
   # Split by property_ID for daily and host_ID for host
   if (daily_flag) {
-    data[, col_split := substr(property_ID, 1, 6)]
+    data[, col_split := substr(property_ID, 1, 8)]
   } else {
     data[, col_split := substr(host_ID, 1, 3)]
   }
