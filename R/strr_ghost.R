@@ -396,9 +396,11 @@ strr_ghost <- function(
 
     # Calculate date ranges
     property[, c("start", "end") := list(
-      as.Date(sapply(data, function(x) max(c(start_date, pull(x, created)))),
+      as.Date(sapply(data,
+                     function(x) max(c(start_date, dplyr::pull(x, created)))),
               origin = "1970-01-01"),
-      as.Date(sapply(data, function(x) min(c(end_date,   pull(x, scraped)))),
+      as.Date(sapply(data,
+                     function(x) min(c(end_date, dplyr::pull(x, scraped)))),
               origin = "1970-01-01")
     )]
 
@@ -721,9 +723,8 @@ ghost_stepwise_intersect <- function(buffers, min_listings) {
 
   # Exit function if no valid combinations exist
   if (n < min_listings) {
-    return(
-      buffers[0,] %>% mutate(n.overlaps = as.integer(NA), origin = list(c(0)))
-    )
+    return(dplyr::mutate(buffers[0,], n.overlaps = as.integer(NA),
+                         origin = list(c(0))))
   }
 
   # Master while-loop

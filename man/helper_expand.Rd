@@ -4,10 +4,10 @@
 \alias{helper_expand}
 \title{Helper function to expand compressed STR tables}
 \usage{
-helper_expand(.x)
+helper_expand(x)
 }
 \arguments{
-\item{.x}{Argument passed from the main function.}
+\item{x}{Argument passed from the main function.}
 }
 \description{
 Helper function to expand compressed STR tables

@@ -13,10 +13,10 @@ helper_plan <- function() {
         future::nbrOfWorkers()
 
       workers_noun <-
-        if_else(workers_number == 1, "process", "processes")
+        dplyr::if_else(workers_number == 1, "process", "processes")
 
       cluster_type <-
-        if_else("remote" %in% class(future::plan()), "remote", "local")
+        dplyr::if_else("remote" %in% class(future::plan()), "remote", "local")
 
       paste0(workers_number, " ", cluster_type, " ", workers_noun)
     },
@@ -366,7 +366,7 @@ helper_check_property <- function(...) {
 
   # Check that property is strr_property
   if (!inherits(property, "strr_property") &&
-      names(property)[1] != "property_ID") {
+      !names(property)[1] %in% c("property_ID", "Property ID")) {
     stop("Input table must be of class `strr_property`.", call. = FALSE)
   }
 

@@ -8,19 +8,19 @@ strr_process_property(property, keep_cols = FALSE, quiet = FALSE)
 }
 \arguments{
 \item{property}{An unprocessed property data frame in the raw AirDNA format,
-with either 36 or 56 fields.}
+with either 37 or 56 fields.}
 
 \item{keep_cols}{A logical scalar. If the `property` table has 56 fields,
-should the superfluous 20 fields be kept, or should the table be trimmed to
-the 36 fields which UPGo uses (default)?}
+should the superfluous 19 fields be kept, or should the table be trimmed to
+the 37 fields which UPGo uses (default)?}
 
 \item{quiet}{A logical scalar. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}
 }
 \value{
-A list with three elements: 1) the processed property table, with 35
-fields; 2) an error table identifying corrupt or otherwise invalid row
-entries; 3) a missing_geography table identifying property_IDs with missing
+A list with three elements: 1) the processed `property` table; 2) an
+`error` table identifying corrupt or otherwise invalid row entries; 3) a
+`missing_geography` table identifying property_IDs with missing
 latitude/longitude coordinates.
 }
 \description{
@@ -34,7 +34,7 @@ produces error files which identify possible corrupt or missing lines in the
 input file.
 
 The function expects the input property file to have either 56 fields (the
-default for a raw table from AirDNA) or 35 fields (the default for UPGo,
+default for a raw table from AirDNA) or 36 fields (the default for UPGo,
 after the `Zipcode`, `Average Daily Rate (USD)`,
 `Average Daily Rate (Native)`, `Annual Revenue LTM (USD)`,
 `Annual Revenue LTM (Native)`, `Occupancy Rate LTM`,
@@ -43,10 +43,9 @@ after the `Zipcode`, `Average Daily Rate (USD)`,
 `Calendar Last Updated`, `Security Deposit (Native)`,
 `Cleaning Fee (Native)`, `Extra People Fee (Native)`,
 `Published Nightly Rate (USD)`, `Published Monthly Rate (USD)`,
-`Published Weekly Rate (USD)`, `Airbnb Listing URL`, `HomeAway Listing URL`,
-and `HomeAway Listing Main Image URL` fields are removed on import).
-Eventually the function will be updated to support inputs from Inside
-Airbnb as well.
+`Published Weekly Rate (USD)`, `Airbnb Listing URL`, and
+`HomeAway Listing URL` fields are removed on import). Eventually the function
+will be updated to support inputs from Inside Airbnb as well.
 
 Because the expectation is that the input files will be very large, the
 function uses updating by reference on the property input table. This saves a

@@ -112,10 +112,10 @@ test_that("function completes with no errors", {
 
 test_that("function sets correct start/end dates", {
   # Start date
-  expect_equal(pull(strr_compress(daily_compress), start_date)[2],
+  expect_equal(dplyr::pull(strr_compress(daily_compress), start_date)[2],
                as.Date("2018-04-06"))
   # End date
-  expect_equal(pull(strr_compress(daily_compress), end_date)[2],
+  expect_equal(dplyr::pull(strr_compress(daily_compress), end_date)[2],
                as.Date("2018-04-07"))
 })
 

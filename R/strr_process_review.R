@@ -90,7 +90,7 @@ strr_process_review <- function(review, property, latest_user = NULL,
          on = c("user_country" = "code")]
 
   review[, c("user_country", "country") := list(
-    if_else(user_country %in% country_list, user_country, country),
+    dplyr::if_else(user_country %in% country_list, user_country, country),
     NULL)]
 
   helper_message("(1/4) Input table cleaned.", .type = "close")

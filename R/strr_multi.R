@@ -32,7 +32,6 @@
 #' @return The output will be the `daily` input table with one additional
 #' logical field (with name taken from the `field_name` argument) indicating
 #' multilisting status.
-#' @importFrom rlang .data
 #' @export
 
 strr_multi <- function(daily, host,
@@ -260,7 +259,7 @@ strr_multi <- function(daily, host,
 
   # Use future assignment if plan is remote
   daily %<-% multi[daily, on = join_cols
-                     ][, .ML := if_else(is.na(.ML), FALSE, .ML)]
+                     ][, .ML := dplyr::if_else(is.na(.ML), FALSE, .ML)]
 
   helper_message("(", steps_so_far, "/", steps,
                  ") Results joined into daily table, using ", helper_plan(),

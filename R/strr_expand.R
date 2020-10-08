@@ -216,7 +216,7 @@ helper_prepare_expand <- function(data, daily_flag) {
 
 #' Helper function to expand compressed STR tables
 #'
-#' @param .x Argument passed from the main function.
+#' @param x Argument passed from the main function.
 
 helper_expand <- function(x) {
 

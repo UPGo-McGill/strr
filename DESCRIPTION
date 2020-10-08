@@ -20,7 +20,7 @@ BugReports: https://github.com/UPGo-McGill/strr/issues
 Depends: R (>= 3.5.0)
 Imports: 
     data.table (>= 1.12.2),
-    dplyr (>= 0.8),
+    dplyr (>= 1.0),
     methods (>= 3.5.2),
     polyCub (>= 0.7.1),
     purrr (>= 0.3.2),
