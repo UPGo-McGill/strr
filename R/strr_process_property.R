@@ -9,7 +9,7 @@
 #' input file.
 #'
 #' The function expects the input property file to have either 56 fields (the
-#' default for a raw table from AirDNA) or 36 fields (the default for UPGo,
+#' default for a raw table from AirDNA) or 37 fields (the default for UPGo,
 #' after the `Zipcode`, `Average Daily Rate (USD)`,
 #' `Average Daily Rate (Native)`, `Annual Revenue LTM (USD)`,
 #' `Annual Revenue LTM (Native)`, `Occupancy Rate LTM`,
@@ -196,26 +196,28 @@ strr_process_property <- function(property, keep_cols = FALSE, quiet = FALSE) {
 
   data.table::setDT(
     property
-    )[country == "Bosnia-Herzegovina",
-      country := "Bosnia and Herzegovina"
-      ][country == "Brunei Darussalam", country := "Brunei"
-        ][country == "C\u00f4te d'Ivoire - Republic of",
-          country := "Ivory Coast"
-          ][country == "Democratic Republic of Congo",
-            country := "Democratic Republic of the Congo"
-            ][country == "Curacao", country := "Cura\u00e7ao"
-              ][country == "Falkland Islands",
-                country := "Falkland Islands (Malvinas)"
-                ][country == "Lao", country := "Laos"
-                  ][country == "Macedonia - Republic of", country := "Macedonia"
-                    ][country == "Palestine",
-                      country := "Palestinian Territories"
-                      ][country == "Republic of Congo", country := "Congo"
-                        ][country == "Saint-Martin", country := "Saint Martin"
-                          ][region == "Bhutan", country := "Bhutan"
-                            ][region == "Puerto Rico", country := "Puerto Rico"
-                              ][region == "United States Virgin Islands",
-                                country := "U.S. Virgin Islands"]
+    )[country == "Bonaire", country := "Bonaire, Sint Eustatius and Saba"
+      ][country == "Bosnia-Herzegovina", country := "Bosnia and Herzegovina"
+        ][country == "Brunei Darussalam", country := "Brunei"
+          ][country == "C\u00f4te d'Ivoire - Republic of",
+            country := "Ivory Coast"
+            ][country == "Democratic Republic of Congo",
+              country := "Democratic Republic of the Congo"
+              ][country == "Curacao", country := "Cura\u00e7ao"
+                ][country == "Falkland Islands",
+                  country := "Falkland Islands (Malvinas)"
+                  ][country == "Lao", country := "Laos"
+                    ][country == "Macedonia - Republic of",
+                      country := "Macedonia"
+                      ][country == "Palestine",
+                        country := "Palestinian Territories"
+                        ][country == "Republic of Congo", country := "Congo"
+                          ][country == "Saint-Martin", country := "Saint Martin"
+                            ][region == "Bhutan", country := "Bhutan"
+                              ][region == "Puerto Rico",
+                                country := "Puerto Rico"
+                                ][region == "United States Virgin Islands",
+                                  country := "U.S. Virgin Islands"]
 
   helper_message("(5/5) Country names harmonized with Airbnb's usage.",
                  .type = "close")
