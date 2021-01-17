@@ -246,31 +246,31 @@ strr_raffle <- function(
   helper_message("(2/3) Intersecting rows in ", iterations,
                  " batches using ", helper_plan(), ".")
 
-  handler_strr("Preparing points: batch")
+  # handler_strr("Preparing points: batch")
 
-  with_progress({
+  # with_progress({
 
-    pb <- progressor(steps = iterations)
+    # pb <- progressor(steps = iterations)
 
-    property_list <- par_lapply(seq_len(iterations), function(i) {
-      pb()
+    property_list <- lapply(seq_len(iterations), function(i) {
+      # pb()
       property[property$.grid_ID == i,]
     })
 
-  })
+  # })
 
-  handler_strr("Preparing polygons: batch")
+  # handler_strr("Preparing polygons: batch")
 
-  with_progress({
+  # with_progress({
 
-    pb <- progressor(steps = iterations)
+    # pb <- progressor(steps = iterations)
 
     polys_list <- par_lapply(seq_len(iterations), function(i) {
-      pb()
+      # pb()
       sf::st_filter(polys, sf::st_buffer(grid[[i]], distance))
     })
 
-  })
+  # })
 
   intersects_list <- vector("list", iterations)
   result_list <- vector("list", iterations)
@@ -288,9 +288,9 @@ strr_raffle <- function(
 
       data_list <- helper_prepare_intersect(property_list[[i]])
 
-        intersects <- par_lapply(data_list, function(x) {
-          pb(amount = nrow(x))
-          helper_intersect(x, polys_list[[i]], distance)
+      intersects <- par_lapply(data_list, function(x) {
+        pb(amount = nrow(x))
+        helper_intersect(x, polys_list[[i]], distance)
         })
 
       intersects_list[[i]] <- helper_process_intersects(intersects, empty)
@@ -304,12 +304,12 @@ strr_raffle <- function(
 
   helper_message("(3/3) Integrating rows, using ", helper_plan(), ".")
 
-  handler_strr("Integrating row")
+  # handler_strr("Integrating row")
 
-  with_progress({
+  # with_progress({
 
-    pb <- progressor(steps = sum(sapply(lapply(intersects_list, `[[`, 2),
-                                        nrow)))
+    # pb <- progressor(steps = sum(sapply(lapply(intersects_list, `[[`, 2),
+                                        # nrow)))
 
     for (i in seq_len(iterations)) {
 
@@ -332,7 +332,7 @@ strr_raffle <- function(
 
       result <- par_lapply(data_list, function(x, pdf) {
 
-        pb(amount = nrow(x))
+        # pb(amount = nrow(x))
 
         x[, probability := mapply(helper_integrate, geometry, int_units,
                                   MoreArgs = list(pdf))]
@@ -343,7 +343,7 @@ strr_raffle <- function(
 
     }
 
-  })
+  # })
 
   ### BIND BATCHES TOGETHER ####################################################
 
