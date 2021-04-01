@@ -176,15 +176,15 @@ strr_raffle <- function(
 
     data_list <- helper_prepare_intersect(property)
 
-    handler_strr("Intersecting row")
+    # handler_strr("Intersecting row")
 
-    with_progress({
+    # with_progress({
       pb <- progressor(steps = nrow(property))
       intersects <- par_lapply(data_list, function(x) {
-        pb(amount = nrow(x))
+        # pb(amount = nrow(x))
         helper_intersect(x, polys, distance)
         })
-      })
+      # })
 
     intersects <- helper_process_intersects(intersects, empty)
 
