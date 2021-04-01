@@ -215,19 +215,19 @@ strr_raffle <- function(
 
     handler_strr("Integrating row")
 
-    with_progress({
+    # with_progress({
 
-      pb <- progressor(steps = sum(sapply(data_list, nrow)))
+      # pb <- progressor(steps = sum(sapply(data_list, nrow)))
 
       result <- par_lapply(data_list, function(x, pdf) {
 
-        pb(amount = nrow(x))
+        # pb(amount = nrow(x))
 
         x[, probability := mapply(helper_integrate, geometry, int_units,
                                   MoreArgs = list(pdf))]
 
         }, raffle_pdf_airbnb)
-      })
+      # })
 
     result <- helper_process_integrate(result, intersects)
 
