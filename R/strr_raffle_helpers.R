@@ -108,7 +108,8 @@ helper_prepare_grid <- function(property, polys, distance) {
 
     while (any(grid_table$n > target_rows_per_grid)) {
 
-      new_grid <- grid[grid_table$n > target_rows_per_grid]
+      new_grid <-
+        grid[grid_table$n > target_rows_per_grid & !is.na(grid_table$n)]
       new_grid <- lapply(new_grid, sf::st_make_grid, n = 2)
       new_grid <-
         lapply(new_grid, function(x) {
