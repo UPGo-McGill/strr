@@ -121,59 +121,20 @@ strr_process_review <- function(review, property, latest_user = NULL,
   data.table::setorder(review_user, date, user_ID)
 
 
-  ## Split table for computation-intensive steps -------------------------------
-
-  review_user[, col_split := ceiling(user_ID / 100000)]
-
-  data_list <- split(review_user, by = "col_split", keep.by = FALSE)
-
-
   ## Remove rows that duplicate info already in latest_user --------------------
 
-  handler_strr("Analyzing duplicates: row")
-
-  with_progress({
-
-    .strr_env$pb <- progressor(steps = nrow(review_user))
-
-    data_list <- par_lapply(data_list, function(.x) {
-      .strr_env$pb(amount = nrow(.x))
-
-      unique(.x, by = setdiff(keep_cols, "date"))[date >= start_date]
-
-      })
-
-    })
-
-  review_user <- data.table::rbindlist(data_list)
+  review_user <- unique(review, by = setdiff(keep_cols, "date"))[
+    date >= start_date]
 
 
   ## Update latest_user with new entries ---------------------------------------
 
-  handler_strr("Adding new entries to latest_user: row")
-
-  with_progress({
-
-    .strr_env$pb <- progressor(steps = sum(sapply(data_list, nrow)))
-
-    new_user <- par_lapply(data_list, function(.x) {
-
-      .strr_env$pb(amount = nrow(.x))
-
-      .x[, .SD[.N], by = user_ID]
-
-      })
-
-    })
-
-  new_user <- data.table::rbindlist(new_user)
-
-  data.table::setDT(latest_user)
+  new_user <- review_user[, .SD[.N], by = user_ID]
 
   if (!missing(latest_user)) {
 
+    data.table::setDT(latest_user)
     latest_user <- latest_user[!user_ID %in% new_user$user_ID]
-
     latest_user <- data.table::rbindlist(list(latest_user, new_user))
 
   } else latest_user <- new_user
