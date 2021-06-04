@@ -220,6 +220,14 @@ strr_process_review <- function(review, property, latest_user = NULL,
            user_region, user_city, description, school, work, user_image_url) |>
     distinct(across(-start_date), .keep_all = TRUE)
 
+  # Remove duplicates within a single month
+  if (length(unique(review_user$user_ID)) != nrow(review_user)) {
+    review_user <-
+      review_user |>
+      group_by(user_ID, start_date) |>
+      slice(1) |>
+      ungroup()
+  }
 
   # Trim review_user based on latest_user -----------------------------------
 
