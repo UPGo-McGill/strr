@@ -103,7 +103,6 @@ helper_prepare_grid <- function(property, polys, distance) {
     grid_table <- grid_table[c(".grid_ID", "n", "geometry")]
     grid <- grid_table$geometry
 
-
     ## Make subsequent grids ---------------------------------------------------
 
     while (any(grid_table$n > target_rows_per_grid)) {

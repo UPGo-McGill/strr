@@ -318,7 +318,7 @@ strr_ghost <- function(
 
   data.table::setDTthreads(1)
 
-  handler_strr("Analzying row")
+  handler_strr("Analyzing row")
 
   with_progress({
 
