@@ -141,6 +141,7 @@ helper_prepare_grid <- function(property, polys, distance) {
 
       new_grid <- unlist(new_grid, recursive = FALSE)
       new_grid <- sf::st_as_sfc(new_grid)
+      new_grid <- sf::st_set_crs(new_grid, sf::st_crs(property))
       new_grid <- c(new_grid, grid[grid_table$n <= target_rows_per_grid])
       new_grid <- sf::st_set_crs(new_grid, sf::st_crs(property))
 
