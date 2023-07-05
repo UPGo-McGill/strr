@@ -123,6 +123,9 @@ helper_prepare_grid <- function(property, polys, distance) {
                                            by = ".grid_ID")
         new_grid_table <- dplyr::filter(new_grid_table, !is.na(.data$n))
         new_grid_table <- dplyr::arrange(new_grid_table, .data$n)
+        
+        # Exit early if there is only a single cell with points
+        if (nrow(new_grid_table) == 1) return(new_grid_table$geometry)
 
         while (sum(new_grid_table$n[1:2]) < target_rows_per_grid) {
 
