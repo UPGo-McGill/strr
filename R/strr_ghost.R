@@ -615,10 +615,17 @@ ghost_combine <- function(buffers, predicates, n) {
   }) %>%
     unique()
 
+  # Test if only a single valid combination could exist, and exit if so
+  if (length(combinations) == 1) return(
+    dplyr::tibble(value = combinations[[1]]))
+  
   # Test if reducer will be necessary to avoid too many combinations
-  while (sum(purrr::map_dbl(combinations, ~{
-    factorial(length(.)) / {factorial(n) * factorial(length(.) - n)}
-  })) > 100000) {
+  while (
+    is.nan(sum(purrr::map_dbl(combinations, ~{
+      factorial(length(.)) / {factorial(n) * factorial(length(.) - n)}
+    }))) || sum(purrr::map_dbl(combinations, ~{
+      factorial(length(.)) / {factorial(n) * factorial(length(.) - n)}
+    })) > 100000) {
 
     # Establish collective centroid
     if (length(invalid_pr) > 0) {
