@@ -57,6 +57,10 @@
 #' @param entire_home A character string which identifies the value of the
 #'   `listing_type` variable to be used to find possible duplicate entire-home
 #'   listings. This field is ignored if `listing_type` or `EH_check` are FALSE.
+#' @param geom_type. A character string, either "point" or "polygon", which
+#' identifies the type of geometry which should be appended to the function 
+#' output. Point geometries will be calculated faster than polygon geometries,
+#' and will require less memory.
 #' @param quiet A logical scalar. Should the function execute quietly, or should
 #' it return status updates throughout the function (default)?
 #' @return The output will be a tidy data frame of identified ghost hostels,
@@ -80,7 +84,8 @@ strr_ghost <- function(
   host_ID = host_ID, multi_date = TRUE, created = created, scraped = scraped,
   distance = 205, min_listings = 3, listing_type = listing_type,
   private_room = "Private room", EH_check = FALSE,
-  entire_home = "Entire home/apt", quiet = FALSE) {
+  entire_home = "Entire home/apt", geom_type = c("point", "polygon"),
+  quiet = FALSE) {
 
 
   ### ERROR CHECKING AND ARGUMENT INITIALIZATION ###############################
@@ -94,6 +99,8 @@ strr_ghost <- function(
   helper_check_property(rlang::ensyms(property_ID, host_ID, created, scraped))
   stopifnot(distance > 0, min_listings > 0)
   min_listings <- floor(min_listings)
+  geom_type <- geom_type[1]
+  stopifnot(geom_type %in% c("point", "polygon"))
 
 
   ## Handle spatial attributes -------------------------------------------------
@@ -303,14 +310,16 @@ strr_ghost <- function(
       .strr_env$pb(amount = nrow(x))
       x <- ghost_cluster(x, distance, min_listings)
       x <- ghost_split_clusters(x, distance, min_listings)
-      x <- ghost_intersect(x, distance, min_listings)
-      x <- ghost_intersect_leftovers(x, distance, min_listings)
+      x <- ghost_find_intersect(x, distance, min_listings, geom_type)
+      x <- ghost_find_leftovers(x, distance, min_listings, geom_type)
       x
     })
 
   })
 
-  property <- data.table::rbindlist(property)
+  # Set fill = TRUE to deal with empty outputs
+  property <- property[sapply(property, nrow) > 0]
+  property <- data.table::rbindlist(property, fill = TRUE)
 
   data.table::setDTthreads(future::nbrOfWorkers())
 
@@ -331,19 +340,11 @@ strr_ghost <- function(
   property[, data := mapply(function(x, y) x[x$property_ID %in% y,],
                           data, property_IDs, SIMPLIFY = FALSE)]
 
-  # Generate geometry column for ghost table
-  ghost_geom <- lapply(property$intersects, function(x) x$geometry)
-
-  if (length(ghost_geom) == 1) ghost_geom <- ghost_geom[[1]] else {
-    ghost_geom <- do.call(rbind, ghost_geom)
-    ghost_geom <- sf::st_as_sfc(ghost_geom, crs = crs_property)
-  }
-
 
   ## Create ghost table --------------------------------------------------------
 
   # Create new fields
-  property[, listing_count := sapply(intersects, function(x) x$n.overlaps)]
+  property[, listing_count := lengths(property_IDs)]
   property[, housing_units := as.integer(ceiling(listing_count / 4))]
 
   # Remove duplicates
@@ -352,16 +353,16 @@ strr_ghost <- function(
   # Arrange table
   data.table::setkey(property, host_ID)
 
-  # Create ghost_ID and drop extraneous columns
+  # Create ghost_ID and drop extraneous column
   property[, ghost_ID := seq_len(.N)]
-  property[, c("buffers", "intersects") := NULL]
+  property[, buffers := NULL]
 
   # Arrange columns
   data.table::setcolorder(property, c("ghost_ID", "host_ID", "listing_count",
                                       "housing_units", "property_IDs", "data"))
 
   # Convert to sf
-  property <- sf::st_sf(property, geometry = ghost_geom)
+  property <- sf::st_as_sf(property)
 
 
   ## Calculate dates if multi_date == TRUE -------------------------------------

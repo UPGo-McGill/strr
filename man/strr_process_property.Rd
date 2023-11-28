@@ -34,7 +34,7 @@ produces error files which identify possible corrupt or missing lines in the
 input file.
 
 The function expects the input property file to have either 56 fields (the
-default for a raw table from AirDNA) or 36 fields (the default for UPGo,
+default for a raw table from AirDNA) or 37 fields (the default for UPGo,
 after the `Zipcode`, `Average Daily Rate (USD)`,
 `Average Daily Rate (Native)`, `Annual Revenue LTM (USD)`,
 `Annual Revenue LTM (Native)`, `Occupancy Rate LTM`,

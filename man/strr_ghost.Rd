@@ -19,6 +19,7 @@ strr_ghost(
   private_room = "Private room",
   EH_check = FALSE,
   entire_home = "Entire home/apt",
+  geom_type = c("point", "polygon"),
   quiet = FALSE
 )
 }
@@ -82,6 +83,11 @@ listings. This field is ignored if `listing_type` or `EH_check` are FALSE.}
 
 \item{quiet}{A logical scalar. Should the function execute quietly, or should
 it return status updates throughout the function (default)?}
+
+\item{geom_type.}{A character string, either "point" or "polygon", which
+identifies the type of geometry which should be appended to the function 
+output. Point geometries will be calculated faster than polygon geometries,
+and will require less memory.}
 }
 \value{
 The output will be a tidy data frame of identified ghost hostels,

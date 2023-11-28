@@ -36,7 +36,7 @@ par_lapply <- function(X, FUN, ...) {
     if (requireNamespace("future.apply", quietly = TRUE)) {
 
       # Overwrite lapply with future.lapply for parallel processing
-      future.apply::future_lapply(X, FUN, ...)
+      future.apply::future_lapply(X, FUN, future.seed = TRUE, ...)
 
       } else {
 
