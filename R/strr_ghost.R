@@ -276,6 +276,10 @@ strr_ghost <- function(
                               MoreArgs = list(min_listings = min_listings),
                               SIMPLIFY = FALSE)]
     
+    # Error handling for one-row case where no clusters were identified
+    if (nrow(property) == 1 && is.null(property$data)) 
+      return(ghost_empty(crs_property))
+    
     # Get rid of rows without valid tables
     property <- property[!sapply(data, is.null)]
     

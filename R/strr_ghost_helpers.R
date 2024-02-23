@@ -31,7 +31,9 @@ ghost_date_range <- function(data, dates, min_listings) {
     start = dates[-length(dates)], end = dates[-1] - 1)
   
   date_table[, PID := mapply(\(start, end) sort(data[
-    created <= start & scraped >= end]$property_ID), start, end)]
+    created <= start & scraped >= end]$property_ID), start, end, 
+    # SIMPLIFY = FALSE in case of one-row output
+    SIMPLIFY = FALSE)]
   
   date_table <- date_table[lengths(PID) >= min_listings]
   
