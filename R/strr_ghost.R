@@ -235,7 +235,8 @@ strr_ghost <- function(
                             scraped = {{scraped}})
 
   # Check for multiple property_IDs
-  if (nrow(dplyr::filter(dplyr::n() > 1, .by = property_ID)) > 0) stop(
+  if (nrow(dplyr::filter(
+    property, dplyr::n() > 1, .by = property_ID)) > 0) stop(
     "Multiple rows detected for a single property_ID", call. = FALSE)
   
   # Check for multiple host_IDs for one property_ID
