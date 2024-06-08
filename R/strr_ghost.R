@@ -101,6 +101,19 @@ strr_ghost <- function(
   min_listings <- floor(min_listings)
   geom_type <- geom_type[1]
   stopifnot(geom_type %in% c("point", "polygon"))
+  
+
+  ## Error checking for valid input --------------------------------------------
+
+  # Check for multiple property_IDs
+  if (nrow(dplyr::filter(dplyr::n() > 1, .by = {{property_ID}})) > 0) stop(
+    "Multiple rows detected for a single property_ID", call. = FALSE)
+  
+  # Check for multiple host_IDs for one property_ID
+  if (nrow(dplyr::filter(
+    property, length(unique({{host_ID}})) > 1, 
+    .by = {{property_ID}})) > 0) stop(
+      "Multiple host_IDs detected for a single property_ID", call. = FALSE)
 
 
   ## Handle spatial attributes -------------------------------------------------
@@ -243,11 +256,6 @@ strr_ghost <- function(
   # Remove invalid listings
   property <- property[!is.na(host_ID)]
   
-  # Check for multiple host_IDs for one property_ID
-  if (nrow(dplyr::filter(
-    property, length(unique(host_ID)) > 1, .by = property_ID)) > 0) stop(
-      "Multiple host_IDs detected for a single property_ID")
-
 
   ## Filter rows ---------------------------------------------------------------
 
