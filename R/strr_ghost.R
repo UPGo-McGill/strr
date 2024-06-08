@@ -103,19 +103,6 @@ strr_ghost <- function(
   stopifnot(geom_type %in% c("point", "polygon"))
   
 
-  ## Error checking for valid input --------------------------------------------
-
-  # Check for multiple property_IDs
-  if (nrow(dplyr::filter(dplyr::n() > 1, .by = {{property_ID}})) > 0) stop(
-    "Multiple rows detected for a single property_ID", call. = FALSE)
-  
-  # Check for multiple host_IDs for one property_ID
-  if (nrow(dplyr::filter(
-    property, length(unique({{host_ID}})) > 1, 
-    .by = {{property_ID}})) > 0) stop(
-      "Multiple host_IDs detected for a single property_ID", call. = FALSE)
-
-
   ## Handle spatial attributes -------------------------------------------------
 
   # Convert property from sp
@@ -247,6 +234,16 @@ strr_ghost <- function(
                             created = {{created}},
                             scraped = {{scraped}})
 
+  # Check for multiple property_IDs
+  if (nrow(dplyr::filter(dplyr::n() > 1, .by = property_ID)) > 0) stop(
+    "Multiple rows detected for a single property_ID", call. = FALSE)
+  
+  # Check for multiple host_IDs for one property_ID
+  if (nrow(dplyr::filter(
+    property, length(unique(host_ID)) > 1, 
+    .by = property_ID)) > 0) stop(
+      "Multiple host_IDs detected for a single property_ID", call. = FALSE)
+  
   if (lt_flag) property <-
     dplyr::rename(property, listing_type = {{listing_type}})
 
