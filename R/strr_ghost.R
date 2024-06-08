@@ -150,7 +150,7 @@ strr_ghost <- function(
       }
     )
 
-  ## Check private_room and entire_home arguments
+  ## Check private_room and entire_home arguments ------------------------------
 
   if (lt_flag) {
 
@@ -168,7 +168,7 @@ strr_ghost <- function(
     }
   }
 
-  ## Process dates if multi_date is TRUE
+  ## Process dates if multi_date is TRUE ---------------------------------------
 
   if (multi_date) {
 
@@ -242,6 +242,11 @@ strr_ghost <- function(
 
   # Remove invalid listings
   property <- property[!is.na(host_ID)]
+  
+  # Check for multiple host_IDs for one property_ID
+  if (nrow(dplyr::filter(
+    property, length(unique(host_ID)) > 1, .by = property_ID)) > 0) stop(
+      "Multiple host_IDs detected for a single property_ID")
 
 
   ## Filter rows ---------------------------------------------------------------
