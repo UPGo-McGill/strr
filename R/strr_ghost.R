@@ -234,17 +234,6 @@ strr_ghost <- function(
                             created = {{created}},
                             scraped = {{scraped}})
 
-  # Check for multiple property_IDs
-  if (nrow(dplyr::filter(
-    property, dplyr::n() > 1, .by = property_ID)) > 0) stop(
-    "Multiple rows detected for a single property_ID", call. = FALSE)
-  
-  # Check for multiple host_IDs for one property_ID
-  if (nrow(dplyr::filter(
-    property, length(unique(host_ID)) > 1, 
-    .by = property_ID)) > 0) stop(
-      "Multiple host_IDs detected for a single property_ID", call. = FALSE)
-  
   if (lt_flag) property <-
     dplyr::rename(property, listing_type = {{listing_type}})
 
@@ -264,6 +253,17 @@ strr_ghost <- function(
     property <- property[listing_type == private_room]
   }
 
+  # Check for multiple property_IDs
+  if (nrow(dplyr::filter(
+    property, dplyr::n() > 1, .by = property_ID)) > 0) stop(
+      "Multiple rows detected for a single property_ID", call. = FALSE)
+  
+  # Check for multiple host_IDs for one property_ID
+  if (nrow(dplyr::filter(
+    property, length(unique(host_ID)) > 1, 
+    .by = property_ID)) > 0) stop(
+      "Multiple host_IDs detected for a single property_ID", call. = FALSE)
+  
   # Filter property to clusters >= min_listings, and nest by host_ID
   property <-
     property[, if (.N >= min_listings) list(data = list(.SD)), by = "host_ID"]
